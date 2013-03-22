@@ -6,7 +6,7 @@ import threading
 import traceback
 from urlparse import urlparse
 
-import sublime
+from floo import sublime
 
 from floo import api
 from floo import AgentConnection
@@ -18,7 +18,7 @@ from floo import utils
 
 agent = None
 
-def handle_shit(*args, **kwargs):
+def handle_event(*args, **kwargs):
     global b1
     currentBuffer = vim.current.buffer
 
