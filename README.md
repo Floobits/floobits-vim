@@ -1,4 +1,3 @@
-vim-shit
-========
+# Floobits Vim Plugin
 
-Sublime Vim Plugin
+## Development status: not at all working yet. Stay tuned.
