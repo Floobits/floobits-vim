@@ -13,8 +13,9 @@ def load_settings(*args, **kwargs):
 
 
 def error_message(*args, **kwargs):
-    pass
+    print(args, kwargs)
 
 
-class Region():
-    pass
+class Region(object):
+    def __init__(*args, **kwargs):
+        pass
