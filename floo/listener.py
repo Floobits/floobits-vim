@@ -5,7 +5,6 @@ import hashlib
 from datetime import datetime
 
 import sublime
-import sublime_plugin
 import dmp_monkey
 dmp_monkey.monkey_patch()
 from lib import diff_match_patch as dmp
@@ -102,13 +101,12 @@ class FlooPatch(object):
         })
 
 
-class Listener(sublime_plugin.EventListener):
+class Listener(object):
     views_changed = []
     selection_changed = []
     agent = None
 
     def __init__(self, *args, **kwargs):
-        sublime_plugin.EventListener.__init__(self, *args, **kwargs)
         self.between_save_events = {}
 
     @staticmethod
