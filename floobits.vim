@@ -3,6 +3,15 @@ if !has('python')
     finish
 endif
 
+let g:floobits_vim_file = expand("<sfile>")
+
+python << END_PYTHON
+import os, sys
+import vim
+sys.path.append(os.path.dirname(vim.eval("g:floobits_vim_file")))
+
+END_PYTHON
+
 pyfile ./floobits.py
 
 function! DispatchEvent()
@@ -24,4 +33,4 @@ function! s:joinroom(url)
   py joinroom(url)
 endfunction
 
-autocmd VimEnter * call s:SetAutoCmd()
+call s:SetAutoCmd()

@@ -1,13 +1,14 @@
 # coding: utf-8
-import vim
 import re
 import os
+import sys
 import threading
 import traceback
 from urlparse import urlparse
 
-from floo import sublime
+import vim
 
+from floo import sublime
 from floo import api
 from floo import AgentConnection
 from floo.listener import Listener
@@ -19,7 +20,7 @@ from floo import utils
 agent = None
 
 def handle_event(*args, **kwargs):
-    global b1
+    print('change!')
     currentBuffer = vim.current.buffer
 
 
