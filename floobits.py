@@ -19,9 +19,11 @@ from floo import utils
 
 agent = None
 
+
 def handle_event(*args, **kwargs):
-    print('change!')
     currentBuffer = vim.current.buffer
+    print currentBuffer.name, currentBuffer.number
+    # print currentBuffer
 
 
 def run_agent(owner, room, host, port, secure):

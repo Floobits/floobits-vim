@@ -15,7 +15,7 @@ END_PYTHON
 pyfile ./floobits.py
 
 function! DispatchEvent()
-    py handle_event('change!')
+    py handle_event()
 endfunction
 
 function! s:SetAutoCmd()
