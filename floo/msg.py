@@ -47,17 +47,7 @@ class MSG(object):
     def display(self):
         if self.level < LOG_LEVEL:
             return
-
-        def _display(view):
-            with utils.edit(view) as ed:
-                size = view.size()
-                view.set_read_only(False)
-                view.insert(ed, size, str(self))
-                view.set_read_only(True)
-                # TODO: this scrolling is lame and centers text :/
-                view.show(size)
-
-        get_or_create_chat(_display)
+        print str(self)
 
     def __str__(self):
         if self.username:

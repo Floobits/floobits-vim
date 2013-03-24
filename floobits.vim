@@ -14,8 +14,14 @@ END_PYTHON
 
 pyfile ./floobits.py
 
+
+autocmd asdf * py asdf()
+
+autocmd CursorMoved * doau asdf
+py asdf()
+
 function! DispatchEvent()
-    py handle_event('change!')
+    py handle_event()
 endfunction
 
 function! s:SetAutoCmd()
@@ -29,8 +35,8 @@ function! s:SetAutoCmd()
     augroup END
 endfunction
 
-function! s:joinroom(url)
-  py joinroom(url)
+function! Floojoinroom()
+  py joinroom("https://floobits.com:3448/r/kansface/holy-shit-its-vim/")
 endfunction
 
-call s:SetAutoCmd()
+" call s:SetAutoCmd()

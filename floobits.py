@@ -19,9 +19,13 @@ from floo import utils
 
 agent = None
 
+def asdf():
+    print "asdf"
+
 def handle_event(*args, **kwargs):
-    print('change!')
     currentBuffer = vim.current.buffer
+    print currentBuffer.name, currentBuffer.number
+    # print currentBuffer
 
 
 def run_agent(owner, room, host, port, secure):
@@ -41,6 +45,7 @@ def run_agent(owner, room, host, port, secure):
 
 
 def joinroom(room_url):
+    print("room url is %s" % room_url)
     secure = G.SECURE
     parsed_url = urlparse(room_url)
     port = parsed_url.port
@@ -56,6 +61,7 @@ def joinroom(room_url):
     G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
     utils.mkdir(G.PROJECT_PATH)
 
+    print("joining room %s" % room_url)
     thread = threading.Thread(target=run_agent, kwargs={
         'owner': owner,
         'room': room,
