@@ -1,7 +1,6 @@
 # coding: utf-8
 import re
 import os
-import sys
 import threading
 import traceback
 from urlparse import urlparse
@@ -16,32 +15,33 @@ from floo import msg
 from floo import shared as G
 from floo import utils
 
-
 agent = None
 
-def asdf():
-    print "asdf"
 
-def handle_event(*args, **kwargs):
-    currentBuffer = vim.current.buffer
-    print currentBuffer.name, currentBuffer.number
-    # print currentBuffer
+def global_tick():
+    """a hack to make vim evented like"""
+    pass
 
 
-def run_agent(owner, room, host, port, secure):
-    global agent
-    if agent:
-        agent.stop()
-        agent = None
-    try:
-        agent = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=None)
-        # owner and room name are slugfields so this should be safe
-        Listener.set_agent(agent)
-        agent.connect()
-    except Exception as e:
-        print(e)
-        tb = traceback.format_exc()
-        print(tb)
+def CursorHold(*args, **kwargs):
+    global_tick()
+    vim.command("call feedkeys(\"f\e\",'n')")
+
+
+def CursorHoldI(*args, **kwargs):
+    global_tick()
+    linelen = int(vim.eval("col('$')-1"))
+    if linelen > 0:
+        if int(vim.eval("col('.')")) == 1:
+            vim.command("call feedkeys(\"\<Right>\<Left>\",'n')")
+        else:
+            vim.command("call feedkeys(\"\<Left>\<Right>\",'n')")
+    else:
+        vim.command("call feedkeys(\"\ei\",'n')")
+
+
+def maybeBufferChanged():
+    pass
 
 
 def joinroom(room_url):
@@ -61,12 +61,22 @@ def joinroom(room_url):
     G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
     utils.mkdir(G.PROJECT_PATH)
 
+    def run_agent():
+        global agent
+        if agent:
+            agent.stop()
+            agent = None
+        try:
+            agent = AgentConnection(owner, room, host=parsed_url.hostname, port=port, secure=secure, on_connect=None)
+            # owner and room name are slugfields so this should be safe
+            Listener.set_agent(agent)
+            agent.connect()
+        except Exception as e:
+            print(e)
+            tb = traceback.format_exc()
+            print(tb)
+
     print("joining room %s" % room_url)
-    thread = threading.Thread(target=run_agent, kwargs={
-        'owner': owner,
-        'room': room,
-        'host': parsed_url.hostname,
-        'port': port,
-        'secure': secure,
-    })
+
+    thread = threading.Thread(target=run_agent)
     thread.start()

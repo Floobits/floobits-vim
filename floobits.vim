@@ -14,15 +14,9 @@ END_PYTHON
 
 pyfile ./floobits.py
 
-
-autocmd asdf * py asdf()
-
-autocmd CursorMoved * doau asdf
-py asdf()
-
-function! DispatchEvent()
-    py handle_event()
-endfunction
+if !exists("g:floobits_update_interval")
+    let g:floobits_update_interval = 100
+endif
 
 function! s:SetAutoCmd()
     let s:vim_events = ['CursorMoved', 'CursorMovedI', 'InsertEnter', 'InsertChange', 'InsertLeave']
@@ -30,8 +24,11 @@ function! s:SetAutoCmd()
         " kill autocommands on reload
         autocmd!
         for cmd in s:vim_events
-            exec 'autocmd '. cmd .' * call DispatchEvent()'
+            exec 'autocmd '. cmd .' * python maybeBufferChanged()'
         endfor
+        autocmd CursorHold * python CursorHold()
+        autocmd CursorHoldI * python CursorHoldI()
+        exe 'set updatetime='.g:floobits_update_interval
     augroup END
 endfunction
 
@@ -39,4 +36,4 @@ function! Floojoinroom()
   py joinroom("https://floobits.com:3448/r/kansface/holy-shit-its-vim/")
 endfunction
 
-" call s:SetAutoCmd()
+call s:SetAutoCmd()
