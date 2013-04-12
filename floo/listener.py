@@ -106,7 +106,7 @@ class Listener(object):
     selection_changed = []
     agent = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         self.between_save_events = {}
 
     @staticmethod

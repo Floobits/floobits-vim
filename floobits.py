@@ -2,6 +2,7 @@
 import re
 import os
 import threading
+import time
 import traceback
 from urlparse import urlparse
 
@@ -17,10 +18,16 @@ from floo import utils
 
 agent = None
 
+BUFS = {}
+
+Listener = Listener()
+
 
 def global_tick():
+    global LAST_TIMEOUT
     """a hack to make vim evented like"""
-    pass
+    if agent:
+        agent.select()
 
 
 def CursorHold(*args, **kwargs):
@@ -40,8 +47,17 @@ def CursorHoldI(*args, **kwargs):
         vim.command("call feedkeys(\"\ei\",'n')")
 
 
-def maybeBufferChanged():
-    pass
+def maybeBufferChanged(*args):
+    buf = vim.current.buffer
+    buf_num = vim.eval("bufnr('%')")
+    name = buf.name
+    text = buf[:]
+    # maybe need win num too?
+    oldBuf = BUFS.get(buf_num, "")
+    if oldBuf != text:
+        print "%s changed" % (name)
+        BUFS[buf_num] = text
+        #Listener.on_modified(name)
 
 
 def joinroom(room_url):

@@ -19,15 +19,16 @@ if !exists("g:floobits_update_interval")
 endif
 
 function! s:SetAutoCmd()
-    let s:vim_events = ['CursorMoved', 'CursorMovedI', 'InsertEnter', 'InsertChange', 'InsertLeave']
+    let s:vim_events = ['InsertEnter', 'InsertChange', 'InsertLeave', 'QuickFixCmdPost']
     augroup floobits
         " kill autocommands on reload
         autocmd!
         for cmd in s:vim_events
-            exec 'autocmd '. cmd .' * python maybeBufferChanged()'
+            exec 'autocmd '. cmd .' * python maybeBufferChanged(2)'
         endfor
         autocmd CursorHold * python CursorHold()
         autocmd CursorHoldI * python CursorHoldI()
+        " BufFilePost
         exe 'set updatetime='.g:floobits_update_interval
     augroup END
 endfunction
