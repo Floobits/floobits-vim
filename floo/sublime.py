@@ -1,13 +1,28 @@
+from collections import defaultdict
 import time
+
+TIMEOUTS = defaultdict(list)
 
 
 def windows(*args, **kwargs):
     return []
 
 
-def set_timeout(func, timeout):
-    time.sleep(timeout)
-    func()
+def set_timeout(func, timeout, *args, **kwargs):
+    then = time.time() + timeout
+    TIMEOUTS[then].append(lambda: func(*args, **kwargs))
+
+
+def call_timeouts():
+    now = time.time()
+    to_remove = []
+    for t, timeouts in TIMEOUTS.items():
+        if t <= now:
+            for timeout in timeouts:
+                timeout()
+            to_remove.append(t)
+    for k in to_remove:
+        del TIMEOUTS[k]
 
 
 def load_settings(*args, **kwargs):

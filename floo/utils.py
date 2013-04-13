@@ -20,6 +20,39 @@ class edit:
         self.view.end_edit(self.edit)
 
 
+def load_floorc():
+    """try to read settings out of the .floorc file"""
+    s = {}
+    try:
+        fd = open(os.path.expanduser('~/.floorc'), 'rb')
+    except IOError as e:
+        if e.errno == 2:
+            return s
+        raise
+
+    default_settings = fd.read().split('\n')
+    fd.close()
+
+    for setting in default_settings:
+        # TODO: this is horrible
+        if len(setting) == 0 or setting[0] == '#':
+            continue
+        try:
+            name, value = setting.split(' ', 1)
+        except IndexError:
+            continue
+        s[name.upper()] = value
+    return s
+
+
+def load_settings():
+    settings = load_floorc()
+    if not settings:
+        print('you should probably define some stuff in your ~/.floorc file')
+    for name, val in settings.items():
+        setattr(G, name, val)
+
+
 def get_room_window():
     room_window = None
     for w in sublime.windows():

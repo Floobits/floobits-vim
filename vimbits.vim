@@ -24,7 +24,7 @@ function! s:SetAutoCmd()
         " kill autocommands on reload
         autocmd!
         for cmd in s:vim_events
-            exec 'autocmd '. cmd .' * python maybeBufferChanged(2)'
+            exec 'autocmd '. cmd .' * python maybeBufferChanged()'
         endfor
         autocmd CursorHold * python CursorHold()
         autocmd CursorHoldI * python CursorHoldI()
@@ -33,8 +33,7 @@ function! s:SetAutoCmd()
     augroup END
 endfunction
 
-function! Floojoinroom()
-  py joinroom("https://floobits.com:3448/r/kansface/holy-shit-its-vim/")
-endfunction
+"TODO: populate with a default url of https://floobits.com/r/
+command! -nargs=1 FlooJoinRoom :python joinroom(<f-args>)
 
 call s:SetAutoCmd()

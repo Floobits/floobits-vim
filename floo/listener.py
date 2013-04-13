@@ -4,6 +4,7 @@ import json
 import hashlib
 from datetime import datetime
 
+import vim
 import sublime
 import dmp_monkey
 dmp_monkey.monkey_patch()
@@ -16,8 +17,7 @@ import utils
 MODIFIED_EVENTS = Queue.Queue()
 SELECTED_EVENTS = Queue.Queue()
 BUFS = {}
-
-settings = sublime.load_settings('Floobits.sublime-settings')
+VIM_TO_FLOO_ID = {}
 
 
 def get_text(view):
@@ -42,18 +42,16 @@ def create_view(buf):
     return view
 
 
-def get_buf(view):
-    if view.is_scratch():
+def get_buf(buf_num):
+    buf = vim.buffers.get(buf_num)
+    if not buf:
         return None
-    if not view.file_name():
+    if not utils.is_shared(buf.name):
         return None
-    if view is G.CHAT_VIEW:
+    buf_id = VIM_TO_FLOO_ID.get(buf_num)
+    if not buf_id:
         return None
-    rel_path = utils.to_rel_path(view.file_name())
-    for buf_id, buf in BUFS.iteritems():
-        if rel_path == buf['path']:
-            return buf
-    return None
+    return BUFS.get(buf_id)
 
 
 def save_buf(buf):
@@ -66,6 +64,13 @@ def save_buf(buf):
 def delete_buf(buf_id):
     # TODO: somehow tell the user about this. maybe delete on disk too?
     del BUFS[buf_id]
+    found = False
+    for buf_num, fbuf_id in VIM_TO_FLOO_ID.iteritems():
+        if fbuf_id == buf_id:
+            found = True
+            break
+    if found:
+        del VIM_TO_FLOO_ID[buf_num]
 
 
 class FlooPatch(object):
@@ -445,22 +450,22 @@ class Listener(object):
 
         cleanup()
 
-    def on_modified(self, view):
+    def on_modified(self, buf_num):
         try:
             MODIFIED_EVENTS.get_nowait()
         except Queue.Empty:
-            self.add(view)
+            self.add(buf_num)
         else:
             MODIFIED_EVENTS.task_done()
 
-    def on_selection_modified(self, view):
+    def on_selection_modified(self, buf_num):
         try:
             SELECTED_EVENTS.get_nowait()
         except Queue.Empty:
-            buf = get_buf(view)
+            buf = get_buf(buf_num)
             if buf:
                 msg.debug('selection in view %s, buf id %s' % (buf['path'], buf['id']))
-                self.selection_changed.append((view, buf, False))
+                self.selection_changed.append((buf, False))
         else:
             SELECTED_EVENTS.task_done()
 

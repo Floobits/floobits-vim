@@ -19,8 +19,6 @@ import msg
 
 Listener = listener.Listener
 
-settings = sublime.load_settings('Floobits.sublime-settings')
-
 CHAT_VIEW = None
 SOCKET_Q = Queue.Queue()
 
@@ -107,6 +105,7 @@ class AgentConnection(object):
                     self.port = 3148  # plaintext port
         msg.log('Connecting to %s:%s' % (self.host, self.port))
         try:
+            print self.host, self.port
             self.sock.connect((self.host, self.port))
             if self.secure and ssl:
                 self.sock.do_handshake()
@@ -263,8 +262,7 @@ class AgentConnection(object):
             return self.reconnect()
 
         try:
-            # this blocks until the socket is readable or writeable
-            _in, _out, _except = select.select([self.sock], [self.sock], [self.sock])
+            _in, _out, _except = select.select([self.sock], [self.sock], [self.sock], 0)
         except (select.error, socket.error, Exception) as e:
             msg.error('Error in select(): %s' % str(e))
             return self.reconnect()

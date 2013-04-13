@@ -1,18 +1,17 @@
 # coding: utf-8
 import re
 import os
-import threading
-import time
 import traceback
 from urlparse import urlparse
 
 import vim
 
 from floo import sublime
-from floo import api
+# from floo import api
+# from floo import msg
 from floo import AgentConnection
 from floo.listener import Listener
-from floo import msg
+
 from floo import shared as G
 from floo import utils
 
@@ -20,14 +19,15 @@ agent = None
 
 BUFS = {}
 
+utils.load_settings()
 Listener = Listener()
 
 
 def global_tick():
-    global LAST_TIMEOUT
     """a hack to make vim evented like"""
     if agent:
         agent.select()
+    sublime.call_timeouts()
 
 
 def CursorHold(*args, **kwargs):
@@ -57,7 +57,7 @@ def maybeBufferChanged(*args):
     if oldBuf != text:
         print "%s changed" % (name)
         BUFS[buf_num] = text
-        #Listener.on_modified(name)
+        Listener.on_modified(buf_num)
 
 
 def joinroom(room_url):
@@ -75,24 +75,24 @@ def joinroom(room_url):
 
     (owner, room) = result.groups()
     G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
+    print 'making dir %s' % G.PROJECT_PATH
     utils.mkdir(G.PROJECT_PATH)
-
-    def run_agent():
-        global agent
-        if agent:
-            agent.stop()
-            agent = None
-        try:
-            agent = AgentConnection(owner, room, host=parsed_url.hostname, port=port, secure=secure, on_connect=None)
-            # owner and room name are slugfields so this should be safe
-            Listener.set_agent(agent)
-            agent.connect()
-        except Exception as e:
-            print(e)
-            tb = traceback.format_exc()
-            print(tb)
 
     print("joining room %s" % room_url)
 
-    thread = threading.Thread(target=run_agent)
-    thread.start()
+    global agent
+    if agent:
+        agent.stop()
+        agent = None
+    try:
+        agent = AgentConnection(owner, room, host=parsed_url.hostname, port=port, secure=secure, on_connect=None)
+        # owner and room name are slugfields so this should be safe
+        Listener.set_agent(agent)
+        agent.connect()
+    except Exception as e:
+        print(e)
+        tb = traceback.format_exc()
+        print(tb)
+
+    # thread = threading.Thread(target=run_agent)
+    # thread.start()
