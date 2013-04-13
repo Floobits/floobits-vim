@@ -49,6 +49,7 @@ def load_settings():
     settings = load_floorc()
     if not settings:
         print('you should probably define some stuff in your ~/.floorc file')
+    G.COLAB_DIR = settings.get('share_dir', '~/.floobits/shared/')
     for name, val in settings.items():
         setattr(G, name, val)
 

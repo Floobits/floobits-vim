@@ -25,16 +25,6 @@ def call_timeouts():
         del TIMEOUTS[k]
 
 
-def load_settings(*args, **kwargs):
-    # TODO: read these from ~/.floorc
-    settings = {
-        "username": "testing",
-        "secret": "testing",
-        "debug": True,
-    }
-    return settings
-
-
 def error_message(*args, **kwargs):
     print(args, kwargs)
 
