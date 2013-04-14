@@ -18,8 +18,6 @@ SECRET = ''
 
 ALERT_ON_MSG = True
 
-PERMS = []
-
 ROOM_WINDOW = None
 
 CHAT_VIEW = None

@@ -14,14 +14,9 @@ from floo import shared as G
 from floo import utils
 from floo.vim_protocol import Protocol
 
-G.agent = None
-
-FLOO_BUFS = {}
-
 utils.load_settings()
-G.proto = Protocol()
-
 # Vim interface
+agent = None
 
 
 def global_tick():
@@ -81,14 +76,12 @@ def joinroom(room_url):
 
     print("joining room %s" % room_url)
 
-    if G.agent:
-        G.agent.stop()
-        G.agent = None
+    if agent:
+        agent.stop()
     try:
-        G.agent = AgentConnection(owner, room, host=parsed_url.hostname, port=port, secure=secure, on_connect=None)
+        agent = AgentConnection(owner, room, host=parsed_url.hostname, port=port, secure=secure, on_connect=None, protocol=Protocol)
         # owner and room name are slugfields so this should be safe
-        Listener.set_agent(G.agent)
-        G.agent.connect()
+        agent.connect()
     except Exception as e:
         print(e)
         tb = traceback.format_exc()

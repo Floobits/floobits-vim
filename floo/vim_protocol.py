@@ -8,20 +8,19 @@ import protocol
 
 class View(object):
     """editors representation of the buffer"""
+    CLIENT = 'VIM'
+
     def __init__(self, vim_buf):
         self.buf = vim_buf
 
     def get_text(self):
         return self.buf[:]
 
-    def begin_edit(self):
-        pass
-
-    def end_edit(self):
-        pass
-
-    def replace(self):
+    def set_text(self):
         # view.replace(edit, region, patch_text)
+        pass
+
+    def get_selection(self):
         pass
 
     def highlight(ranges, user_id):
@@ -36,11 +35,16 @@ class View(object):
         #     view.show_at_center(regions[0])
         pass
 
+    def rename(self, name):
+        pass
+
 
 # def get_text(view):
 #     return view.substr(sublime.Region(0, view.size()))
 
-class Protocol(protocol.Protocol):
+class Protocol(protocol.BaseProtocol):
+    """understands vim"""
+
     def get_view(self, buf_id):
         buf = G.FLOO_BUFS.get(buf_id)
         if not buf:
@@ -65,10 +69,10 @@ class Protocol(protocol.Protocol):
             return None
         if not utils.is_shared(buf.name):
             return None
-        buf_id = G.VIM_TO_FLOO_ID.get(buf_num)
+        buf_id = self.VIM_TO_FLOO_ID.get(buf_num)
         if not buf_id:
             return None
-        return G.FLOO_BUFS.get(buf_id)
+        return self.FLOO_BUFS.get(buf_id)
 
     def save_buf(self, buf):
         path = utils.get_full_path(buf['path'])
