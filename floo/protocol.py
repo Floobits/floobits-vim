@@ -4,6 +4,7 @@ import os
 import json
 import hashlib
 import datetime
+import collections
 from queue import Queue
 
 from lib import diff_match_patch as dmp
@@ -19,13 +20,18 @@ def create_buf(self, data):
     self.save_buf(data)
 
 
-class Protocol(object):
-    VIEWS_CHANGED = []
+class BaseProtocol(object):
+    BUFS_CHANGED = []
     SELECTION_CHANGED = []
     MODIFIED_EVENTS = Queue.Queue()
     SELECTED_EVENTS = Queue.Queue()
     FLOO_BUFS = {}
     VIM_TO_FLOO_ID = {}
+
+    def __init__(self, agent):
+        self.agent = agent
+        self.perms = []
+        self.chat_deck = collections.deque(maxlen=10)
 
     def get_view(self, data):
         raise NotImplemented()
@@ -53,13 +59,6 @@ class Protocol(object):
         if not func:
             return msg.error('unknown name!', name, 'data:', data)
         func(data)
-
-    def floo_get_buf(self, buf_id):
-        req = {
-            'name': 'get_buf',
-            'id': buf_id
-        }
-        G.agent.put(json.dumps(req))
 
     def on_get_buf(self, data):
         buf_id = data['id']
@@ -100,7 +99,7 @@ class Protocol(object):
                 'buf': buf,
                 'path': rel_path,
             }
-            G.agent.put(json.dumps(event))
+            self.agent.put(json.dumps(event))
         except (IOError, OSError):
             msg.error('Failed to open %s.' % path)
         except Exception as e:
@@ -115,40 +114,26 @@ class Protocol(object):
         os.rename(old, new)
         view = self.get_view(data['id'])
         if view:
-            view.retarget(new)
+            view.rename(new)
 
     def on_room_info(self, data):
         # Success! Reset counter
-        self.retries = G.MAX_RETRIES
         self.room_info = data
-        G.PERMS = data['perms']
+        self.perms = data['perms']
 
         if 'patch' not in data['perms']:
             msg.log('We don\'t have patch permission. Setting buffers to read-only')
 
-        project_json = {
-            'folders': [
-                {'path': G.PROJECT_PATH}
-            ]
-        }
-
         utils.mkdir(G.PROJECT_PATH)
-        with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'w') as project_fd:
-            project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))
 
         for buf_id, buf in data['bufs'].iteritems():
             buf_id = int(buf_id)  # json keys must be strings
             new_dir = os.path.split(utils.get_full_path(buf['path']))[0]
             utils.mkdir(new_dir)
             self.FLOO_BUFS[buf_id] = buf
-            self.get_buf(buf_id)
+            self.agent.send_get_buf(buf_id)
 
-        self.authed = True
-        G.CONNECTED = True
-        msg.log('Successfully joined room %s/%s' % (self.owner, self.room))
-        if self.on_connect:
-            self.on_connect(self)
-            self.on_connect = None
+        self.agent.on_auth()
 
     def on_join(self, data):
         msg.log('%s joined the room' % data['username'])
@@ -162,14 +147,16 @@ class Protocol(object):
 
     def push(self):
         reported = set()
-        while self.VIEWS_CHANGED:
-            view, buf = self.VIEWS_CHANGED.pop()
+        while self.BUFS_CHANGED:
+            buf_id = self.BUFS_CHANGED.pop()
+            view = self.get_view(buf_id)
+            buf = view.buf
             if view.is_loading():
                 msg.debug('View for buf %s is not ready. Ignoring change event' % buf['id'])
                 continue
-            if 'patch' not in G.PERMS:
+            if 'patch' not in self.perms:
                 continue
-            vb_id = view.buffer_id()
+            vb_id = view.native_id
             if vb_id in reported:
                 continue
             if 'buf' not in buf:
@@ -177,19 +164,16 @@ class Protocol(object):
                 continue
 
             reported.add(vb_id)
-            patch = utils.FlooPatch(view, buf)
+            patch = utils.FlooPatch(view)
             # Update the current copy of the buffer
             buf['buf'] = patch.current
             buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
-            if G.agent:
-                G.agent.put(patch.to_json())
-            else:
-                msg.debug('Not connected. Discarding view change.')
+            self.agent.put(patch.to_json())
 
         while self.SELECTION_CHANGED:
             view, buf, ping = self.SELECTION_CHANGED.pop()
             # consume highlight events to avoid leak
-            if 'highlight' not in G.PERMS:
+            if 'highlight' not in self.perms:
                 continue
             vb_id = view.buffer_id()
             if vb_id in reported:
@@ -203,12 +187,7 @@ class Protocol(object):
                 'ranges': [[x.a, x.b] for x in sel],
                 'ping': ping,
             })
-            if G.agent:
-                G.agent.put(highlight_json)
-            else:
-                msg.debug('Not connected. Discarding selection change.')
-
-        sublime.set_timeout(self.push, 100)
+            self.agent.put(highlight_json)
 
     def on_patch(self, patch_data):
         buf_id = patch_data['id']

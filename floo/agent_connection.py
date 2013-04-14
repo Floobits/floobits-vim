@@ -2,8 +2,9 @@ import os
 import json
 import socket
 import Queue
+import sys
 import select
-import collections
+import time
 
 ssl = False
 try:
@@ -16,17 +17,16 @@ import sublime
 import shared as G
 
 
-SOCKET_Q = Queue.Queue()
-
 CERT = os.path.join(os.getcwd(), 'startssl-ca.pem')
 print("CERT is ", CERT)
 
 
 class AgentConnection(object):
     ''' Simple chat server using select '''
-    def __init__(self, owner, room, host=None, port=None, secure=True, on_connect=None):
+    def __init__(self, owner, room, host=None, port=None, secure=True, on_auth=None, Protocol=None):
+        self.sock_q = Queue.Queue()
         self.sock = None
-        self.buf = ''
+        self.net_buf = ''
         self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
         self.username = G.USERNAME
         self.secret = G.SECRET
@@ -37,10 +37,47 @@ class AgentConnection(object):
         self.owner = owner
         self.room = room
         self.retries = G.MAX_RETRIES
-        self.on_connect = on_connect
-        self.chat_deck = collections.deque(maxlen=10)
+        self._on_auth = on_auth
         self.empty_selects = 0
         self.room_info = {}
+        self.protocol = Protocol(self)
+
+    def tick(self):
+        self.protocol.push()
+        self.select()
+
+    def send_get_buf(self, buf_id):
+        req = {
+            'name': 'get_buf',
+            'id': buf_id
+        }
+        self.put(json.dumps(req))
+
+    def send_auth(self):
+        # TODO: we shouldn't throw away all of this
+        self.sock_q = Queue.Queue()
+        self.put(json.dumps({
+            'username': self.username,
+            'secret': self.secret,
+            'room': self.room,
+            'room_owner': self.owner,
+            'client': self.protocol.CLIENT,
+            'platform': sys.platform,
+            'version': G.__VERSION__
+        }))
+
+    def send_msg(self, msg):
+        self.put(json.dumps({'name': 'msg', 'data': msg}))
+        self.protocol.chat(self.username, time.time(), msg, True)
+
+    def on_auth(self):
+        self.authed = True
+        self.retries = G.MAX_RETRIES
+        G.CONNECTED = True
+        msg.log('Successfully joined room %s/%s' % (self.owner, self.room))
+        if self._on_auth:
+            self._on_auth(self)
+            self._on_auth = None
 
     def stop(self):
         msg.log('Disconnecting from room %s/%s' % (self.owner, self.room))
@@ -52,20 +89,15 @@ class AgentConnection(object):
             pass
         msg.log('Disconnected.')
 
-    # def send_msg(self, msg):
-    #     self.put(json.dumps({'name': 'msg', 'data': msg}))
-    #     self.chat(self.username, time.time(), msg, True)
-
     def is_ready(self):
         return self.authed
 
-    @staticmethod
-    def put(item):
+    def put(self, item):
         #TODO: move json_dumps here
         if not item:
             return
-        SOCKET_Q.put(item + '\n')
-        qsize = SOCKET_Q.qsize()
+        self.sock_q.put(item + '\n')
+        qsize = self.sock_q.qsize()
         if qsize > 0:
             msg.debug('%s items in q' % qsize)
 
@@ -76,7 +108,7 @@ class AgentConnection(object):
             pass
         G.CONNECTED = False
         self.room_info = {}
-        self.buf = ''
+        self.net_buf = ''
         self.sock = None
         self.authed = False
         self.reconnect_delay *= 1.5
@@ -112,32 +144,19 @@ class AgentConnection(object):
         self.sock.setblocking(0)
         msg.log('Connected!')
         self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
-        sublime.set_timeout(self.select, 0)
-        self.auth()
+        self.send_auth()
 
-    def auth(self):
-        global SOCKET_Q
-        # TODO: we shouldn't throw away all of this
-        SOCKET_Q = Queue.Queue()
-        self.put(json.dumps({
-            'username': self.username,
-            'secret': self.secret,
-            'room': self.room,
-            'room_owner': self.owner,
-            'version': G.__VERSION__
-        }))
-
-    def get_patches(self):
+    def _get_from_queue(self):
         while True:
             try:
-                yield SOCKET_Q.get_nowait()
+                yield self.sock_q.get_nowait()
             except Queue.Empty:
                 break
 
     def protocol(self, req):
-        self.buf += req
+        self.net_buf += req
         while True:
-            before, sep, after = self.buf.partition('\n')
+            before, sep, after = self.net_buf.partition('\n')
             if not sep:
                 break
             try:
@@ -146,8 +165,8 @@ class AgentConnection(object):
                 print('Unable to parse json:', e)
                 print('Data:', before)
                 raise e
-            G.proto.handle(data)
-            self.buf = after
+            self.protocol.handle(data)
+            self.net_buf = after
 
     def select(self):
         if not self.sock:
@@ -184,17 +203,14 @@ class AgentConnection(object):
                     return self.reconnect()
 
         if _out:
-            for p in self.get_patches():
+            for p in self._get_from_queue():
                 if p is None:
-                    SOCKET_Q.task_done()
+                    self.sock_q.task_done()
                     continue
                 try:
                     msg.debug('writing patch: %s' % p)
                     self.sock.sendall(p)
-                    SOCKET_Q.task_done()
+                    self.sock_q.task_done()
                 except Exception as e:
                     msg.error('Couldn\'t write to socket: %s' % str(e))
                     return self.reconnect()
-
-        #TODO: this double calls in vim
-        sublime.set_timeout(self.select, 100)

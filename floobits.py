@@ -12,22 +12,17 @@ from floo import sublime
 from floo import AgentConnection
 from floo import shared as G
 from floo import utils
-from floo.vim_protocol import Protocol
-
-G.agent = None
-
-FLOO_BUFS = {}
+from floo.vim_protocol import Protocol, View
 
 utils.load_settings()
-G.proto = Protocol()
-
 # Vim interface
+agent = None
 
 
 def global_tick():
     """a hack to make vim evented like"""
-    if G.agent:
-        G.agent.select()
+    if agent:
+        agent.tick()
     sublime.call_timeouts()
 
 
@@ -54,11 +49,7 @@ def maybeBufferChanged():
     name = buf.name
     text = buf[:]
     # maybe need win num too?
-    oldBuf = FLOO_BUFS.get(buf_num, "")
-    if oldBuf != text:
-        print "%s changed" % (name)
-        FLOO_BUFS[buf_num] = text
-        Listener.on_modified(buf_num)
+    agent.protocol.maybe_changed(buf)
 
 
 def joinroom(room_url):
@@ -81,14 +72,12 @@ def joinroom(room_url):
 
     print("joining room %s" % room_url)
 
-    if G.agent:
-        G.agent.stop()
-        G.agent = None
+    if agent:
+        agent.stop()
     try:
-        G.agent = AgentConnection(owner, room, host=parsed_url.hostname, port=port, secure=secure, on_connect=None)
+        agent = AgentConnection(owner, room, host=parsed_url.hostname, port=port, secure=secure, on_auth=None, protocol=Protocol)
         # owner and room name are slugfields so this should be safe
-        Listener.set_agent(G.agent)
-        G.agent.connect()
+        agent.connect()
     except Exception as e:
         print(e)
         tb = traceback.format_exc()

@@ -12,11 +12,11 @@ per_path = os.path.abspath('persistent.json')
 
 
 class FlooPatch(object):
-    def __init__(self, view, buf):
-        self.buf = buf
+    def __init__(self, view):
         self.view = view
+        self.buf = view.buf
         self.current = view.get_text()
-        self.previous = buf['buf']
+        self.previous = self.buf['buf']
         self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
 
     def __str__(self):

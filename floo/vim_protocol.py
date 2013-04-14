@@ -8,20 +8,30 @@ import protocol
 
 class View(object):
     """editors representation of the buffer"""
-    def __init__(self, vim_buf):
-        self.buf = vim_buf
+    CLIENT = 'VIM'
+
+    def __init__(self, vim_buf, buf):
+        self.vim_buf = vim_buf
+        self.buf = buf
+
+    @property
+    def native_id(self):
+        return self.vim_buf.id
+
+    def is_loading(self):
+        return False
 
     def get_text(self):
-        return self.buf[:]
+        return self.vim_buf[:]
 
-    def begin_edit(self):
-        pass
+    def set_text(self, text):
+        self.vim_buf[:] = text
 
-    def end_edit(self):
-        pass
-
-    def replace(self):
+    def apply_patches(self, patches):
         # view.replace(edit, region, patch_text)
+        pass
+
+    def get_selection(self):
         pass
 
     def highlight(ranges, user_id):
@@ -36,19 +46,32 @@ class View(object):
         #     view.show_at_center(regions[0])
         pass
 
+    def rename(self, name):
+        pass
+
 
 # def get_text(view):
 #     return view.substr(sublime.Region(0, view.size()))
 
-class Protocol(protocol.Protocol):
+class Protocol(protocol.BaseProtocol):
+    """understands vim"""
+
+    def maybe_changed(self, buf_num):
+        buf = vim.current.buffer
+        buf_num = vim.eval("bufnr('%')")
+        text = buf[:]
+        buf = self.get_buf(buf_num)
+        if buf['buf'] != text:
+            self.BUFS_CHANGED.push(buf['id'])
+
     def get_view(self, buf_id):
-        buf = G.FLOO_BUFS.get(buf_id)
+        buf = self.FLOO_BUFS.get(buf_id)
         if not buf:
             return None
 
         for vim_buf in vim.buffers:
             if buf['path'] == utils.to_rel_path(vim_buf.name):
-                return View(vim_buf)
+                return View(vim_buf, buf)
         return None
 
     def create_view(self, buf):
@@ -65,10 +88,10 @@ class Protocol(protocol.Protocol):
             return None
         if not utils.is_shared(buf.name):
             return None
-        buf_id = G.VIM_TO_FLOO_ID.get(buf_num)
+        buf_id = self.VIM_TO_FLOO_ID.get(buf_num)
         if not buf_id:
             return None
-        return G.FLOO_BUFS.get(buf_id)
+        return self.FLOO_BUFS.get(buf_id)
 
     def save_buf(self, buf):
         path = utils.get_full_path(buf['path'])
@@ -101,8 +124,8 @@ class Protocol(protocol.Protocol):
         # region = sublime.Region(0, view.size())
         # # deep copy
         # selections = [x for x in view.sel()]
-        G.MODIFIED_EVENTS.put(1)
-        view[:] = buf['buf']
+        self.MODIFIED_EVENTS.put(1)
+        view.set_text(buf['buf'])
         # try:
         #     edit = view.begin_edit()
         #     view.replace(edit, region, buf['buf'])

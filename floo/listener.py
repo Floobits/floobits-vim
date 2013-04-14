@@ -108,4 +108,4 @@ class Listener(object):
         buf = get_buf(view)
         if buf:
             msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
-            self.views_changed.append((view, buf))
+            self.BUFS_CHANGED.append((view, buf))
