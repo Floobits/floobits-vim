@@ -17,7 +17,7 @@ def call_timeouts():
     now = time.time()
     to_remove = []
     for t, timeouts in TIMEOUTS.items():
-        if t <= now:
+        if now >= t:
             for timeout in timeouts:
                 timeout()
             to_remove.append(t)

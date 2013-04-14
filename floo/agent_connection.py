@@ -2,24 +2,20 @@ import os
 import json
 import socket
 import Queue
-import time
 import select
 import collections
+
+ssl = False
 try:
     import ssl
 except ImportError:
-    ssl = False
+    pass
 
-import sublime
-
-import shared as G
-import utils
-import listener
 import msg
+import sublime
+import shared as G
 
-Listener = listener.Listener
 
-CHAT_VIEW = None
 SOCKET_Q = Queue.Queue()
 
 CERT = os.path.join(os.getcwd(), 'startssl-ca.pem')
@@ -56,9 +52,9 @@ class AgentConnection(object):
             pass
         msg.log('Disconnected.')
 
-    def send_msg(self, msg):
-        self.put(json.dumps({'name': 'msg', 'data': msg}))
-        self.chat(self.username, time.time(), msg, True)
+    # def send_msg(self, msg):
+    #     self.put(json.dumps({'name': 'msg', 'data': msg}))
+    #     self.chat(self.username, time.time(), msg, True)
 
     def is_ready(self):
         return self.authed
@@ -138,26 +134,6 @@ class AgentConnection(object):
             except Queue.Empty:
                 break
 
-    def chat(self, username, timestamp, message, self_msg=False):
-        envelope = msg.MSG(message, timestamp, username)
-        if not self_msg:
-            self.chat_deck.appendleft(envelope)
-        envelope.display()
-
-    def on_msg(self, data):
-        message = data.get('data')
-        self.chat(data['username'], data['time'], message)
-        window = G.ROOM_WINDOW
-
-        def cb(selected):
-            if selected == -1:
-                return
-            envelope = self.chat_deck[selected]
-            window.run_command('floobits_prompt_msg', {'msg': '%s: ' % envelope.username})
-
-        if G.ALERT_ON_MSG and message.find(self.username) >= 0:
-            window.show_quick_panel([str(x) for x in self.chat_deck], cb)
-
     def protocol(self, req):
         self.buf += req
         while True:
@@ -170,90 +146,7 @@ class AgentConnection(object):
                 print('Unable to parse json:', e)
                 print('Data:', before)
                 raise e
-            name = data.get('name')
-            if name == 'patch':
-                # TODO: we should do this in a separate thread
-                Listener.apply_patch(data)
-            elif name == 'get_buf':
-                buf_id = data['id']
-                listener.BUFS[buf_id] = data
-                view = listener.get_view(buf_id)
-                if view:
-                    Listener.update_view(data, view)
-                else:
-                    listener.save_buf(data)
-            elif name == 'create_buf':
-                listener.BUFS[data['id']] = data
-                listener.save_buf(data)
-            elif name == 'rename_buf':
-                new = utils.get_full_path(data['path'])
-                old = utils.get_full_path(data['old_path'])
-                new_dir = os.path.split(new)[0]
-                if new_dir:
-                    utils.mkdir(new_dir)
-                os.rename(old, new)
-                view = listener.get_view(data['id'])
-                if view:
-                    view.retarget(new)
-            elif name == 'delete_buf':
-                path = utils.get_full_path(data['path'])
-                utils.rm(path)
-                listener.delete_buf(data['id'])
-            elif name == 'room_info':
-                # Success! Reset counter
-                self.retries = G.MAX_RETRIES
-                self.room_info = data
-                G.PERMS = data['perms']
-
-                if 'patch' not in data['perms']:
-                    msg.log('We don\'t have patch permission. Setting buffers to read-only')
-
-                project_json = {
-                    'folders': [
-                        {'path': G.PROJECT_PATH}
-                    ]
-                }
-
-                utils.mkdir(G.PROJECT_PATH)
-                with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'w') as project_fd:
-                    project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))
-
-                for buf_id, buf in data['bufs'].iteritems():
-                    buf_id = int(buf_id)  # json keys must be strings
-                    new_dir = os.path.split(utils.get_full_path(buf['path']))[0]
-                    utils.mkdir(new_dir)
-                    listener.BUFS[buf_id] = buf
-                    Listener.get_buf(buf_id)
-
-                self.authed = True
-                G.CONNECTED = True
-                msg.log('Successfully joined room %s/%s' % (self.owner, self.room))
-                if self.on_connect:
-                    self.on_connect(self)
-                    self.on_connect = None
-            elif name == 'join':
-                msg.log('%s joined the room' % data['username'])
-            elif name == 'part':
-                msg.log('%s left the room' % data['username'])
-                region_key = 'floobits-highlight-%s' % (data['user_id'])
-                for window in sublime.windows():
-                    for view in window.views():
-                        view.erase_regions(region_key)
-            elif name == 'highlight':
-                region_key = 'floobits-highlight-%s' % (data['user_id'])
-                Listener.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False))
-            elif name == 'error':
-                message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
-                msg.error(message)
-            elif name == 'disconnect':
-                message = 'Floobits: Disconnected! Reason: %s' % str(data.get('reason'))
-                msg.error(message)
-                sublime.error_message(message)
-                self.stop()
-            elif name == 'msg':
-                self.on_msg(data)
-            else:
-                msg.error('unknown name!', name, 'data:', data)
+            G.proto.handle(data)
             self.buf = after
 
     def select(self):
@@ -303,4 +196,5 @@ class AgentConnection(object):
                     msg.error('Couldn\'t write to socket: %s' % str(e))
                     return self.reconnect()
 
+        #TODO: this double calls in vim
         sublime.set_timeout(self.select, 100)

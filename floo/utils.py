@@ -1,11 +1,46 @@
 import os
 import json
+import hashlib
+
+from lib import diff_match_patch as dmp
 
 import sublime
-
+import msg
 import shared as G
 
 per_path = os.path.abspath('persistent.json')
+
+
+class FlooPatch(object):
+    def __init__(self, view, buf):
+        self.buf = buf
+        self.view = view
+        self.current = view.get_text()
+        self.previous = buf['buf']
+        self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
+
+    def __str__(self):
+        return '%s - %s - %s' % (self.buf['id'], self.buf['path'], self.view.buffer_id())
+
+    def patches(self):
+        return dmp.diff_match_patch().patch_make(self.previous, self.current)
+
+    def to_json(self):
+        patches = self.patches()
+        if len(patches) == 0:
+            return None
+        msg.debug('sending %s patches' % len(patches))
+        patch_str = ''
+        for patch in patches:
+            patch_str += str(patch)
+        return json.dumps({
+            'id': self.buf['id'],
+            'md5_after': hashlib.md5(self.current.encode('utf-8')).hexdigest(),
+            'md5_before': self.md5_before,
+            'path': self.buf['path'],
+            'patch': patch_str,
+            'name': 'patch'
+        })
 
 
 class edit:
