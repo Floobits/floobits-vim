@@ -5,7 +5,7 @@ import json
 import hashlib
 import datetime
 import collections
-from queue import Queue
+import Queue
 
 from lib import diff_match_patch as dmp
 

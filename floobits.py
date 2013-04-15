@@ -5,7 +5,7 @@ import traceback
 from urlparse import urlparse
 
 import vim
-import dmp_monkey
+from floo import dmp_monkey
 dmp_monkey.monkey_patch()
 
 from floo import sublime
