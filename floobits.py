@@ -12,7 +12,7 @@ from floo import sublime
 from floo import AgentConnection
 from floo import shared as G
 from floo import utils
-from floo.vim_protocol import Protocol, View
+from floo.vim_protocol import Protocol
 
 utils.load_settings()
 # Vim interface
@@ -45,10 +45,6 @@ def CursorHoldI(*args, **kwargs):
 
 def maybeBufferChanged():
     buf = vim.current.buffer
-    buf_num = vim.eval("bufnr('%')")
-    name = buf.name
-    text = buf[:]
-    # maybe need win num too?
     agent.protocol.maybe_changed(buf)
 
 
