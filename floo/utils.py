@@ -33,14 +33,14 @@ class FlooPatch(object):
         patch_str = ''
         for patch in patches:
             patch_str += str(patch)
-        return json.dumps({
+        return {
             'id': self.buf['id'],
             'md5_after': hashlib.md5(self.current.encode('utf-8')).hexdigest(),
             'md5_before': self.md5_before,
             'path': self.buf['path'],
             'patch': patch_str,
             'name': 'patch'
-        })
+        }
 
 
 class edit:
@@ -151,7 +151,7 @@ def get_persistent_data():
 
 def update_persistent_data(data):
     with open(per_path, 'wb') as per:
-        per.write(json.dumps(data))
+        per.write(data)
 
 
 def rm(path):

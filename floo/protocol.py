@@ -1,9 +1,7 @@
 """Understands the floobits protocol"""
 
 import os
-import json
 import hashlib
-import datetime
 import collections
 import Queue
 
@@ -98,7 +96,7 @@ class BaseProtocol(object):
                 'buf': buf,
                 'path': rel_path,
             }
-            self.agent.put(json.dumps(event))
+            self.agent.put(event)
         except (IOError, OSError):
             msg.error('Failed to open %s.' % path)
         except Exception as e:
@@ -180,12 +178,12 @@ class BaseProtocol(object):
 
             reported.add(vb_id)
             sel = view.sel()
-            highlight_json = json.dumps({
+            highlight_json = {
                 'id': buf['id'],
                 'name': 'highlight',
                 'ranges': [[x.a, x.b] for x in sel],
                 'ping': ping,
-            })
+            }
             self.agent.put(highlight_json)
 
     def on_patch(self, patch_data):
@@ -279,7 +277,7 @@ class BaseProtocol(object):
             'name': 'delete_buf',
             'id': buf_to_delete['id'],
         }
-        self.agent.put(json.dumps(event))
+        self.agent.put(event)
 
     def on_ping(self, view):
         buf = self.get_buf(view)

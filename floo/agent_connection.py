@@ -51,12 +51,12 @@ class AgentConnection(object):
             'name': 'get_buf',
             'id': buf_id
         }
-        self.put(json.dumps(req))
+        self.put(req)
 
     def send_auth(self):
         # TODO: we shouldn't throw away all of this
         self.sock_q = Queue.Queue()
-        self.put(json.dumps({
+        self.put({
             'username': self.username,
             'secret': self.secret,
             'room': self.room,
@@ -64,10 +64,10 @@ class AgentConnection(object):
             'client': self.protocol.CLIENT,
             'platform': sys.platform,
             'version': G.__VERSION__
-        }))
+        })
 
     def send_msg(self, msg):
-        self.put(json.dumps({'name': 'msg', 'data': msg}))
+        self.put({'name': 'msg', 'data': msg})
         self.protocol.chat(self.username, time.time(), msg, True)
 
     def on_auth(self):
@@ -93,10 +93,9 @@ class AgentConnection(object):
         return self.authed
 
     def put(self, item):
-        #TODO: move json_dumps here
         if not item:
             return
-        self.sock_q.put(item + '\n')
+        self.sock_q.put(json.dumps(item) + '\n')
         qsize = self.sock_q.qsize()
         if qsize > 0:
             msg.debug('%s items in q' % qsize)
