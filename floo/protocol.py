@@ -26,7 +26,6 @@ class BaseProtocol(object):
     MODIFIED_EVENTS = Queue.Queue()
     SELECTED_EVENTS = Queue.Queue()
     FLOO_BUFS = {}
-    VIM_TO_FLOO_ID = {}
 
     def __init__(self, agent):
         self.agent = agent

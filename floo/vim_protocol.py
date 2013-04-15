@@ -55,6 +55,7 @@ class View(object):
 class Protocol(protocol.BaseProtocol):
     """understands vim"""
     CLIENT = 'VIM'
+    VIM_TO_FLOO_ID = {}
 
     def maybe_changed(self, buf_num):
         buf = vim.current.buffer
@@ -119,6 +120,8 @@ class Protocol(protocol.BaseProtocol):
 
     def update_view(self, buf, view=None):
         view = view or self.get_view(buf['id'])
+        self.VIM_TO_FLOO_ID[view.vim_buf.id] = buf['id']
+
         # visible_region = view.visible_region()
         # viewport_position = view.viewport_position()
         # region = sublime.Region(0, view.size())
