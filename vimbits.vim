@@ -15,7 +15,7 @@ END_PYTHON
 pyfile ./floobits.py
 
 if !exists("g:floobits_update_interval")
-    let g:floobits_update_interval = 100
+    let g:floobits_update_interval = 90
 endif
 
 function! s:SetAutoCmd()
