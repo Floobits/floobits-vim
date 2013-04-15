@@ -153,7 +153,7 @@ class AgentConnection(object):
             except Queue.Empty:
                 break
 
-    def protocol(self, req):
+    def handle(self, req):
         self.net_buf += req
         while True:
             before, sep, after = self.net_buf.partition('\n')
@@ -195,7 +195,7 @@ class AgentConnection(object):
                     break
             if buf:
                 self.empty_selects = 0
-                self.protocol(buf)
+                self.handle(buf)
             else:
                 self.empty_selects += 1
                 if self.empty_selects > 10:

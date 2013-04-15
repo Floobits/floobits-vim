@@ -329,6 +329,7 @@ class BaseProtocol(object):
     def on_highlight(self, data):
         #     floobits.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False))
         #buf_id, region_key, username, ranges, ping=False):
+        ping = data.get('ping', False)
         if G.FOLLOW_MODE:
             ping = True
         buf = self.FLOO_BUFS[data['id']]
