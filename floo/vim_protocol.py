@@ -21,7 +21,11 @@ class View(object):
         return False
 
     def get_text(self):
-        return self.vim_buf[:]
+        text = ""
+        for line in self.vim_buf:
+            # TODO: horrible for Windows and Amiga users
+            text += line + "\n"
+        return text
 
     def set_text(self, text):
         self.vim_buf[:] = text
@@ -33,7 +37,7 @@ class View(object):
     def get_selection(self):
         pass
 
-    def highlight(ranges, user_id):
+    def highlight(self, ranges, user_id):
         # regions = []
         # for r in ranges:
         #     regions.append(sublime.Region(*r))
@@ -47,6 +51,9 @@ class View(object):
 
     def rename(self, name):
         pass
+
+    def sel(self):
+        return []
 
 
 # def get_text(view):
@@ -84,8 +91,9 @@ class Protocol(protocol.BaseProtocol):
         # return view
 
     def get_buf(self, buf_num):
-        buf = vim.buffers.get(buf_num)
-        if not buf:
+        try:
+            buf = vim.buffers[buf_num]
+        except IndexError:
             return None
         if not utils.is_shared(buf.name):
             return None
@@ -119,6 +127,8 @@ class Protocol(protocol.BaseProtocol):
         # envelope.display()
 
     def update_view(self, buf, view=None):
+        print buf
+        return
         view = view or self.get_view(buf['id'])
         self.VIM_TO_FLOO_ID[view.vim_buf.id] = buf['id']
 
