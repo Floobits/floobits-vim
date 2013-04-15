@@ -8,7 +8,6 @@ import protocol
 
 class View(object):
     """editors representation of the buffer"""
-    CLIENT = 'VIM'
 
     def __init__(self, vim_buf, buf):
         self.vim_buf = vim_buf
@@ -55,6 +54,7 @@ class View(object):
 
 class Protocol(protocol.BaseProtocol):
     """understands vim"""
+    CLIENT = 'VIM'
 
     def maybe_changed(self, buf_num):
         buf = vim.current.buffer
