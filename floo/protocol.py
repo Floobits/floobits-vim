@@ -243,46 +243,7 @@ class BaseProtocol(object):
         if not view:
             self.save_buf(buf)
             return
-
-        selections = [x for x in view.sel()]  # deep copy
-        regions = []
-        for patch in t[2]:
-            offset = patch[0]
-            length = patch[1]
-            patch_text = patch[2]
-            # TODO: totally not in vim
-            region = sublime.Region(offset, offset + length)
-            regions.append(region)
-            self.MODIFIED_EVENTS.put(1)
-            try:
-                edit = view.begin_edit()
-                view.replace(edit, region, patch_text)
-            except:
-                raise
-            else:
-                new_sels = []
-                for sel in selections:
-                    a = sel.a
-                    b = sel.b
-                    new_offset = len(patch_text) - length
-                    if sel.a > offset:
-                        a += new_offset
-                    if sel.b > offset:
-                        b += new_offset
-                    new_sels.append(sublime.Region(a, b))
-                selections = [x for x in new_sels]
-            finally:
-                view.end_edit(edit)
-        view.sel().clear()
-        region_key = 'floobits-patch-' + patch_data['username']
-        view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
-        sublime.set_timeout(lambda: view.erase_regions(region_key), 1000)
-        for sel in selections:
-            self.SELECTED_EVENTS.put(1)
-            view.sel().add(sel)
-
-        now = datetime.now()
-        view.set_status('Floobits', 'Changed by %s at %s' % (patch_data['username'], now.strftime('%H:%M')))
+        view.apply_patches(buf, t)
 
     def on_delete_buf(self, data):
         #used to take path
