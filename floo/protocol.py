@@ -200,7 +200,7 @@ class BaseProtocol(object):
         dmp_patches = DMP.patch_fromText(patch_data['patch'])
         # TODO: run this in a separate thread
         if view:
-            old_text = self.get_text(view)
+            old_text = view.get_text()
         else:
             old_text = buf.get('buf', '')
         md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
@@ -250,6 +250,7 @@ class BaseProtocol(object):
             offset = patch[0]
             length = patch[1]
             patch_text = patch[2]
+            # TODO: totally not in vim
             region = sublime.Region(offset, offset + length)
             regions.append(region)
             self.MODIFIED_EVENTS.put(1)
