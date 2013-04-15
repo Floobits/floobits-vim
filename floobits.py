@@ -53,6 +53,7 @@ def maybeBufferChanged():
 
 
 def joinroom(room_url):
+    global agent
     print("room url is %s" % room_url)
     secure = G.SECURE
     parsed_url = urlparse(room_url)
@@ -75,7 +76,7 @@ def joinroom(room_url):
     if agent:
         agent.stop()
     try:
-        agent = AgentConnection(owner, room, host=parsed_url.hostname, port=port, secure=secure, on_auth=None, protocol=Protocol)
+        agent = AgentConnection(owner, room, host=parsed_url.hostname, port=port, secure=secure, on_auth=None, Protocol=Protocol)
         # owner and room name are slugfields so this should be safe
         agent.connect()
     except Exception as e:
