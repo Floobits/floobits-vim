@@ -1,1 +1,2 @@
 from agent_connection import AgentConnection
+assert AgentConnection
