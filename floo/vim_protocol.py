@@ -33,7 +33,7 @@ class View(object):
     def apply_patches(self, buf, patches):
         # view.replace(edit, region, patch_text)
 
-        selections = [x for x in view.sel()]  # deep copy
+        selections = [x for x in self.get_selections()]  # deep copy
         regions = []
         for patch in t[2]:
             offset = patch[0]
@@ -62,7 +62,7 @@ class View(object):
                 selections = [x for x in new_sels]
             finally:
                 view.end_edit(edit)
-        view.sel().clear()
+        self.clear_selections()
         region_key = 'floobits-patch-' + patch_data['username']
         view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
         sublime.set_timeout(lambda: view.erase_regions(region_key), 1000)
@@ -73,7 +73,10 @@ class View(object):
         now = datetime.now()
         view.set_status('Floobits', 'Changed by %s at %s' % (patch_data['username'], now.strftime('%H:%M')))
 
-    def get_selection(self):
+    def get_selections(self):
+        return []
+
+    def clear_selections(self):
         pass
 
     def highlight(self, ranges, user_id):
@@ -90,9 +93,6 @@ class View(object):
 
     def rename(self, name):
         pass
-
-    def sel(self):
-        return []
 
 
 # def get_text(view):
