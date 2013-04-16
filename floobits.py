@@ -63,7 +63,7 @@ def joinroom(room_url):
         return sublime.error_message('Unable to parse your URL!')
 
     (owner, room) = result.groups()
-    G.PROJECT_PATH = os.path.realpath(os.path.expanduser(os.path.join(G.COLAB_DIR, owner, room)))
+    G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
     print("making dir %s" % G.PROJECT_PATH)
     utils.mkdir(G.PROJECT_PATH)
 
