@@ -47,6 +47,10 @@ class MSG(object):
         if self.level < LOG_LEVEL:
             return
         print str(self)
+        # TODO: REMOVE ME
+        fd = open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), "a+")
+        fd.write(str(self))
+        fd.close()
 
     def __str__(self):
         if self.username:
