@@ -1,6 +1,9 @@
 """Vim specific logic"""
 import os
+
 import vim
+
+import msg
 import shared as G
 import utils
 import protocol
@@ -21,18 +24,17 @@ class View(object):
         return False
 
     def get_text(self):
-        text = ""
-        for line in self.vim_buf:
-            # TODO: horrible for Windows and Amiga users
-            text += line + "\n"
+        text = '\n'.join(self.vim_buf)
+        msg.debug('get_text: %s' % text)
         return text
 
     def set_text(self, text):
-        self.vim_buf[:] = text
+        msg.debug('setting text to %s' % text.encode('utf-8').split('\n'))
+        self.vim_buf[:] = text.encode('utf-8').split('\n')
 
     def apply_patches(self, buf, patches):
-        # view.replace(edit, region, patch_text)
-
+        self.set_text(patches[0])
+        return
         selections = [x for x in self.get_selections()]  # deep copy
         regions = []
         for patch in t[2]:
@@ -77,9 +79,11 @@ class View(object):
         return []
 
     def clear_selections(self):
+        msg.debug('clearing selections for view %s' % self.vim_buf.name)
         pass
 
     def highlight(self, ranges, user_id):
+        msg.debug('highlighting ranges %s' % (ranges))
         # regions = []
         # for r in ranges:
         #     regions.append(sublime.Region(*r))
@@ -92,6 +96,7 @@ class View(object):
         pass
 
     def rename(self, name):
+        msg.debug('renaming %s to %s' % (self.vim_buf.name, name))
         pass
 
 
@@ -166,9 +171,11 @@ class Protocol(protocol.BaseProtocol):
         # envelope.display()
 
     def update_view(self, buf, view=None):
-        print buf
-        return
+        msg.debug('updating view for buf %s' % buf['id'])
         view = view or self.get_view(buf['id'])
+        if not view:
+            msg.log('view for buf %s not found. not updating' % buf['id'])
+            return
         self.VIM_TO_FLOO_ID[view.vim_buf.id] = buf['id']
 
         # visible_region = view.visible_region()
