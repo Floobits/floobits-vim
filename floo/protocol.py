@@ -203,7 +203,12 @@ class BaseProtocol(object):
             old_text = buf.get('buf', '')
         md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
         if md5_before != patch_data['md5_before']:
-            msg.warn('starting md5s don\'t match for %s. this is dangerous!' % buf['path'])
+            msg.debug('maybe vim is lame and discarded a trailing newline')
+            old_text += '\n'
+        md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
+        if md5_before != patch_data['md5_before']:
+            msg.warn('starting md5s don\'t match for %s. ours: %s patch: %s this is dangerous!' % \
+                (buf['path'], md5_before, patch_data['md5_before']))
 
         t = DMP.patch_apply(dmp_patches, old_text)
 
