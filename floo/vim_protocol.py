@@ -18,7 +18,8 @@ class View(object):
 
     @property
     def native_id(self):
-        return self.vim_buf.id
+        msg.debug(dir(self.vim_buf))
+        return self.vim_buf.number
 
     def is_loading(self):
         return False
@@ -100,9 +101,6 @@ class View(object):
         pass
 
 
-# def get_text(view):
-#     return view.substr(sublime.Region(0, view.size()))
-
 class Protocol(protocol.BaseProtocol):
     """understands vim"""
     CLIENT = 'VIM'
@@ -112,7 +110,16 @@ class Protocol(protocol.BaseProtocol):
         buf = vim.current.buffer
         buf_num = vim.eval("bufnr('%')")
         text = buf[:]
-        buf = self.get_buf(buf_num)
+        buf = self.get_buf(int(buf_num))
+        if buf is None:
+            msg.debug('no buffer found for view %s' % buf_num)
+            msg.debug('buffers:')
+            for buf_id, buf in self.FLOO_BUFS.iteritems():
+                msg.debug('id %s buf %s' % (buf_id, buf['path']))
+            msg.debug('buffers:')
+            for buf_id, buf in self.FLOO_BUFS.iteritems():
+                msg.debug('id %s buf %s' % (buf_id, buf['path']))
+            return
         if buf['buf'] != text:
             self.BUFS_CHANGED.push(buf['id'])
 
@@ -176,7 +183,7 @@ class Protocol(protocol.BaseProtocol):
         if not view:
             msg.log('view for buf %s not found. not updating' % buf['id'])
             return
-        self.VIM_TO_FLOO_ID[view.vim_buf.id] = buf['id']
+        self.VIM_TO_FLOO_ID[view.native_id] = buf['id']
 
         # visible_region = view.visible_region()
         # viewport_position = view.viewport_position()
