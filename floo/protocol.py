@@ -68,7 +68,6 @@ class BaseProtocol(object):
 
     def on_create_buf(self, path):
         # >>> (lambda x: lambda: x)(2)()
-        # TODO: check if functools can do this in st2
         #  really_create_buf = lambda x: (lambda: self.create_buf(x))
         def really_create_buf(x):
             return (lambda: self.create_buf(x))
@@ -207,8 +206,8 @@ class BaseProtocol(object):
             old_text += '\n'
         md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
         if md5_before != patch_data['md5_before']:
-            msg.warn('starting md5s don\'t match for %s. ours: %s patch: %s this is dangerous!' % \
-                (buf['path'], md5_before, patch_data['md5_before']))
+            msg.warn('starting md5s don\'t match for %s. ours: %s patch: %s this is dangerous!' %
+                    (buf['path'], md5_before, patch_data['md5_before']))
 
         t = DMP.patch_apply(dmp_patches, old_text)
 
