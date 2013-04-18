@@ -33,7 +33,7 @@ endif
 
 if !exists("g:floobits_update_interval")
     " milliseconds
-    let g:floobits_update_interval = 90
+    let g:floobits_update_interval = 20
 endif
 
 function! s:SetAutoCmd()
