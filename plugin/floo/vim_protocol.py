@@ -116,9 +116,6 @@ class Protocol(protocol.BaseProtocol):
             msg.debug('buffers:')
             for buf_id, buf in self.FLOO_BUFS.iteritems():
                 msg.debug('id %s buf %s' % (buf_id, buf['path']))
-            msg.debug('buffers:')
-            for buf_id, buf in self.FLOO_BUFS.iteritems():
-                msg.debug('id %s buf %s' % (buf_id, buf['path']))
             return
         if buf['buf'] != text:
             self.BUFS_CHANGED.push(buf['id'])
@@ -143,14 +140,20 @@ class Protocol(protocol.BaseProtocol):
         # return view
 
     def get_buf(self, buf_num):
-        try:
-            buf = vim.buffers[buf_num]
-        except IndexError:
+        vim_buf = None
+        for vb in vim.buffers:
+            if vb.number == buf_num:
+                vim_buf = vb
+                break
+        if vim_buf is None:
+            msg.debug('get_buf: vim.buffers[%s] does not exist' % buf_num)
             return None
-        if not utils.is_shared(buf.name):
+        if not utils.is_shared(vim_buf.name):
+            msg.debug('get_buf: %s is not shared' % vim_buf.name)
             return None
         buf_id = self.VIM_TO_FLOO_ID.get(buf_num)
         if not buf_id:
+            msg.debug('get_buf: VIM_TO_FLOO_ID has no entry for buf_num %s' % buf_num)
             return None
         return self.FLOO_BUFS.get(buf_id)
 
