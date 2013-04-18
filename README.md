@@ -12,8 +12,8 @@ Assuming you have Vundle or Pathogen:
 
 A typical floorc looks like this:
 
-  username myuser
-  secret gii9Ka8aZei3ej1eighu2vi8D
+    username myuser
+    secret gii9Ka8aZei3ej1eighu2vi8D
 
 ## Usage
 
