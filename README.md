@@ -10,9 +10,8 @@ Assuming you have Vundle or Pathogen:
 1. Add `Bundle 'Floobits'` to your `~/.vimrc`
 1. Add your username and secret to `~/.floorc`. A typical floorc looks like this:
 
-
-    username myuser
-    secret gii9Ka8aZei3ej1eighu2vi8D
+  username myuser
+  secret gii9Ka8aZei3ej1eighu2vi8D
 
 ## Usage
 
