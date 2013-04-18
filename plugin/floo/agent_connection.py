@@ -19,7 +19,7 @@ import sublime
 import shared as G
 
 
-CERT = os.path.join(os.path.dirname(vim.eval("g:floobits_vim_file")), 'startssl-ca.pem')
+CERT = os.path.join(vim.eval("g:floobits_plugin_dir"), 'startssl-ca.pem')
 msg.debug("CERT is ", CERT)
 
 

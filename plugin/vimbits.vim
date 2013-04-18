@@ -12,21 +12,20 @@ if exists("g:floobits_plugin_loaded")
 endif
 
 " p flag expands the absolute path. Sorry for the global
-let g:floobits_vim_file = expand("<sfile>:p")
+let g:floobits_plugin_dir = expand("<sfile>:p:h")
 
 python << END_PYTHON
 import os, sys
 import vim
-sys.path.append(os.path.dirname(vim.eval("g:floobits_vim_file")))
+sys.path.append(vim.eval("g:floobits_plugin_dir"))
 
 END_PYTHON
 
-let s:floobits_plugin_dir = expand("<sfile>:p:h")
 if filereadable(expand("<sfile>:p:h")."/floobits.py")
     pyfile <sfile>:p:h/floobits.py
 else
     echohl WarningMsg |
-    \ echomsg "Floobits plugin error: Can't find floobits.py in ".s:floobits_plugin_dir |
+    \ echomsg "Floobits plugin error: Can't find floobits.py in ".g:floobits_plugin_dir |
     \ echohl None
     finish
 endif
