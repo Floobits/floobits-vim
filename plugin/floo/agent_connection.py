@@ -12,12 +12,14 @@ try:
 except ImportError:
     pass
 
+import vim
+
 import msg
 import sublime
 import shared as G
 
 
-CERT = os.path.join(os.getcwd(), 'startssl-ca.pem')
+CERT = os.path.join(os.path.dirname(vim.eval("g:floobits_vim_file")), 'startssl-ca.pem')
 print("CERT is ", CERT)
 
 
