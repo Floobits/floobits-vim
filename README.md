@@ -7,8 +7,9 @@
 Assuming you have Vundle or Pathogen:
 
 1. `cd ~/.vim/bundle` and `git clone https://github.com/Floobits/vim-plugin Floobits`
-1. Add `Bundle 'Floobits'` to your `.vimrc`
+1. Add `Bundle 'Floobits'` to your `~/.vimrc`
 1. Add your username and secret to `~/.floorc`. A typical floorc looks like this:
+
 
     username myuser
     secret gii9Ka8aZei3ej1eighu2vi8D
