@@ -20,7 +20,7 @@ import shared as G
 
 
 CERT = os.path.join(os.path.dirname(vim.eval("g:floobits_vim_file")), 'startssl-ca.pem')
-print("CERT is ", CERT)
+msg.debug("CERT is ", CERT)
 
 
 class AgentConnection(object):
