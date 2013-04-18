@@ -129,7 +129,8 @@ class Protocol(protocol.BaseProtocol):
             return None
 
         for vim_buf in vim.buffers:
-            if buf['path'] == utils.to_rel_path(vim_buf.name):
+             msg.debug("get_view: %s" % vim_buf.name)
+            if vim_buf.name and buf['path'] == utils.to_rel_path(vim_buf.name):
                 return View(vim_buf, buf)
         return None
 
