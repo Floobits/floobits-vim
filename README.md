@@ -19,3 +19,7 @@ A typical floorc looks like this:
 
 * To join a room, use `:FlooJoinRoom https://floobits.com/r/room_owner/room_name/`. Room urls are the same as what you see in the web editor.
 * To part a room, use `:FlooPartRoom`.
+
+## Troubleshooting
+
+Other plugins can interfere with Floobits. For example, [YouCompleteMe](https://github.com/Valloric/YouCompleteMe) changes `updatetime` to 2000 milliseconds. This causes increased latency and decreased reliability when collaborating. If you experience problems, try disabling other plugins before submitting a bug report.
