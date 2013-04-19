@@ -30,9 +30,8 @@ else
     finish
 endif
 
-
 function! s:SetAutoCmd()
-    let s:vim_events = ['InsertEnter', 'InsertChange', 'InsertLeave', 'QuickFixCmdPost']
+    let s:vim_events = ['InsertEnter', 'InsertChange', 'InsertLeave', 'QuickFixCmdPost', 'FileChangedShellPost', 'ShellCmdPost', 'ShellFilterPost']
     augroup floobits
         " kill autocommands on reload
         autocmd!
