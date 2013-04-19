@@ -104,7 +104,6 @@ class View(object):
 class Protocol(protocol.BaseProtocol):
     """understands vim"""
     CLIENT = 'VIM'
-    VIM_TO_FLOO_ID = {}
 
     def maybe_changed(self, buf_num):
         buf = vim.current.buffer
@@ -120,24 +119,30 @@ class Protocol(protocol.BaseProtocol):
         if buf['buf'] != text:
             self.BUFS_CHANGED.append(buf['id'])
 
+    def get_vim_buf_by_path(self, p):
+        for vim_buf in vim.buffers:
+            if vim_buf.name and p == utils.to_rel_path(vim_buf.name):
+                return vim_buf
+        return None
+
     def get_view(self, buf_id):
         buf = self.FLOO_BUFS.get(buf_id)
         if not buf:
             return None
-
-        for vim_buf in vim.buffers:
-            msg.debug("get_view: %s" % vim_buf.name)
-            if vim_buf.name and buf['path'] == utils.to_rel_path(vim_buf.name):
-                return View(vim_buf, buf)
+        vb = self.get_vim_buf_by_path(buf['path'])
+        if vb:
+            return View(vb, buf)
         return None
 
     def create_view(self, buf):
-        raise NotImplemented()
-        # path = utils.get_full_path(buf['path'])
-        # view = vim.magically_make_file(path)
-        # if view:
-        #     msg.debug('Created view', view.name() or view.file_name())
-        # return view
+        path = self.save_buf(buf)
+        vb = self.get_vim_buf_by_path(buf['path'])
+        if vb:
+            return View(vb, buf)
+
+        vim.command(':e %s' % path)
+        vb = self.get_vim_buf_by_path(buf['path'])
+        return View(vb, buf)
 
     def get_buf(self, buf_num):
         vim_buf = None
@@ -147,6 +152,9 @@ class Protocol(protocol.BaseProtocol):
                 break
         if vim_buf is None:
             msg.debug('get_buf: vim.buffers[%s] does not exist' % buf_num)
+            return None
+        if vim_buf.name is None:
+            msg.debug('get:buf buffer has no filename')
             return None
         if not utils.is_shared(vim_buf.name):
             msg.debug('get_buf: %s is not shared' % vim_buf.name)
@@ -162,6 +170,7 @@ class Protocol(protocol.BaseProtocol):
         utils.mkdir(os.path.split(path)[0])
         with open(path, 'wb') as fd:
             fd.write(buf['buf'].encode('utf-8'))
+        return path
 
     def delete_buf(self, buf_id):
         # TODO: somehow tell the user about this. maybe delete on disk too?
