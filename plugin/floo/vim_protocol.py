@@ -118,7 +118,7 @@ class Protocol(protocol.BaseProtocol):
                 msg.debug('id %s buf %s' % (buf_id, buf['path']))
             return
         if buf['buf'] != text:
-            self.BUFS_CHANGED.push(buf['id'])
+            self.BUFS_CHANGED.append(buf['id'])
 
     def get_view(self, buf_id):
         buf = self.FLOO_BUFS.get(buf_id)

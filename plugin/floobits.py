@@ -10,9 +10,11 @@ dmp_monkey.monkey_patch()
 
 from floo import sublime
 from floo import AgentConnection
+from floo import msg
 from floo import shared as G
 from floo import utils
 from floo.vim_protocol import Protocol
+
 
 utils.load_settings()
 # Vim interface
@@ -27,11 +29,13 @@ def global_tick():
 
 
 def CursorHold(*args, **kwargs):
+    msg.debug('cursorhold')
     global_tick()
-    vim.command("call feedkeys(\"f\e\",'n')")
+    vim.command('call feedkeys("f\\e", "n")')
 
 
 def CursorHoldI(*args, **kwargs):
+    msg.debug('cursorholdI')
     global_tick()
     linelen = int(vim.eval("col('$')-1"))
     if linelen > 0:
@@ -45,7 +49,8 @@ def CursorHoldI(*args, **kwargs):
 
 def maybeBufferChanged():
     buf = vim.current.buffer
-    agent.protocol.maybe_changed(buf)
+    if agent and agent.protocol:
+        agent.protocol.maybe_changed(buf)
 
 
 def joinroom(room_url):

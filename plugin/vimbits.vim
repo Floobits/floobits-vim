@@ -30,10 +30,6 @@ else
     finish
 endif
 
-if !exists("g:floobits_update_interval")
-    " milliseconds
-    let g:floobits_update_interval = 9
-endif
 
 function! s:SetAutoCmd()
     let s:vim_events = ['InsertEnter', 'InsertChange', 'InsertLeave', 'QuickFixCmdPost']
@@ -45,8 +41,8 @@ function! s:SetAutoCmd()
         endfor
         autocmd CursorHold * python CursorHold()
         autocmd CursorHoldI * python CursorHoldI()
-        " BufFilePost
-        exe 'set updatetime='.g:floobits_update_interval
+        " milliseconds
+        exe 'setlocal updatetime=100'
     augroup END
 endfunction
 

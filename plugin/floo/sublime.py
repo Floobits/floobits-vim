@@ -1,7 +1,10 @@
 from collections import defaultdict
 import time
 
+import msg
+
 TIMEOUTS = defaultdict(list)
+last = time.time()
 
 
 def windows(*args, **kwargs):
@@ -14,7 +17,10 @@ def set_timeout(func, timeout, *args, **kwargs):
 
 
 def call_timeouts():
+    global last
     now = time.time()
+    msg.debug('last tick was %s ago' % (now - last))
+    last = now
     to_remove = []
     for t, timeouts in TIMEOUTS.items():
         if now >= t:

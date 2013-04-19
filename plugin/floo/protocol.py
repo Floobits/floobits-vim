@@ -19,8 +19,8 @@ def create_buf(self, data):
 
 
 class BaseProtocol(object):
-    BUFS_CHANGED = Queue.Queue()
-    SELECTION_CHANGED = Queue.Queue()
+    BUFS_CHANGED = []
+    SELECTION_CHANGED = []
     MODIFIED_EVENTS = Queue.Queue()
     SELECTED_EVENTS = Queue.Queue()
     FLOO_BUFS = {}
