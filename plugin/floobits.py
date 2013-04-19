@@ -10,7 +10,6 @@ dmp_monkey.monkey_patch()
 
 from floo import sublime
 from floo import AgentConnection
-from floo import msg
 from floo import shared as G
 from floo import utils
 from floo.vim_protocol import Protocol
@@ -34,7 +33,6 @@ def CursorHold(*args, **kwargs):
 
 
 def CursorHoldI(*args, **kwargs):
-    msg.debug('cursorholdI')
     global_tick()
     linelen = int(vim.eval("col('$')-1"))
     if linelen > 0:
