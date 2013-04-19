@@ -29,7 +29,6 @@ def global_tick():
 
 
 def CursorHold(*args, **kwargs):
-    msg.debug('cursorhold')
     global_tick()
     vim.command('call feedkeys("f\\e", "n")')
 
