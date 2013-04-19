@@ -1,6 +1,6 @@
 # Floobits Vim Plugin
 
-## Development status: not at all working yet. Stay tuned.
+## Development status: Extremely buggy. Do not use. Check back in a couple weeks.
 
 ## Installation
 
