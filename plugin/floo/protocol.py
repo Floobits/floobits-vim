@@ -5,6 +5,8 @@ import hashlib
 import collections
 import Queue
 
+import vim
+
 from lib import diff_match_patch as dmp
 
 import msg
@@ -104,7 +106,7 @@ class BaseProtocol(object):
     def on_rename_buf(self, data):
         new = utils.get_full_path(data['path'])
         old = utils.get_full_path(data['old_path'])
-        new_dir = os.path.split(new)[0]
+        new_dir = os.path.dirname(new)
         if new_dir:
             utils.mkdir(new_dir)
         os.rename(old, new)
@@ -124,10 +126,13 @@ class BaseProtocol(object):
 
         for buf_id, buf in data['bufs'].iteritems():
             buf_id = int(buf_id)  # json keys must be strings
-            new_dir = os.path.split(utils.get_full_path(buf['path']))[0]
+            buf_path = utils.get_full_path(buf['path'])
+            new_dir = os.path.dirname(buf_path)
             utils.mkdir(new_dir)
+            open(buf_path, "a")
             self.FLOO_BUFS[buf_id] = buf
             self.agent.send_get_buf(buf_id)
+        msg.debug(G.PROJECT_PATH)
 
         self.agent.on_auth()
 
@@ -229,7 +234,7 @@ class BaseProtocol(object):
 
         if not clean_patch:
             msg.error('failed to patch %s cleanly. re-fetching buffer' % buf['path'])
-            return self.get_buf(buf_id)
+            return self.agent.send_get_buf(buf_id)
 
         cur_hash = hashlib.md5(t[0].encode('utf-8')).hexdigest()
         if cur_hash != patch_data['md5_after']:
@@ -237,7 +242,7 @@ class BaseProtocol(object):
                 '%s new hash %s != expected %s. re-fetching buffer...' %
                 (buf['path'], cur_hash, patch_data['md5_after'])
             )
-            return self.get_buf(buf_id)
+            return self.agent.send_get_buf(buf_id)
 
         buf['buf'] = t[0]
         buf['md5'] = cur_hash
@@ -308,7 +313,7 @@ class BaseProtocol(object):
         message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
         msg.error(message)
 
-    def on_diconnect(self, data):
+    def on_disconnect(self, data):
         message = 'Floobits: Disconnected! Reason: %s' % str(data.get('reason'))
         msg.error(message)
         sublime.error_message(message)

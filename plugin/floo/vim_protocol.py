@@ -105,6 +105,10 @@ class Protocol(protocol.BaseProtocol):
     """understands vim"""
     CLIENT = 'VIM'
 
+    def on_room_info(self, room_info):
+        super(Protocol, self).on_room_info(room_info)
+        vim.command(':Explore %s' % G.PROJECT_PATH)
+
     def maybe_changed(self, buf_num):
         buf = vim.current.buffer
         buf_num = vim.eval("bufnr('%')")
@@ -140,7 +144,7 @@ class Protocol(protocol.BaseProtocol):
         if vb:
             return View(vb, buf)
 
-        vim.command(':e %s' % path)
+        vim.command(':Explore %s' % path)
         vb = self.get_vim_buf_by_path(buf['path'])
         return View(vb, buf)
 
@@ -159,7 +163,8 @@ class Protocol(protocol.BaseProtocol):
         if not utils.is_shared(vim_buf.name):
             msg.debug('get_buf: %s is not shared' % vim_buf.name)
             return None
-        for buf in self.FLOO_BUFS:
+        # TODO: this is inefficient as hell
+        for buf_id, buf in self.FLOO_BUFS.iteritems():
             if self.get_vim_buf_by_path(buf['path']):
                 return buf
         msg.debug('get_buf: no buf has path %s' % buf_num)
