@@ -34,47 +34,35 @@ class View(object):
         self.vim_buf[:] = text.encode('utf-8').split('\n')
 
     def apply_patches(self, buf, patches):
+        cursor_offset = self.get_selections()
+
         self.set_text(patches[0])
-        return
-        selections = [x for x in self.get_selections()]  # deep copy
-        regions = []
-        for patch in t[2]:
+
+        for patch in patches[2]:
             offset = patch[0]
             length = patch[1]
             patch_text = patch[2]
-            # TODO: totally not in vim
-            region = sublime.Region(offset, offset + length)
-            regions.append(region)
             self.MODIFIED_EVENTS.put(1)
-            try:
-                edit = view.begin_edit()
-                view.replace(edit, region, patch_text)
-            except:
-                raise
-            else:
-                new_sels = []
-                for sel in selections:
-                    a = sel.a
-                    b = sel.b
-                    new_offset = len(patch_text) - length
-                    if sel.a > offset:
-                        a += new_offset
-                    if sel.b > offset:
-                        b += new_offset
-                    new_sels.append(sublime.Region(a, b))
-                selections = [x for x in new_sels]
-            finally:
-                view.end_edit(edit)
-        self.clear_selections()
-        region_key = 'floobits-patch-' + patch_data['username']
-        view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
-        sublime.set_timeout(lambda: view.erase_regions(region_key), 1000)
-        for sel in selections:
-            self.SELECTED_EVENTS.put(1)
-            view.sel().add(sel)
+            new_offset = len(patch_text) - length
+            if cursor_offset > offset:
+                cursor_offset += new_offset
 
-        now = datetime.now()
-        view.set_status('Floobits', 'Changed by %s at %s' % (patch_data['username'], now.strftime('%H:%M')))
+        cursor_offset += 2
+        current_offset = 0
+        for line_num, line in enumerate(self.vim_buf):
+            current_offset += len(line)
+            if current_offset > cursor_offset:
+                cursor_offset -= len(line)
+                break
+        col = current_offset - cursor_offset
+        vim.eval('setpos(".", [%s, %s, %s, %s])' % (self.vim_buf.number, line_num, col, 0))
+
+    def get_cursor_position(self):
+        """ [bufnum, lnum, col, off] """
+        return vim.eval('getpos(".")')
+
+    def get_cursor_offset():
+        vim.eval('line2byte(line("."))-2+col(".")')
 
     def get_selections(self):
         return []
