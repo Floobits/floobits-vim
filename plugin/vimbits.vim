@@ -37,17 +37,15 @@ function! s:MaybeChanged()
 endfunction
 
 function! s:SetAutoCmd()
-    let s:vim_events = ['InsertEnter', 'InsertChange', 'InsertLeave', 'QuickFixCmdPost', 'FileChangedShellPost']
+    let s:vim_events = ['InsertEnter', 'InsertChange', 'InsertLeave', 'QuickFixCmdPost', 'FileChangedShellPost', 'CursorMoved', 'CursorMovedI']
     augroup floobits
         " kill autocommands on reload
         autocmd!
         for cmd in s:vim_events
-            exec 'autocmd '. cmd .' * python maybeBufferChanged()'
+            exec 'autocmd '. cmd .' * call s:MaybeChanged()'
         endfor
         autocmd CursorHold * python CursorHold()
         autocmd CursorHoldI * python CursorHoldI()
-        autocmd CursorMoved * call s:MaybeChanged()
-        autocmd CursorMovedI * call s:MaybeChanged()
         " milliseconds
         exe 'setlocal updatetime=100'
     augroup END
