@@ -81,3 +81,10 @@ def joinroom(room_url):
         print(e)
         tb = traceback.format_exc()
         print(tb)
+
+
+def partroom():
+    if agent and G.CONNECTED:
+        agent.stop()
+    else:
+        print('Unable to part room: You are not joined to a room.')
