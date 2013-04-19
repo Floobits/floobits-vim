@@ -159,11 +159,11 @@ class Protocol(protocol.BaseProtocol):
         if not utils.is_shared(vim_buf.name):
             msg.debug('get_buf: %s is not shared' % vim_buf.name)
             return None
-        buf_id = self.VIM_TO_FLOO_ID.get(buf_num)
-        if not buf_id:
-            msg.debug('get_buf: VIM_TO_FLOO_ID has no entry for buf_num %s' % buf_num)
-            return None
-        return self.FLOO_BUFS.get(buf_id)
+        for buf in self.FLOO_BUFS:
+            if self.get_vim_buf_by_path(buf['path']):
+                return buf
+        msg.debug('get_buf: no buf has path %s' % buf_num)
+        return None
 
     def save_buf(self, buf):
         path = utils.get_full_path(buf['path'])
@@ -175,13 +175,6 @@ class Protocol(protocol.BaseProtocol):
     def delete_buf(self, buf_id):
         # TODO: somehow tell the user about this. maybe delete on disk too?
         del G.FLOO_BUFS[buf_id]
-        found = False
-        for buf_num, fbuf_id in G.VIM_TO_FLOO_ID.iteritems():
-            if fbuf_id == buf_id:
-                found = True
-                break
-        if found:
-            del G.VIM_TO_FLOO_ID[buf_num]
 
     def chat(self, username, timestamp, message, self_msg=False):
         raise NotImplemented()
@@ -196,7 +189,6 @@ class Protocol(protocol.BaseProtocol):
         if not view:
             msg.log('view for buf %s not found. not updating' % buf['id'])
             return
-        self.VIM_TO_FLOO_ID[view.native_id] = buf['id']
 
         # visible_region = view.visible_region()
         # viewport_position = view.viewport_position()
