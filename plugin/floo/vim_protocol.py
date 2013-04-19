@@ -34,15 +34,15 @@ class View(object):
         self.vim_buf[:] = text.encode('utf-8').split('\n')
 
     def apply_patches(self, buf, patches):
-        cursor_offset = self.get_selections()
+        cursor_offset = self.get_cursor_offset()
 
         self.set_text(patches[0])
 
+        # TODO: math is wrong
         for patch in patches[2]:
             offset = patch[0]
             length = patch[1]
             patch_text = patch[2]
-            self.MODIFIED_EVENTS.put(1)
             new_offset = len(patch_text) - length
             if cursor_offset > offset:
                 cursor_offset += new_offset
@@ -55,14 +55,14 @@ class View(object):
                 cursor_offset -= len(line)
                 break
         col = current_offset - cursor_offset
-        vim.eval('setpos(".", [%s, %s, %s, %s])' % (self.vim_buf.number, line_num, col, 0))
+        vim.eval('setpos(".", [%s, %s, %s, %s])' % (self.vim_buf.number, line_num + 1, col, 0))
 
     def get_cursor_position(self):
         """ [bufnum, lnum, col, off] """
         return vim.eval('getpos(".")')
 
-    def get_cursor_offset():
-        vim.eval('line2byte(line("."))-2+col(".")')
+    def get_cursor_offset(self):
+        return int(vim.eval('line2byte(line("."))-2+col(".")'))
 
     def get_selections(self):
         return []
