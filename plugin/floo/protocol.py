@@ -5,8 +5,6 @@ import hashlib
 import collections
 import Queue
 
-import vim
-
 from lib import diff_match_patch as dmp
 
 import msg
