@@ -83,4 +83,3 @@ def joinroom(room_url):
         print(e)
         tb = traceback.format_exc()
         print(tb)
-
