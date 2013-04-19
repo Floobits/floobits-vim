@@ -84,5 +84,3 @@ def joinroom(room_url):
         tb = traceback.format_exc()
         print(tb)
 
-    # thread = threading.Thread(target=run_agent)
-    # thread.start()
