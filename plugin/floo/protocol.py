@@ -13,11 +13,6 @@ import utils
 import sublime
 
 
-def create_buf(self, data):
-    self.FLOO_BUFS[data['id']] = data
-    self.save_buf(data)
-
-
 class BaseProtocol(object):
     BUFS_CHANGED = []
     SELECTION_CHANGED = []
@@ -48,29 +43,13 @@ class BaseProtocol(object):
     def chat(self, data):
         raise NotImplemented()
 
-    def handle(self, data):
-        name = data.get('name')
-        if not name:
-            return msg.error('no name in data?!?')
-        func = getattr(self, "on_%s" % (name))
-        if not func:
-            return msg.error('unknown name!', name, 'data:', data)
-        func(data)
+    def maybe_buffer_changed(self):
+        raise NotImplemented()
 
-    def on_get_buf(self, data):
-        buf_id = data['id']
-        self.FLOO_BUFS[buf_id] = data
-        view = self.get_view(buf_id)
-        if view:
-            self.update_view(data, view)
-        else:
-            self.save_buf(data)
+    def maybe_selection_changed(self):
+        raise NotImplemented()
 
-    def on_create_buf(self, path):
-        # >>> (lambda x: lambda: x)(2)()
-        #  really_create_buf = lambda x: (lambda: self.create_buf(x))
-        def really_create_buf(x):
-            return (lambda: self.create_buf(x))
+    def create_buf(self, path):
         if not utils.is_shared(path):
             msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
@@ -83,7 +62,7 @@ class BaseProtocol(object):
                     if f[0] == '.':
                         msg.log('Not creating buf for hidden file %s' % f_path)
                     else:
-                        sublime.set_timeout(really_create_buf(f_path), 0)
+                        sublime.set_timeout(self.create_buf, 0, f_path)
             return
         try:
             buf_fd = open(path, 'rb')
@@ -100,6 +79,27 @@ class BaseProtocol(object):
             msg.error('Failed to open %s.' % path)
         except Exception as e:
             msg.error('Failed to create buffer %s: %s' % (path, str(e)))
+
+    def handle(self, data):
+        name = data.get('name')
+        if not name:
+            return msg.error('no name in data?!?')
+        func = getattr(self, "on_%s" % (name))
+        if not func:
+            return msg.error('unknown name!', name, 'data:', data)
+        func(data)
+
+    def on_create_buf(self, data):
+        self.on_get_buf(data)
+
+    def on_get_buf(self, data):
+        buf_id = data['id']
+        self.FLOO_BUFS[buf_id] = data
+        view = self.get_view(buf_id)
+        if view:
+            self.update_view(data, view)
+        else:
+            self.save_buf(data)
 
     def on_rename_buf(self, data):
         new = utils.get_full_path(data['path'])
@@ -170,20 +170,19 @@ class BaseProtocol(object):
             self.agent.put(patch.to_json())
 
         while self.SELECTION_CHANGED:
-            view, buf, ping = self.SELECTION_CHANGED.pop()
+            view, ping = self.SELECTION_CHANGED.pop()
             # consume highlight events to avoid leak
             if 'highlight' not in self.perms:
                 continue
-            vb_id = view.buffer_id()
+            vb_id = view.native_id
             if vb_id in reported:
                 continue
 
             reported.add(vb_id)
-            sel = view.sel()
             highlight_json = {
-                'id': buf['id'],
+                'id': view.buf['id'],
                 'name': 'highlight',
-                'ranges': [[x.a, x.b] for x in sel],
+                'ranges': view.get_selections(),
                 'ping': ping,
             }
             self.agent.put(highlight_json)

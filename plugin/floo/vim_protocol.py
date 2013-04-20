@@ -16,9 +16,14 @@ class View(object):
         self.vim_buf = vim_buf
         self.buf = buf
 
+    def __repr__(self):
+        return '%s %s %s' % (self.native_id, self.buf['id'], self.buf['path'])
+
+    def __str__(self):
+        return repr(self)
+
     @property
     def native_id(self):
-        msg.debug(dir(self.vim_buf))
         return self.vim_buf.number
 
     def is_loading(self):
@@ -26,19 +31,18 @@ class View(object):
 
     def get_text(self):
         text = '\n'.join(self.vim_buf)
-        msg.debug('get_text: %s' % text)
         return text
 
     def set_text(self, text):
-        msg.debug('setting text to %s' % text.encode('utf-8').split('\n'))
+        # msg.debug('setting text to %s' % text.encode('utf-8').split('\n'))
         self.vim_buf[:] = text.encode('utf-8').split('\n')
 
     def apply_patches(self, buf, patches):
         cursor_offset = self.get_cursor_offset()
+        msg.debug('cursor offset is %s bytes' % cursor_offset)
 
         self.set_text(patches[0])
 
-        # TODO: math is wrong
         for patch in patches[2]:
             offset = patch[0]
             length = patch[1]
@@ -47,25 +51,32 @@ class View(object):
             if cursor_offset > offset:
                 cursor_offset += new_offset
 
-        cursor_offset += 2
+        msg.debug('new cursor offset is %s bytes' % cursor_offset)
         current_offset = 0
         for line_num, line in enumerate(self.vim_buf):
-            current_offset += len(line)
-            if current_offset > cursor_offset:
-                cursor_offset -= len(line)
+            next_offset = len(line) + 1
+            if current_offset + next_offset > cursor_offset:
                 break
-        col = current_offset - cursor_offset
-        vim.eval('setpos(".", [%s, %s, %s, %s])' % (self.vim_buf.number, line_num + 1, col, 0))
+            current_offset += next_offset
+        col = cursor_offset - current_offset
+        msg.debug('new offset is %s bytes + column %s' % (current_offset, col))
+
+        command = 'setpos(".", [%s, %s, %s, %s])' % (self.vim_buf.number, line_num + 1, col + 1, 0)
+        msg.debug("setting pos: %s" % command)
+        rv = vim.eval(command)
+        if rv != 0:
+            msg.debug('SHIIIIIIIIT')
 
     def get_cursor_position(self):
         """ [bufnum, lnum, col, off] """
         return vim.eval('getpos(".")')
 
     def get_cursor_offset(self):
-        return int(vim.eval('line2byte(line("."))-2+col(".")'))
+        return int(vim.eval('line2byte(line("."))+col(".")')) - 2
 
     def get_selections(self):
-        return []
+        cursor = self.get_cursor_offset()
+        return [[cursor, cursor]]
 
     def clear_selections(self):
         msg.debug('clearing selections for view %s' % self.vim_buf.name)
@@ -97,13 +108,19 @@ class Protocol(protocol.BaseProtocol):
         super(Protocol, self).on_room_info(room_info)
         vim.command(':Explore %s' % G.PROJECT_PATH)
 
-    def maybe_changed(self, buf_num):
-        buf = vim.current.buffer
-        buf_num = vim.eval("bufnr('%')")
-        text = buf[:]
-        buf = self.get_buf(int(buf_num))
+    def maybe_selection_changed(self, vim_buf):
+        buf = self.get_buf(vim_buf.number)
         if buf is None:
-            msg.debug('no buffer found for view %s' % buf_num)
+            return
+        view = self.get_view(buf['id'])
+        msg.debug("selection changed: %s %s" % (buf['id'], view))
+        self.SELECTION_CHANGED.append([view, False])
+
+    def maybe_buffer_changed(self, vim_buf):
+        text = vim_buf[:]
+        buf = self.get_buf(vim_buf.number)
+        if buf is None:
+            msg.debug('no buffer found for view %s' % vim_buf.number)
             msg.debug('buffers:')
             for buf_id, buf in self.FLOO_BUFS.iteritems():
                 msg.debug('id %s buf %s' % (buf_id, buf['path']))
@@ -137,6 +154,7 @@ class Protocol(protocol.BaseProtocol):
         return View(vb, buf)
 
     def get_buf(self, buf_num):
+        buf_num = int(buf_num)
         vim_buf = None
         for vb in vim.buffers:
             if vb.number == buf_num:

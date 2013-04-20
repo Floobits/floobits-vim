@@ -46,6 +46,8 @@ function! s:SetAutoCmd()
         endfor
         autocmd CursorHold * python CursorHold()
         autocmd CursorHoldI * python CursorHoldI()
+        autocmd CursorMoved * python maybeSelectionChanged()
+        autocmd CursorMovedI * python maybeSelectionChanged()
         " milliseconds
         exe 'setlocal updatetime=100'
     augroup END

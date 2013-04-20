@@ -16,7 +16,7 @@ from floo.vim_protocol import Protocol
 
 
 utils.load_settings()
-# Vim interface
+
 agent = None
 
 
@@ -44,10 +44,15 @@ def CursorHoldI(*args, **kwargs):
         vim.command("call feedkeys(\"\ei\",'n')")
 
 
-def maybeBufferChanged():
-    buf = vim.current.buffer
+# TODO: code smell
+def maybeSelectionChanged(*args, **kwargs):
     if agent and agent.protocol:
-        agent.protocol.maybe_changed(buf)
+        agent.protocol.maybe_selection_changed(vim.current.buffer)
+
+
+def maybeBufferChanged():
+    if agent and agent.protocol:
+        agent.protocol.maybe_buffer_changed(vim.current.buffer)
 
 
 def joinroom(room_url):
