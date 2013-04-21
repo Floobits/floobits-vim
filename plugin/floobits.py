@@ -50,15 +50,26 @@ def CursorHoldI(*args, **kwargs):
         vim.command("call feedkeys(\"\ei\",'n')")
 
 
-# TODO: code smell
+def agent_and_protocol(func):
+    def wrapped(*args, **kwargs):
+        if agent and agent.protocol:
+            func(*args, **kwargs)
+    return wrapped
+
+
+@agent_and_protocol
 def maybeSelectionChanged(*args, **kwargs):
-    if agent and agent.protocol:
-        agent.protocol.maybe_selection_changed(vim.current.buffer)
+    agent.protocol.maybe_selection_changed(vim.current.buffer)
 
 
+@agent_and_protocol
 def maybeBufferChanged():
-    if agent and agent.protocol:
-        agent.protocol.maybe_buffer_changed(vim.current.buffer)
+    agent.protocol.maybe_buffer_changed(vim.current.buffer)
+
+
+@agent_and_protocol
+def follow(follow_mode=None):
+    agent.protocol.follow(follow_mode)
 
 
 def joinroom(room_url):
