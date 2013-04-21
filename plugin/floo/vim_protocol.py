@@ -66,6 +66,7 @@ class View(object):
 
     def focus(self):
         vim.command(':edit! %s' % self.vim_buf.name)
+        vim.command(':filetype detect')
 
     def set_cursor_position(self, offset):
         line_num, col = self._offset_to_vim(offset)
