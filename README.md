@@ -1,6 +1,6 @@
 # Floobits Vim Plugin
 
-## Development status: Extremely buggy. Do not use. Check back in a couple weeks.
+## Development status: Two way syncing works, but this plugin is not well-tested and not fully-featured.
 
 ## Installation
 
