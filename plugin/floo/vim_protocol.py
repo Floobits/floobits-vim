@@ -109,16 +109,17 @@ class Protocol(protocol.BaseProtocol):
         vim.command(':Explore %s' % G.PROJECT_PATH)
 
     def maybe_selection_changed(self, vim_buf):
-        buf = self.get_buf(vim_buf.number)
+        buf = self.get_buf(vim_buf)
         if buf is None:
+            msg.debug('no buffer found for view %s' % vim_buf.number)
             return
         view = self.get_view(buf['id'])
-        msg.debug("selection changed: %s %s" % (buf['id'], view))
+        msg.debug("selection changed: %s %s %s" % (vim_buf.number, buf['id'], view))
         self.SELECTION_CHANGED.append([view, False])
 
     def maybe_buffer_changed(self, vim_buf):
         text = vim_buf[:]
-        buf = self.get_buf(vim_buf.number)
+        buf = self.get_buf(vim_buf)
         if buf is None:
             msg.debug('no buffer found for view %s' % vim_buf.number)
             msg.debug('buffers:')
@@ -153,27 +154,21 @@ class Protocol(protocol.BaseProtocol):
         vb = self.get_vim_buf_by_path(buf['path'])
         return View(vb, buf)
 
-    def get_buf(self, buf_num):
-        buf_num = int(buf_num)
-        vim_buf = None
-        for vb in vim.buffers:
-            if vb.number == buf_num:
-                vim_buf = vb
-                break
-        if vim_buf is None:
-            msg.debug('get_buf: vim.buffers[%s] does not exist' % buf_num)
-            return None
+    def get_buf(self, vim_buf):
         if vim_buf.name is None:
             msg.debug('get:buf buffer has no filename')
             return None
+
         if not utils.is_shared(vim_buf.name):
             msg.debug('get_buf: %s is not shared' % vim_buf.name)
             return None
-        # TODO: this is inefficient as hell
+
+        rel_path = utils.to_rel_path(vim_buf.name)
         for buf_id, buf in self.FLOO_BUFS.iteritems():
-            if self.get_vim_buf_by_path(buf['path']):
+            if rel_path == buf['path']:
                 return buf
-        msg.debug('get_buf: no buf has path %s' % buf_num)
+
+        msg.debug('get_buf: no buf has path %s' % rel_path)
         return None
 
     def save_buf(self, buf):
@@ -185,7 +180,7 @@ class Protocol(protocol.BaseProtocol):
 
     def delete_buf(self, buf_id):
         # TODO: somehow tell the user about this. maybe delete on disk too?
-        del G.FLOO_BUFS[buf_id]
+        del self.FLOO_BUFS[buf_id]
 
     def chat(self, username, timestamp, message, self_msg=False):
         raise NotImplemented()
