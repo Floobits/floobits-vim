@@ -105,14 +105,14 @@ class Protocol(protocol.BaseProtocol):
         super(Protocol, self).on_room_info(room_info)
         vim.command(':Explore %s' % G.PROJECT_PATH)
 
-    def maybe_selection_changed(self, vim_buf):
+    def maybe_selection_changed(self, vim_buf, is_ping):
         buf = self.get_buf(vim_buf)
         if buf is None:
             msg.debug('no buffer found for view %s' % vim_buf.number)
             return
         view = self.get_view(buf['id'])
         msg.debug("selection changed: %s %s %s" % (vim_buf.number, buf['id'], view))
-        self.SELECTION_CHANGED.append([view, False])
+        self.SELECTION_CHANGED.append([view, is_ping])
 
     def maybe_buffer_changed(self, vim_buf):
         text = vim_buf[:]

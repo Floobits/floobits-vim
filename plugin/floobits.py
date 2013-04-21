@@ -58,8 +58,8 @@ def agent_and_protocol(func):
 
 
 @agent_and_protocol
-def maybeSelectionChanged(*args, **kwargs):
-    agent.protocol.maybe_selection_changed(vim.current.buffer)
+def maybeSelectionChanged(ping=False):
+    agent.protocol.maybe_selection_changed(vim.current.buffer, ping)
 
 
 @agent_and_protocol

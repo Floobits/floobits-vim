@@ -57,7 +57,7 @@ endfunction
 command! -nargs=1 FlooJoinRoom :python joinroom(<f-args>)
 command! FlooPartRoom :python partroom()
 command! FlooToggleFollowMode :python follow()
+command! FlooPing :python maybeSelectionChanged(True)
 
 call s:SetAutoCmd()
-
 let g:floobits_plugin_loaded = 1
