@@ -331,6 +331,7 @@ class BaseProtocol(object):
                 msg.debug('could not get offset from range %s' % e)
             else:
                 msg.log('You have been summoned by %s' % (data.get('username', 'an unknown user')))
+                view.focus()
                 view.set_cursor_position(offset)
         view.highlight(data['ranges'], data['user_id'])
 

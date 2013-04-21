@@ -64,6 +64,9 @@ class View(object):
 
         self.set_cursor_position(cursor_offset)
 
+    def focus(self):
+        vim.command(':edit! %s' % self.vim_buf.name)
+
     def set_cursor_position(self, offset):
         line_num, col = self._offset_to_vim(offset)
         command = 'setpos(".", [%s, %s, %s, %s])' % (self.vim_buf.number, line_num, col, 0)
