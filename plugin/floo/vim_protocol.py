@@ -1,5 +1,6 @@
 """Vim specific logic"""
 import os
+import time
 
 import vim
 
@@ -21,6 +22,16 @@ class View(object):
 
     def __str__(self):
         return repr(self)
+
+    def _offset_to_vim(self, offset):
+        current_offset = 0
+        for line_num, line in enumerate(self.vim_buf):
+            next_offset = len(line) + 1
+            if current_offset + next_offset > offset:
+                break
+            current_offset += next_offset
+        col = offset - current_offset
+        return line_num + 1, col + 1
 
     @property
     def native_id(self):
@@ -51,21 +62,15 @@ class View(object):
             if cursor_offset > offset:
                 cursor_offset += new_offset
 
-        msg.debug('new cursor offset is %s bytes' % cursor_offset)
-        current_offset = 0
-        for line_num, line in enumerate(self.vim_buf):
-            next_offset = len(line) + 1
-            if current_offset + next_offset > cursor_offset:
-                break
-            current_offset += next_offset
-        col = cursor_offset - current_offset
-        msg.debug('new offset is %s bytes + column %s' % (current_offset, col))
+        self.set_cursor_position(cursor_offset)
 
-        command = 'setpos(".", [%s, %s, %s, %s])' % (self.vim_buf.number, line_num + 1, col + 1, 0)
+    def set_cursor_position(self, offset):
+        line_num, col = self._offset_to_vim(offset)
+        command = 'setpos(".", [%s, %s, %s, %s])' % (self.vim_buf.number, line_num, col, 0)
         msg.debug("setting pos: %s" % command)
-        rv = vim.eval(command)
+        rv = int(vim.eval(command))
         if rv != 0:
-            msg.debug('SHIIIIIIIIT')
+            msg.debug('SHIIIIIIIIT %s' % rv)
 
     def get_cursor_position(self):
         """ [bufnum, lnum, col, off] """
@@ -80,24 +85,12 @@ class View(object):
 
     def clear_selections(self):
         msg.debug('clearing selections for view %s' % self.vim_buf.name)
-        pass
 
     def highlight(self, ranges, user_id):
         msg.debug('highlighting ranges %s' % (ranges))
-        # regions = []
-        # for r in ranges:
-        #     regions.append(sublime.Region(*r))
-        # region_key = 'floobits-highlight-%s' % (data['user_id'])
-        # view.erase_regions(region_key)
-        # view.add_regions(region_key, regions, region_key, 'dot', sublime.DRAW_OUTLINED)
-        # if ping:
-        #     G.ROOM_WINDOW.focus_view(view)
-        #     view.show_at_center(regions[0])
-        pass
 
     def rename(self, name):
         msg.debug('renaming %s to %s' % (self.vim_buf.name, name))
-        pass
 
 
 class Protocol(protocol.BaseProtocol):
@@ -150,8 +143,11 @@ class Protocol(protocol.BaseProtocol):
         if vb:
             return View(vb, buf)
 
-        vim.command(':Explore %s' % path)
+        vim.command(':edit! %s' % path)
         vb = self.get_vim_buf_by_path(buf['path'])
+        if vb is None:
+            msg.debug('vim buffer is none even though we tried to open it: %s' % path)
+            return
         return View(vb, buf)
 
     def get_buf(self, vim_buf):
@@ -183,11 +179,15 @@ class Protocol(protocol.BaseProtocol):
         del self.FLOO_BUFS[buf_id]
 
     def chat(self, username, timestamp, message, self_msg=False):
-        raise NotImplemented()
+        pass
         # envelope = msg.MSG(message, timestamp, username)
         # if not self_msg:
         #     self.chat_deck.appendleft(envelope)
         # envelope.display()
+
+    def on_msg(self, data):
+        timestamp = data.get('time') or time.time()
+        msg.log('[%s] <%s> %s' % (time.ctime(timestamp), data.get('username', ''), data.get('data', '')))
 
     def update_view(self, buf, view=None):
         msg.debug('updating view for buf %s' % buf['id'])
