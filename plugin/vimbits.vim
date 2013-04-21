@@ -56,6 +56,7 @@ endfunction
 "TODO: populate with a default url of https://floobits.com/r/
 command! -nargs=1 FlooJoinRoom :python joinroom(<f-args>)
 command! FlooPartRoom :python partroom()
+command! FlooToggleFollowMode :python follow()
 
 call s:SetAutoCmd()
 
