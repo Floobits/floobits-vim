@@ -13,6 +13,19 @@ import utils
 import sublime
 
 
+def buf_populated(func):
+    def wrapped(self, data):
+        if data.get('id') is None:
+            msg.debug('no buf id in data')
+            return
+        buf = self.FLOO_BUFS.get(data['id'])
+        if buf is None or 'buf' not in buf:
+            msg.debug('buf is not populated yet')
+            return
+        func(self, data)
+    return wrapped
+
+
 class BaseProtocol(object):
     BUFS_CHANGED = []
     SELECTION_CHANGED = []
@@ -23,6 +36,7 @@ class BaseProtocol(object):
     def __init__(self, agent):
         self.agent = agent
         self.perms = []
+        self.follow_mode = False
         self.chat_deck = collections.deque(maxlen=10)
 
     def get_view(self, data):
@@ -48,6 +62,15 @@ class BaseProtocol(object):
 
     def maybe_selection_changed(self):
         raise NotImplemented()
+
+    def on_msg(self, data):
+        raise NotImplemented()
+
+    def follow(self, follow_mode=None):
+        if follow_mode is None:
+            follow_mode = not self.follow_mode
+        self.follow_mode = follow_mode
+        msg.log('follow mode is %s' % {True: 'enabled', False: 'disabled'}[self.follow_mode])
 
     def create_buf(self, path):
         if not utils.is_shared(path):
@@ -88,6 +111,49 @@ class BaseProtocol(object):
         if not func:
             return msg.error('unknown name!', name, 'data:', data)
         func(data)
+
+    def push(self):
+        reported = set()
+        while self.BUFS_CHANGED:
+            buf_id = self.BUFS_CHANGED.pop()
+            view = self.get_view(buf_id)
+            buf = view.buf
+            if view.is_loading():
+                msg.debug('View for buf %s is not ready. Ignoring change event' % buf['id'])
+                continue
+            if 'patch' not in self.perms:
+                continue
+            vb_id = view.native_id
+            if vb_id in reported:
+                continue
+            if 'buf' not in buf:
+                msg.debug('No data for buf %s %s yet. Skipping sending patch' % (buf['id'], buf['path']))
+                continue
+
+            reported.add(vb_id)
+            patch = utils.FlooPatch(view)
+            # Update the current copy of the buffer
+            buf['buf'] = patch.current
+            buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
+            self.agent.put(patch.to_json())
+
+        while self.SELECTION_CHANGED:
+            view, ping = self.SELECTION_CHANGED.pop()
+            # consume highlight events to avoid leak
+            if 'highlight' not in self.perms:
+                continue
+            vb_id = view.native_id
+            if vb_id in reported:
+                continue
+
+            reported.add(vb_id)
+            highlight_json = {
+                'id': view.buf['id'],
+                'name': 'highlight',
+                'ranges': view.get_selections(),
+                'ping': ping,
+            }
+            self.agent.put(highlight_json)
 
     def on_create_buf(self, data):
         self.on_get_buf(data)
@@ -144,72 +210,30 @@ class BaseProtocol(object):
             for view in window.views():
                 view.erase_regions(region_key)
 
-    def push(self):
-        reported = set()
-        while self.BUFS_CHANGED:
-            buf_id = self.BUFS_CHANGED.pop()
-            view = self.get_view(buf_id)
-            buf = view.buf
-            if view.is_loading():
-                msg.debug('View for buf %s is not ready. Ignoring change event' % buf['id'])
-                continue
-            if 'patch' not in self.perms:
-                continue
-            vb_id = view.native_id
-            if vb_id in reported:
-                continue
-            if 'buf' not in buf:
-                msg.debug('No data for buf %s %s yet. Skipping sending patch' % (buf['id'], buf['path']))
-                continue
-
-            reported.add(vb_id)
-            patch = utils.FlooPatch(view)
-            # Update the current copy of the buffer
-            buf['buf'] = patch.current
-            buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
-            self.agent.put(patch.to_json())
-
-        while self.SELECTION_CHANGED:
-            view, ping = self.SELECTION_CHANGED.pop()
-            # consume highlight events to avoid leak
-            if 'highlight' not in self.perms:
-                continue
-            vb_id = view.native_id
-            if vb_id in reported:
-                continue
-
-            reported.add(vb_id)
-            highlight_json = {
-                'id': view.buf['id'],
-                'name': 'highlight',
-                'ranges': view.get_selections(),
-                'ping': ping,
-            }
-            self.agent.put(highlight_json)
-
-    def on_patch(self, patch_data):
-        buf_id = patch_data['id']
+    @buf_populated
+    def on_patch(self, data):
+        buf_id = data['id']
         buf = self.FLOO_BUFS[buf_id]
         view = self.get_view(buf_id)
         DMP = dmp.diff_match_patch()
-        if len(patch_data['patch']) == 0:
+        if len(data['patch']) == 0:
             msg.error('wtf? no patches to apply. server is being stupid')
             return
-        msg.debug('patch is', patch_data['patch'])
-        dmp_patches = DMP.patch_fromText(patch_data['patch'])
+        msg.debug('patch is', data['patch'])
+        dmp_patches = DMP.patch_fromText(data['patch'])
         # TODO: run this in a separate thread
         if view:
             old_text = view.get_text()
         else:
             old_text = buf.get('buf', '')
         md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
-        if md5_before != patch_data['md5_before']:
+        if md5_before != data['md5_before']:
             msg.debug('maybe vim is lame and discarded a trailing newline')
             old_text += '\n'
         md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
-        if md5_before != patch_data['md5_before']:
+        if md5_before != data['md5_before']:
             msg.warn('starting md5s don\'t match for %s. ours: %s patch: %s this is dangerous!' %
-                    (buf['path'], md5_before, patch_data['md5_before']))
+                    (buf['path'], md5_before, data['md5_before']))
 
         t = DMP.patch_apply(dmp_patches, old_text)
 
@@ -223,21 +247,21 @@ class BaseProtocol(object):
             if len(t[0]) == 0:
                 msg.debug('OMG EMPTY!')
                 msg.debug('Starting data:', buf['buf'])
-                msg.debug('Patch:', patch_data['patch'])
+                msg.debug('Patch:', data['patch'])
             if '\x01' in t[0]:
                 msg.debug('FOUND CRAZY BYTE IN BUFFER')
                 msg.debug('Starting data:', buf['buf'])
-                msg.debug('Patch:', patch_data['patch'])
+                msg.debug('Patch:', data['patch'])
 
         if not clean_patch:
             msg.error('failed to patch %s cleanly. re-fetching buffer' % buf['path'])
             return self.agent.send_get_buf(buf_id)
 
         cur_hash = hashlib.md5(t[0].encode('utf-8')).hexdigest()
-        if cur_hash != patch_data['md5_after']:
+        if cur_hash != data['md5_after']:
             msg.warn(
                 '%s new hash %s != expected %s. re-fetching buffer...' %
-                (buf['path'], cur_hash, patch_data['md5_after'])
+                (buf['path'], cur_hash, data['md5_after'])
             )
             return self.agent.send_get_buf(buf_id)
 
@@ -285,25 +309,29 @@ class BaseProtocol(object):
         }
         self.agent.put(event)
 
-    def on_ping(self, view):
-        buf = self.get_buf(view)
-        if buf:
-            msg.debug('pinging selection in view %s, buf id %s' % (buf['path'], buf['id']))
-            self.selection_changed.append((view, buf, True))
-
+    @buf_populated
     def on_highlight(self, data):
         #     floobits.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False))
         #buf_id, region_key, username, ranges, ping=False):
         ping = data.get('ping', False)
-        if G.FOLLOW_MODE:
+        if self.follow_mode:
             ping = True
         buf = self.FLOO_BUFS[data['id']]
         view = self.get_view(data['id'])
         if not view:
-            if ping:
-                view = self.create_view(buf)
-            return
-            # TODO: scroll to highlight if we just created the view
+            if not ping:
+                return
+            view = self.create_view(buf)
+            if not view:
+                return
+        if ping:
+            try:
+                offset = data['ranges'][0][0]
+            except IndexError as e:
+                msg.debug('could not get offset from range %s' % e)
+            else:
+                msg.log('You have been summoned by %s' % (data.get('username', 'an unknown user')))
+                view.set_cursor_position(offset)
         view.highlight(data['ranges'], data['user_id'])
 
     def on_error(self, data):
@@ -314,18 +342,4 @@ class BaseProtocol(object):
         message = 'Floobits: Disconnected! Reason: %s' % str(data.get('reason'))
         msg.error(message)
         sublime.error_message(message)
-        self.stop()
-
-    def on_msg(self, data):
-        message = data.get('data')
-        self.chat(data['username'], data['time'], message)
-        window = G.ROOM_WINDOW
-
-        def cb(selected):
-            if selected == -1:
-                return
-            envelope = self.chat_deck[selected]
-            window.run_command('floobits_prompt_msg', {'msg': '%s: ' % envelope.username})
-
-        if G.ALERT_ON_MSG and message.find(self.username) >= 0:
-            window.show_quick_panel([str(x) for x in self.chat_deck], cb)
+        self.agent.stop()
