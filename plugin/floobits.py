@@ -10,12 +10,17 @@ dmp_monkey.monkey_patch()
 
 from floo import sublime
 from floo import AgentConnection
+from floo import msg
 from floo import shared as G
 from floo import utils
 from floo.vim_protocol import Protocol
 
 
 utils.load_settings()
+
+floo_log_level = vim.eval('floo_log_level')
+if floo_log_level:
+    msg.LOG_LEVEL = msg.LOG_LEVELS.get(floo_log_level.upper(), msg.LOG_LEVELS['MSG'])
 
 agent = None
 

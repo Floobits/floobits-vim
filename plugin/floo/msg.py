@@ -12,7 +12,7 @@ LOG_LEVELS = {
     'ERROR': 4,
 }
 
-LOG_LEVEL = LOG_LEVELS['DEBUG']
+LOG_LEVEL = LOG_LEVELS['MSG']
 
 
 def get_or_create_chat(cb=None):
