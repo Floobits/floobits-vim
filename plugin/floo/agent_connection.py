@@ -118,7 +118,7 @@ class AgentConnection(object):
             msg.log('Floobits: Reconnecting in %sms' % self.reconnect_delay)
             sublime.set_timeout(self.connect, int(self.reconnect_delay))
         elif self.retries == 0:
-            sublime.error_message('Floobits Error! Too many reconnect failures. Giving up.')
+            msg.error('Floobits Error! Too many reconnect failures. Giving up.')
         self.retries -= 1
 
     def connect(self):
@@ -133,7 +133,6 @@ class AgentConnection(object):
                     self.port = 3148  # plaintext port
         msg.log('Connecting to %s:%s' % (self.host, self.port))
         try:
-            print self.host, self.port
             self.sock.connect((self.host, self.port))
             if self.secure and ssl:
                 self.sock.do_handshake()
@@ -162,8 +161,8 @@ class AgentConnection(object):
             try:
                 data = json.loads(before)
             except Exception as e:
-                print('Unable to parse json:', e)
-                print('Data:', before)
+                msg.error('Unable to parse json:', e)
+                msg.error('Data:', before)
                 raise e
             self.protocol.handle(data)
             self.net_buf = after

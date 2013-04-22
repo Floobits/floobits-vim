@@ -13,6 +13,7 @@ from floo import AgentConnection
 from floo import msg
 from floo import shared as G
 from floo import utils
+from floo import api
 from floo.vim_protocol import Protocol
 
 
@@ -33,12 +34,12 @@ def global_tick():
     sublime.call_timeouts()
 
 
-def CursorHold(*args, **kwargs):
+def cursor_hold(*args, **kwargs):
     global_tick()
     vim.command('call feedkeys("f\\e", "n")')
 
 
-def CursorHoldI(*args, **kwargs):
+def cursor_holdi(*args, **kwargs):
     global_tick()
     linelen = int(vim.eval("col('$')-1"))
     if linelen > 0:
@@ -58,12 +59,12 @@ def agent_and_protocol(func):
 
 
 @agent_and_protocol
-def maybeSelectionChanged(ping=False):
+def maybe_selection_changed(ping=False):
     agent.protocol.maybe_selection_changed(vim.current.buffer, ping)
 
 
 @agent_and_protocol
-def maybeBufferChanged():
+def maybe_buffer_changed():
     agent.protocol.maybe_buffer_changed(vim.current.buffer)
 
 
@@ -73,11 +74,24 @@ def follow(follow_mode=None):
 
 
 @agent_and_protocol
-def maybeNewFile():
+def maybe_new_file():
     vim_buf = vim.current.buffer
     buf = agent.protocol.get_buf(vim_buf)
     if buf is False:
         agent.protocol.create_buf(vim_buf.name)
+
+
+@agent_and_protocol
+def create_room(room_name):
+    try:
+        api.create_room(room_name)
+        room_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, room_name)
+        msg.log('Created room %s' % room_url)
+    except Exception as e:
+        msg.error('Unable to create room: %s' % str(e))
+        return
+
+    join_room(room_url)
 
 
 @agent_and_protocol
@@ -86,9 +100,9 @@ def delete_buf():
     agent.protocol.delete_buf(name)
 
 
-def joinroom(room_url):
+def join_room(room_url):
     global agent
-    print("room url is %s" % room_url)
+    msg.debug("room url is %s" % room_url)
     secure = G.SECURE
     parsed_url = urlparse(room_url)
     port = parsed_url.port
@@ -98,14 +112,14 @@ def joinroom(room_url):
         secure = False
     result = re.match('^/r/([-\w]+)/([-\w]+)/?$', parsed_url.path)
     if not result:
-        return sublime.error_message('Unable to parse your URL!')
+        return msg.error('Unable to parse your URL!')
 
     (owner, room) = result.groups()
     G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
-    print("making dir %s" % G.PROJECT_PATH)
+    msg.debug("making dir %s" % G.PROJECT_PATH)
     utils.mkdir(G.PROJECT_PATH)
 
-    print("joining room %s" % room_url)
+    msg.debug("joining room %s" % room_url)
 
     if agent:
         agent.stop()
@@ -114,13 +128,13 @@ def joinroom(room_url):
         # owner and room name are slugfields so this should be safe
         agent.connect()
     except Exception as e:
-        print(e)
+        msg.debug(e)
         tb = traceback.format_exc()
-        print(tb)
+        msg.debug(tb)
 
 
-def partroom():
+def part_room():
     if agent and G.CONNECTED:
         agent.stop()
     else:
-        print('Unable to part room: You are not joined to a room.')
+        msg.debug('Unable to part room: You are not joined to a room.')

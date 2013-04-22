@@ -358,5 +358,5 @@ class BaseProtocol(object):
     def on_disconnect(self, data):
         message = 'Floobits: Disconnected! Reason: %s' % str(data.get('reason'))
         msg.error(message)
-        sublime.error_message(message)
+        msg.error(message)
         self.agent.stop()

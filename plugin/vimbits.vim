@@ -32,7 +32,7 @@ endif
 
 function! s:MaybeChanged()
     if &modified
-        python maybeBufferChanged()
+        python maybe_selection_changed()
     endif
 endfunction
 
@@ -46,14 +46,14 @@ function! s:SetAutoCmd()
             exec 'autocmd '. cmd .' * call s:MaybeChanged()'
         endfor
 
-        autocmd CursorHold * python CursorHold()
-        autocmd CursorHoldI * python CursorHoldI()
+        autocmd CursorHold * python cursor_hold()
+        autocmd CursorHoldI * python cursor_holdi()
 
-        autocmd CursorMoved * python maybeSelectionChanged()
-        autocmd CursorMovedI * python maybeSelectionChanged()
+        autocmd CursorMoved * python maybe_selection_changed()
+        autocmd CursorMovedI * python maybe_selection_changed()
 
         for cmd in s:new_buf_events
-            exec 'autocmd '. cmd .' * python maybeNewFile()'
+            exec 'autocmd '. cmd .' * python maybe_new_file()'
         endfor
 
         " milliseconds
@@ -62,11 +62,12 @@ function! s:SetAutoCmd()
 endfunction
 
 "TODO: populate with a default url of https://floobits.com/r/
-command! -nargs=1 FlooJoinRoom :python joinroom(<f-args>)
-command! FlooPartRoom :python partroom()
+command! -nargs=1 FlooJoinRoom :python join_room(<f-args>)
+command! FlooPartRoom :python part_room()
 command! FlooToggleFollowMode :python follow()
-command! FlooPing :python maybeSelectionChanged(True)
+command! FlooPing :python maybe_selection_changed(True)
 command! FlooDeleteBuf :python delete_buf()
+command! -nargs=1 FlooCreateRoom :python create_room(<f-args>)
 
 call s:SetAutoCmd()
 let g:floobits_plugin_loaded = 1
