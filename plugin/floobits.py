@@ -134,7 +134,6 @@ def join_room(room_url):
 
 
 def part_room():
-    if agent and G.CONNECTED:
-        agent.stop()
-    else:
-        msg.debug('Unable to part room: You are not joined to a room.')
+    if not agent or not agent.stop():
+        return msg.warn('Unable to part room: You are not joined to a room.')
+    msg.log('You left the room.')

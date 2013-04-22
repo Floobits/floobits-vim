@@ -87,8 +87,9 @@ class AgentConnection(object):
             self.sock.shutdown(2)
             self.sock.close()
         except Exception:
-            pass
+            return False
         msg.log('Disconnected.')
+        return True
 
     def is_ready(self):
         return self.authed
@@ -106,7 +107,6 @@ class AgentConnection(object):
             self.sock.close()
         except Exception:
             pass
-        G.CONNECTED = False
         self.room_info = {}
         self.net_buf = ''
         self.sock = None
