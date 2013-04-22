@@ -7,7 +7,7 @@ INITIAL_RECONNECT_DELAY = 500  # milliseconds
 
 COLAB_DIR = ''
 PROJECT_PATH = ''
-DEFAULT_HOST = ''
+DEFAULT_HOST = 'floobits.com'
 DEFAULT_PORT = 3448
 SECURE = True
 

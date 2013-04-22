@@ -54,7 +54,8 @@ def cursor_holdi(*args, **kwargs):
 def agent_and_protocol(func):
     def wrapped(*args, **kwargs):
         if agent and agent.protocol:
-            func(*args, **kwargs)
+            return func(*args, **kwargs)
+        msg.debug('ignoring request becuase there is no agent: %s' % func.__name__)
     return wrapped
 
 
@@ -81,7 +82,6 @@ def maybe_new_file():
         agent.protocol.create_buf(vim_buf.name)
 
 
-@agent_and_protocol
 def create_room(room_name):
     try:
         api.create_room(room_name)
