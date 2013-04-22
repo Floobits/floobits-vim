@@ -1,0 +1,37 @@
+*floobits.txt* Cross-editor real-time collaboration
+
+Author: Matt Kaniaris & Geoff Greer
+License: Apache 2.0
+
+ABOUT                                    *floobits*
+
+https://floobits.com/
+
+COMMANDS
+
+                                                *FlooJoinRoom*
+:FlooJoinRoom [url]         Joins a Floobits room. URLs look like
+                            https://floobits.com/r/room_owner/room_name/
+                            Room urls are the same as what you see in the web
+                            editor.
+
+                                                *FlooPartRoom*
+:FlooPartRoom               Leaves a Floobits room.
+
+                                                *FlooToggleFollowMode*
+:FlooToggleFollowMode       Follow mode follows the most recent change in a
+                            room.
+
+                                                *FlooPing*
+:FlooPing                   Force everyone else in the room to jump to your
+                            cursor.
+
+TROUBLESHOOTING
+
+To increase the logging level, add "let floo_log_level = 'debug'" to your
+vimrc.
+
+Other plugins can interfere with Floobits. For example, YouCompleteMe changes
+updatetime to 2000 milliseconds. This causes increased latency and decreased
+reliability when collaborating. If you experience problems, try disabling
+other plugins before submitting a bug report.
