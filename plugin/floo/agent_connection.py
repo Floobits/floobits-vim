@@ -75,7 +75,6 @@ class AgentConnection(object):
     def on_auth(self):
         self.authed = True
         self.retries = G.MAX_RETRIES
-        G.CONNECTED = True
         msg.log('Successfully joined room %s/%s' % (self.owner, self.room))
         if self._on_auth:
             self._on_auth(self)

@@ -19,6 +19,8 @@ A typical floorc looks like this:
 
 * To join a room, use `:FlooJoinRoom https://floobits.com/r/room_owner/room_name/`. Room urls are the same as what you see in the web editor.
 * To part a room, use `:FlooPartRoom`.
+* To toggle follow mode, use `:FlooToggleFollowMode`.
+* To make everyone else go to your cursor, use `:FlooPing`.
 
 ## Troubleshooting
 

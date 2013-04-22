@@ -38,16 +38,24 @@ endfunction
 
 function! s:SetAutoCmd()
     let s:vim_events = ['InsertEnter', 'InsertChange', 'InsertLeave', 'QuickFixCmdPost', 'FileChangedShellPost', 'CursorMoved', 'CursorMovedI']
+    let s:new_buf_events = ['BufWritePost', 'BufReadPost', 'BufEnter']
     augroup floobits
         " kill autocommands on reload
         autocmd!
         for cmd in s:vim_events
             exec 'autocmd '. cmd .' * call s:MaybeChanged()'
         endfor
+
         autocmd CursorHold * python CursorHold()
         autocmd CursorHoldI * python CursorHoldI()
+
         autocmd CursorMoved * python maybeSelectionChanged()
         autocmd CursorMovedI * python maybeSelectionChanged()
+
+        for cmd in s:new_buf_events
+            exec 'autocmd '. cmd .' * python maybeNewFile()'
+        endfor
+
         " milliseconds
         exe 'setlocal updatetime=100'
     augroup END
@@ -58,6 +66,7 @@ command! -nargs=1 FlooJoinRoom :python joinroom(<f-args>)
 command! FlooPartRoom :python partroom()
 command! FlooToggleFollowMode :python follow()
 command! FlooPing :python maybeSelectionChanged(True)
+command! FlooDeleteBuf :python delete_buf()
 
 call s:SetAutoCmd()
 let g:floobits_plugin_loaded = 1

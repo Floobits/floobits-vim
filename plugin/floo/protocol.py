@@ -51,9 +51,6 @@ class BaseProtocol(object):
     def save_buf(self, data):
         raise NotImplemented()
 
-    def delete_buf(self, data):
-        raise NotImplemented()
-
     def chat(self, data):
         raise NotImplemented()
 
@@ -66,6 +63,14 @@ class BaseProtocol(object):
     def on_msg(self, data):
         raise NotImplemented()
 
+    def is_shared(self, p):
+        if not self.agent.is_ready():
+            return False
+        p = utils.unfuck_path(p)
+        if utils.to_rel_path(p).find("../") == 0:
+            return False
+        return True
+
     def follow(self, follow_mode=None):
         if follow_mode is None:
             follow_mode = not self.follow_mode
@@ -73,7 +78,7 @@ class BaseProtocol(object):
         msg.log('follow mode is %s' % {True: 'enabled', False: 'disabled'}[self.follow_mode])
 
     def create_buf(self, path):
-        if not utils.is_shared(path):
+        if not self.is_shared(path):
             msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
         if os.path.isdir(path):
@@ -273,15 +278,18 @@ class BaseProtocol(object):
             return
         view.apply_patches(buf, t)
 
-    def on_delete_buf(self, data):
-        #used to take path
-        path = utils.get_full_path(data['path'])
-        utils.rm(path)
-        self.delete_buf(data['id'])
+    def delete_buf(self, path):
+        """deletes a path"""
 
-        if not utils.is_shared(path):
+        if not path:
+            return
+
+        path = utils.get_full_path(path)
+
+        if not self.is_shared(path):
             msg.error('Skipping deleting %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
+
         if os.path.isdir(path):
             for dirpath, dirnames, filenames in os.walk(path):
                 # Don't care about hidden stuff
@@ -308,6 +316,14 @@ class BaseProtocol(object):
             'id': buf_to_delete['id'],
         }
         self.agent.put(event)
+
+    @buf_populated
+    def on_delete_buf(self, data):
+        # TODO: somehow tell the user about this. maybe delete on disk too?
+        del self.FLOO_BUFS[data['id']]
+        path = utils.get_full_path(data['path'])
+        utils.rm(path)
+        msg.warn('deleted %s because %s told me too.' % (path, data.get('username', 'the internet')))
 
     @buf_populated
     def on_highlight(self, data):

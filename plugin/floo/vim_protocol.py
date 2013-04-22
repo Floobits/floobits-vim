@@ -107,7 +107,7 @@ class Protocol(protocol.BaseProtocol):
 
     def maybe_selection_changed(self, vim_buf, is_ping):
         buf = self.get_buf(vim_buf)
-        if buf is None:
+        if not buf:
             msg.debug('no buffer found for view %s' % vim_buf.number)
             return
         view = self.get_view(buf['id'])
@@ -117,11 +117,7 @@ class Protocol(protocol.BaseProtocol):
     def maybe_buffer_changed(self, vim_buf):
         text = vim_buf[:]
         buf = self.get_buf(vim_buf)
-        if buf is None:
-            msg.debug('no buffer found for view %s' % vim_buf.number)
-            msg.debug('buffers:')
-            for buf_id, buf in self.FLOO_BUFS.iteritems():
-                msg.debug('id %s buf %s' % (buf_id, buf['path']))
+        if not buf:
             return
         if buf['buf'] != text:
             self.BUFS_CHANGED.append(buf['id'])
@@ -155,11 +151,12 @@ class Protocol(protocol.BaseProtocol):
         return View(vb, buf)
 
     def get_buf(self, vim_buf):
+        """ """
         if vim_buf.name is None:
             msg.debug('get:buf buffer has no filename')
             return None
 
-        if not utils.is_shared(vim_buf.name):
+        if not self.is_shared(vim_buf.name):
             msg.debug('get_buf: %s is not shared' % vim_buf.name)
             return None
 
@@ -169,7 +166,7 @@ class Protocol(protocol.BaseProtocol):
                 return buf
 
         msg.debug('get_buf: no buf has path %s' % rel_path)
-        return None
+        return False
 
     def save_buf(self, buf):
         path = utils.get_full_path(buf['path'])
@@ -177,10 +174,6 @@ class Protocol(protocol.BaseProtocol):
         with open(path, 'wb') as fd:
             fd.write(buf['buf'].encode('utf-8'))
         return path
-
-    def delete_buf(self, buf_id):
-        # TODO: somehow tell the user about this. maybe delete on disk too?
-        del self.FLOO_BUFS[buf_id]
 
     def chat(self, username, timestamp, message, self_msg=False):
         pass

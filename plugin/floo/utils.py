@@ -127,15 +127,6 @@ def to_scheme(secure):
     return 'http'
 
 
-def is_shared(p):
-    if not G.CONNECTED:
-        return False
-    p = unfuck_path(p)
-    if to_rel_path(p).find("../") == 0:
-        return False
-    return True
-
-
 def get_persistent_data():
     try:
         per = open(per_path, 'rb')

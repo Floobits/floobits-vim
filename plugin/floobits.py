@@ -72,6 +72,20 @@ def follow(follow_mode=None):
     agent.protocol.follow(follow_mode)
 
 
+@agent_and_protocol
+def maybeNewFile():
+    vim_buf = vim.current.buffer
+    buf = agent.protocol.get_buf(vim_buf)
+    if buf is False:
+        agent.protocol.create_buf(vim_buf.name)
+
+
+@agent_and_protocol
+def delete_buf():
+    name = vim.current.buffer.name
+    agent.protocol.delete_buf(name)
+
+
 def joinroom(room_url):
     global agent
     print("room url is %s" % room_url)
