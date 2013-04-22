@@ -38,6 +38,7 @@ class BaseProtocol(object):
         self.perms = []
         self.follow_mode = False
         self.chat_deck = collections.deque(maxlen=10)
+        self.ignored_names = ['node_modules']
 
     def get_view(self, data):
         raise NotImplemented()
@@ -89,6 +90,9 @@ class BaseProtocol(object):
                     f_path = os.path.join(dirpath, f)
                     if f[0] == '.':
                         msg.log('Not creating buf for hidden file %s' % f_path)
+                    if f in self.ignored_names:
+                        # TODO: prompt instead of being lame
+                        msg.log('Not creating buf for ignored file %s' % f_path)
                     else:
                         sublime.set_timeout(self.create_buf, 0, f_path)
             return
