@@ -42,7 +42,7 @@ class View(object):
 
     def get_text(self):
         text = '\n'.join(self.vim_buf)
-        return text
+        return text.decode('utf-8')
 
     def set_text(self, text):
         # msg.debug('setting text to %s' % text.encode('utf-8').split('\n'))
