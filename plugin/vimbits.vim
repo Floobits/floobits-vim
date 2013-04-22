@@ -11,6 +11,10 @@ if exists("g:floobits_plugin_loaded")
     finish
 endif
 
+if !exists("floo_log_level")
+    let floo_log_level = "msg"
+endif
+
 " p flag expands the absolute path. Sorry for the global
 let g:floobits_plugin_dir = expand("<sfile>:p:h")
 

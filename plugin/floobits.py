@@ -21,8 +21,7 @@ utils.load_settings()
 
 # enable debug with let floo_log_level = 'debug'
 floo_log_level = vim.eval('floo_log_level')
-if floo_log_level:
-    msg.LOG_LEVEL = msg.LOG_LEVELS.get(floo_log_level.upper(), msg.LOG_LEVELS['MSG'])
+msg.LOG_LEVEL = msg.LOG_LEVELS.get(floo_log_level.upper(), msg.LOG_LEVELS['MSG'])
 
 agent = None
 
