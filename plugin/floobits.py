@@ -215,7 +215,7 @@ def join_room(room_url, on_auth=None):
         # owner and room name are slugfields so this should be safe
         agent.connect()
     except Exception as e:
-        msg.error(e)
+        msg.error(str(e))
         tb = traceback.format_exc()
         msg.debug(tb)
 
