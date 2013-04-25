@@ -74,6 +74,7 @@ class BaseProtocol(object):
 
     def is_shared(self, p):
         if not self.agent.is_ready():
+            msg.debug('agent is not ready. %s is not shared' % p)
             return False
         p = utils.unfuck_path(p)
         # TODO: tokenize on path seps and then look for ..
@@ -88,6 +89,9 @@ class BaseProtocol(object):
         msg.log('follow mode is %s' % {True: 'enabled', False: 'disabled'}[self.follow_mode])
 
     def create_buf(self, path):
+        if 'create_buf' not in self.perms:
+            msg.error("Skipping %s. You don't have permission to create buffers in this room." % path)
+            return
         if not self.is_shared(path):
             msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
