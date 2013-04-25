@@ -1,10 +1,8 @@
 # coding: utf-8
-import re
 import os
 import json
 import traceback
 import urllib2
-from urlparse import urlparse
 import webbrowser
 
 import vim
@@ -27,6 +25,13 @@ floo_log_level = vim.eval('floo_log_level')
 msg.LOG_LEVEL = msg.LOG_LEVELS.get(floo_log_level.upper(), msg.LOG_LEVELS['MSG'])
 
 agent = None
+
+
+def vim_input(prompt, default):
+    vim.command('call inputsave()')
+    vim.command("let user_input = input('%s', '%s')" % (prompt, default))
+    vim.command('call inputrestore()')
+    return vim.eval('user_input')
 
 
 def global_tick():
@@ -133,13 +138,6 @@ def share_dir(path):
     create_room(room_name, maybe_shared_dir)
 
 
-def vim_input(prompt, default):
-    vim.command('call inputsave()')
-    vim.command("let user_input = input('%s', '%s')" % (prompt, default))
-    vim.command('call inputrestore()')
-    return vim.eval('user_input')
-
-
 def create_room(room_name, path=None):
     try:
         api.create_room(room_name)
@@ -180,32 +178,44 @@ def delete_buf():
 def join_room(room_url, on_auth=None):
     global agent
     msg.debug("room url is %s" % room_url)
-    secure = G.SECURE
-    parsed_url = urlparse(room_url)
-    port = parsed_url.port
-    if parsed_url.scheme == 'http':
-        if not port:
-            port = 3148
-        secure = False
-    result = re.match('^/r/([-\w]+)/([-\w]+)/?$', parsed_url.path)
-    if not result:
-        return msg.error('Unable to parse your URL!')
 
-    (owner, room) = result.groups()
-    G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
-    msg.debug("making dir %s" % G.PROJECT_PATH)
-    utils.mkdir(G.PROJECT_PATH)
+    try:
+        result = utils.parse_url(room_url)
+    except Exception as e:
+        return msg.error(str(e))
+
+    G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['room']))
+    utils.mkdir(os.path.dirname(G.PROJECT_PATH))
+
+    # TODO: really bad prompt here
+    d = ''
+    prompt = "Give me a directory to destructively dump data into (or just press enter): "
+    if not os.path.isdir(G.PROJECT_PATH):
+        while True:
+            d = vim_input(prompt, d)
+            if d == '':
+                utils.mkdir(G.PROJECT_PATH)
+                break
+            d = os.path.realpath(os.path.expanduser(d))
+            if not os.path.isdir(d):
+                prompt = '%s is not a directory. Enter an existing path (or press enter): ' % d
+                continue
+            try:
+                os.symlink(d, G.PROJECT_PATH)
+                break
+            except Exception as e:
+                return msg.error("Couldn't create symlink from %s to %s: %s" % (d, G.PROJECT_PATH, str(e)))
 
     msg.debug("joining room %s" % room_url)
 
     if agent:
         agent.stop()
     try:
-        agent = AgentConnection(owner, room, host=parsed_url.hostname, port=port, secure=secure, on_auth=on_auth, Protocol=Protocol)
+        agent = AgentConnection(on_auth=on_auth, Protocol=Protocol, **result)
         # owner and room name are slugfields so this should be safe
         agent.connect()
     except Exception as e:
-        msg.debug(e)
+        msg.error(e)
         tb = traceback.format_exc()
         msg.debug(tb)
 
