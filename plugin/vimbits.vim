@@ -72,6 +72,7 @@ command! FlooToggleFollowMode :python follow()
 command! FlooPing :python maybe_selection_changed(True)
 command! FlooDeleteBuf :python delete_buf()
 command! -nargs=1 FlooCreateRoom :python create_room(<f-args>)
+command! -nargs=1 FlooShareDir :python share_dir(<f-args>)
 
 call s:SetAutoCmd()
 let g:floobits_plugin_loaded = 1
