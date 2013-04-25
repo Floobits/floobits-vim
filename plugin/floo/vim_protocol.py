@@ -151,7 +151,7 @@ class Protocol(protocol.BaseProtocol):
         return View(vb, buf)
 
     def get_buf(self, vim_buf):
-        """ """
+        """None- no sharing, False- should be but isn't """
         if vim_buf.name is None:
             msg.debug('get:buf buffer has no filename')
             return None
