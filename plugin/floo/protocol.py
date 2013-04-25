@@ -107,14 +107,14 @@ class BaseProtocol(object):
             return
 
         if self.get_buf_by_path(path):
-            msg.log('Buf %s already exists in room. Skipping adding.' % path)
+            msg.debug('Buf %s already exists in room. Skipping adding.' % path)
             return
 
         try:
             buf_fd = open(path, 'rb')
             buf = buf_fd.read().decode('utf-8')
             rel_path = utils.to_rel_path(path)
-            msg.log('creating buffer ', rel_path)
+            msg.debug('creating buffer ', rel_path)
             event = {
                 'name': 'create_buf',
                 'buf': buf,
