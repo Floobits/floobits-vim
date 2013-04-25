@@ -42,7 +42,7 @@ endfunction
 
 function! s:SetAutoCmd()
     let s:vim_events = ['InsertEnter', 'InsertChange', 'InsertLeave', 'QuickFixCmdPost', 'FileChangedShellPost', 'CursorMoved', 'CursorMovedI']
-    let s:new_buf_events = ['BufWritePost', 'BufReadPost', 'BufEnter']
+    let s:new_buf_events = ['BufWritePost', 'BufReadPost', 'BufWinEnter']
     augroup floobits
         " kill autocommands on reload
         autocmd!
