@@ -1,6 +1,7 @@
 """Understands the floobits protocol"""
 
 import os
+import json
 import hashlib
 import collections
 import Queue
@@ -210,14 +211,37 @@ class BaseProtocol(object):
 
         utils.mkdir(G.PROJECT_PATH)
 
+        floo_json = {
+            'url': utils.to_room_url({
+                'host': self.agent.host,
+                'owner': self.agent.owner,
+                'port': self.agent.port,
+                'room': self.agent.room,
+                'secure': self.agent.secure,
+            })
+        }
+        with open(os.path.join(G.PROJECT_PATH, '.floo'), 'w') as floo_fd:
+            floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True))
+
         for buf_id, buf in data['bufs'].iteritems():
             buf_id = int(buf_id)  # json keys must be strings
             buf_path = utils.get_full_path(buf['path'])
             new_dir = os.path.dirname(buf_path)
             utils.mkdir(new_dir)
-            open(buf_path, "a")
             self.FLOO_BUFS[buf_id] = buf
-            self.agent.send_get_buf(buf_id)
+            try:
+                buf_fd = open(buf_path, 'r')
+                buf_buf = buf_fd.read().decode('utf-8')
+                md5 = hashlib.md5(buf_buf.encode('utf-8')).hexdigest()
+                if md5 == buf['md5']:
+                    msg.debug('md5 sums match. not getting buffer')
+                    buf['buf'] = buf_buf
+                else:
+                    raise Exception('different md5')
+            except Exception:
+                open(buf_path, "a")
+                self.agent.send_get_buf(buf_id)
+
         msg.debug(G.PROJECT_PATH)
 
         self.agent.on_auth()
