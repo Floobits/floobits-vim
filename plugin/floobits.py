@@ -85,24 +85,29 @@ def follow(follow_mode=None):
 def maybe_new_file():
     vim_buf = vim.current.buffer
     buf = agent.protocol.get_buf(vim_buf)
-    if buf is False:
+    if buf is None:
+        return
+    if buf:
+        if 'patch' not in agent.protocol.perms:
+            vim.command(":set nomodifiable")
+    else:
         agent.protocol.create_buf(vim_buf.name)
 
 
-def share_dir(path):
-    path = os.path.expanduser(path)
-    path = utils.unfuck_path(path)
-    room_name = os.path.basename(path)
-    maybe_shared_dir = os.path.join(G.COLAB_DIR, G.USERNAME, room_name)
+def share_dir(dir_to_share):
+    dir_to_share = os.path.expanduser(dir_to_share)
+    dir_to_share = utils.unfuck_path(dir_to_share)
+    room_name = os.path.basename(dir_to_share)
+    floo_room_dir = os.path.join(G.COLAB_DIR, G.USERNAME, room_name)
 
-    if os.path.isfile(path):
+    if os.path.isfile(dir_to_share):
         return msg.error('give me a directory please')
 
-    if not os.path.isdir(path):
-        return msg.error('The directory %s doesn\'t appear to exist' % path)
+    if not os.path.isdir(dir_to_share):
+        return msg.error('The directory %s doesn\'t appear to exist' % dir_to_share)
 
-    floo_file = os.path.join(path, '.floo')
-
+    floo_file = os.path.join(dir_to_share, '.floo')
+    # look for the .floo file for hints about previous behavior
     info = {}
     try:
         floo_info = open(floo_file, 'rb').read().decode('utf-8')
@@ -120,22 +125,32 @@ def share_dir(path):
             msg.error(str(e))
         else:
             room_name = result['room']
-            maybe_shared_dir = os.path.join(G.COLAB_DIR, result['owner'], result['room'])
-            if os.path.realpath(maybe_shared_dir) == os.path.realpath(path):
-                return join_room(room_url)
+            floo_room_dir = os.path.join(G.COLAB_DIR, result['owner'], result['room'])
+            # they have previously joined the room
+            if os.path.realpath(floo_room_dir) == os.path.realpath(dir_to_share):
+                # it could have been deleted, try to recreate it if possible
+                # TODO: org or something here?
+                if result['owner'] == G.USERNAME:
+                    try:
+                        api.create_room(room_name)
+                        msg.debug('Created room %s' % room_url)
+                    except Exception as e:
+                        msg.debug('Tried to create room' + str(e))
+                # they wanted to share teh dir, so always share it
+                return join_room(room_url, lambda x: agent.protocol.create_buf(dir_to_share))
 
-    # go make sym link
+    # link to what they want to share
     try:
-        utils.mkdir(os.path.dirname(maybe_shared_dir))
-        os.symlink(path, maybe_shared_dir)
+        utils.mkdir(os.path.dirname(floo_room_dir))
+        os.symlink(dir_to_share, floo_room_dir)
     except OSError as e:
         if e.errno != 17:
             raise
     except Exception as e:
-        return msg.error("Couldn't create symlink from %s to %s: %s" % (path, maybe_shared_dir, str(e)))
+        return msg.error("Couldn't create symlink from %s to %s: %s" % (dir_to_share, floo_room_dir, str(e)))
 
     # make & join room
-    create_room(room_name, maybe_shared_dir)
+    create_room(room_name, dir_to_share)
 
 
 def create_room(room_name, path=None):
@@ -143,7 +158,7 @@ def create_room(room_name, path=None):
         api.create_room(room_name)
         room_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, room_name)
         msg.debug('Created room %s' % room_url)
-    except urllib2.HTTPError, e:
+    except urllib2.HTTPError as e:
         if e.code != 409:
             raise
         if path:
@@ -158,7 +173,7 @@ def create_room(room_name, path=None):
                 break
 
         return create_room(room_name, path)
-    except urllib2.URLError, e:
+    except Exception as e:
         sublime.error_message('Unable to create room: %s' % str(e))
         return
 
@@ -218,6 +233,9 @@ def join_room(room_url, on_auth=None):
         msg.error(str(e))
         tb = traceback.format_exc()
         msg.debug(tb)
+        if agent:
+            agent.stop()
+            agent = None
 
 
 def part_room():
