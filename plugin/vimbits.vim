@@ -36,7 +36,7 @@ endif
 
 function! s:MaybeChanged()
     if &modified
-        python maybe_selection_changed()
+        python maybe_buffer_changed()
     endif
 endfunction
 
