@@ -49,6 +49,13 @@ class BaseProtocol(object):
     def get_buf(self, data):
         raise NotImplemented()
 
+    def get_buf_by_path(self, path):
+        rel_path = utils.to_rel_path(path)
+        for buf_id, buf in self.FLOO_BUFS.iteritems():
+            if rel_path == buf['path']:
+                return buf
+        return None
+
     def save_buf(self, data):
         raise NotImplemented()
 
@@ -68,6 +75,7 @@ class BaseProtocol(object):
         if not self.agent.is_ready():
             return False
         p = utils.unfuck_path(p)
+        # TODO: tokenize on path seps and then look for ..
         if utils.to_rel_path(p).find("../") == 0:
             return False
         return True
@@ -96,6 +104,11 @@ class BaseProtocol(object):
                     else:
                         sublime.set_timeout(self.create_buf, 0, f_path)
             return
+
+        if self.get_buf_by_path(path):
+            msg.log('Buf %s already exists in room. Skipping adding.' % path)
+            return
+
         try:
             buf_fd = open(path, 'rb')
             buf = buf_fd.read().decode('utf-8')
