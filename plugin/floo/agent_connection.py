@@ -128,10 +128,10 @@ class AgentConnection(object):
             if ssl:  # ST2 on linux doesn't have the ssl module. Not sure about windows
                 self.sock = ssl.wrap_socket(self.sock, ca_certs=CERT, cert_reqs=ssl.CERT_REQUIRED)
             else:
-                msg.log('No SSL module found. Connection will not be encrypted.')
+                msg.debug('No SSL module found. Connection will not be encrypted.')
                 if self.port == G.DEFAULT_PORT:
                     self.port = 3148  # plaintext port
-        msg.log('Connecting to %s:%s' % (self.host, self.port))
+        msg.debug('Connecting to %s:%s' % (self.host, self.port))
         try:
             self.sock.connect((self.host, self.port))
             if self.secure and ssl:
@@ -141,7 +141,7 @@ class AgentConnection(object):
             self.reconnect()
             return
         self.sock.setblocking(0)
-        msg.log('Connected!')
+        msg.debug('Connected!')
         self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
         self.send_auth()
 
