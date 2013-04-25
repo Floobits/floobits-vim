@@ -1,6 +1,8 @@
 import os
-import json
 import hashlib
+import json
+import re
+from urlparse import urlparse
 
 from lib import diff_match_patch as dmp
 
@@ -53,6 +55,46 @@ class edit:
 
     def __exit__(self, type, value, traceback):
         self.view.end_edit(self.edit)
+
+
+def parse_url(room_url):
+    secure = G.SECURE
+    owner = None
+    room_name = None
+    parsed_url = urlparse(room_url)
+    port = parsed_url.port
+    if parsed_url.scheme == 'http':
+        if not port:
+            port = 3148
+        secure = False
+    result = re.match('^/r/([-\w]+)/([-\w]+)/?$', parsed_url.path)
+    if result:
+        (owner, room_name) = result.groups()
+    else:
+        raise ValueError('%s is not a valid Floobits URL' % room_url)
+    return {
+        'host': parsed_url.hostname,
+        'owner': owner,
+        'port': port,
+        'room': room_name,
+        'secure': secure,
+    }
+
+
+def to_room_url(r):
+    port = int(r['port'])
+    if r['secure']:
+        proto = 'https'
+        if port == 3448:
+            port = ''
+    else:
+        proto = 'http'
+        if port == 3148:
+            port = ''
+    if port != '':
+        port = ':%s' % port
+    room_url = '%s://%s%s/r/%s/%s/' % (proto, r['host'], port, r['owner'], r['room'])
+    return room_url
 
 
 def load_floorc():
