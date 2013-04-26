@@ -55,7 +55,7 @@ function! s:SetAutoCmd()
 
         autocmd CursorMoved * python maybe_selection_changed()
         autocmd CursorMovedI * python maybe_selection_changed()
-
+        autocmd BufWinEnter * python maybe_read_only()
         for cmd in s:new_buf_events
             exec 'autocmd '. cmd .' * python maybe_new_file()'
         endfor
