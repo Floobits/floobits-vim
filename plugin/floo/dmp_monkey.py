@@ -106,10 +106,12 @@ def patch_apply(self, patches, text):
         too_close = (position[0] + len(position[2])) - (len(text) - 2 * np_len)
         if too_close > 0:
             position[2] = position[2][:-too_close]
-
+            # NOTE: better some of the time!
+            # position[1] -= too_close
         positions.append(position)
         msg.debug("pos", position)
     # Strip the padding off.
+    # TODO: strip out context
     text = text[len(nullPadding):-len(nullPadding)]
     msg.debug("returning patches. null padding is", len(nullPadding))
     return (text, results, positions)

@@ -61,8 +61,8 @@ class View(object):
             offset = patch[0]
             length = patch[1]
             patch_text = patch[2]
-            new_offset = len(patch_text) - length
             if cursor_offset > offset:
+                new_offset = len(patch_text) - length
                 cursor_offset += new_offset
 
         self.set_cursor_position(cursor_offset)
