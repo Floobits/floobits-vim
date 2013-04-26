@@ -40,6 +40,15 @@ function! s:MaybeChanged()
     endif
 endfunction
 
+function! s:SetModifiable()
+    python is_modifiable()
+
+    if floo_is_modifiable
+        " this doesn't work for the first time from dired ?!?
+        setlocal nomodifiable
+    endif
+endfunction
+
 function! s:SetAutoCmd()
     let s:vim_events = ['InsertEnter', 'InsertChange', 'InsertLeave', 'QuickFixCmdPost', 'FileChangedShellPost', 'CursorMoved', 'CursorMovedI']
     let s:new_buf_events = ['BufWritePost', 'BufReadPost', 'BufWinEnter']
@@ -55,10 +64,11 @@ function! s:SetAutoCmd()
 
         autocmd CursorMoved * python maybe_selection_changed()
         autocmd CursorMovedI * python maybe_selection_changed()
-
         for cmd in s:new_buf_events
             exec 'autocmd '. cmd .' * python maybe_new_file()'
         endfor
+
+        autocmd BufEnter * call s:SetModifiable()
 
         " milliseconds
         exe 'setlocal updatetime=100'

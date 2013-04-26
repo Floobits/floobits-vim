@@ -81,16 +81,24 @@ def follow(follow_mode=None):
     agent.protocol.follow(follow_mode)
 
 
+def is_modifiable():
+    vim.command("let floo_is_modifiable = 0")
+    if not agent or not agent.protocol:
+        return
+    vim_buf = vim.current.buffer
+    if not vim_buf.name:
+        return
+    if not agent.protocol.is_shared(vim_buf.name):
+        return
+    if 'patch' not in agent.protocol.perms:
+        vim.command("let floo_is_modifiable = 1")
+
+
 @agent_and_protocol
 def maybe_new_file():
     vim_buf = vim.current.buffer
     buf = agent.protocol.get_buf(vim_buf)
-    if buf is None:
-        return
-    if buf:
-        if 'patch' not in agent.protocol.perms:
-            vim.command(":set nomodifiable")
-    else:
+    if buf is False:
         agent.protocol.create_buf(vim_buf.name)
 
 
