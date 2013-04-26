@@ -98,6 +98,23 @@ class View(object):
 
     def rename(self, name):
         msg.debug('renaming %s to %s' % (self.vim_buf.name, name))
+        current = vim.current.buffer
+        text = self.get_text()
+        old_name = self.vim_buf.name
+        old_number = self.vim_buf.number
+        with open(name, 'wb') as fd:
+            fd.write(text.encode('utf-8'))
+        vim.command('edit! %s' % name)
+        self.vim_buf = vim.current.buffer
+        vim.command('edit! %s' % current.name)
+        vim.command('bdelete! %s' % old_number)
+        try:
+            utils.rm(old_name)
+        except Exception as e:
+            msg.debug("couldn't delete %s... maybe thats OK?" % str(e))
+
+    def save(self):
+        vim.command(':s!')
 
 
 class Protocol(protocol.BaseProtocol):

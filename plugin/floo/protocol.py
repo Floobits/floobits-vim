@@ -200,10 +200,12 @@ class BaseProtocol(object):
         new_dir = os.path.dirname(new)
         if new_dir:
             utils.mkdir(new_dir)
-        os.rename(old, new)
         view = self.get_view(data['id'])
+        self.FLOO_BUFS[data['id']]['path'] = data['path']
         if view:
             view.rename(new)
+        else:
+            os.rename(old, new)
 
     def on_room_info(self, data):
         # Success! Reset counter
