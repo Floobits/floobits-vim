@@ -45,8 +45,11 @@ class View(object):
         return text.decode('utf-8')
 
     def set_text(self, text):
-        # msg.debug('setting text to %s' % text.encode('utf-8').split('\n'))
-        self.vim_buf[:] = text.encode('utf-8').split('\n')
+        try:
+            self.vim_buf[:] = text.encode('utf-8').split('\n')
+        except Exception as e:
+            msg.error("couldn't apply patches because: %s!\nThe unencoded text was: %s" % (str(e), text))
+            raise
 
     def apply_patches(self, buf, patches):
         cursor_offset = self.get_cursor_offset()
