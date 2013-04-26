@@ -209,13 +209,10 @@ def join_room(room_url, on_auth=None):
 
     G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['room']))
     utils.mkdir(os.path.dirname(G.PROJECT_PATH))
-    # try:
-    #     vim.command('lcd %s' % G.PROJECT_PATH)
-    # except Exception as e:
-    #     msg.log(str(e))
+    vim.command('cd %s' % G.PROJECT_PATH)
 
-    # TODO: really bad prompt here
     d = ''
+    # TODO: really bad prompt here
     prompt = "Give me a directory to destructively dump data into (or just press enter): "
     if not os.path.isdir(G.PROJECT_PATH):
         while True:
