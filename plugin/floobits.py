@@ -158,10 +158,10 @@ def share_dir(dir_to_share):
         return msg.error("Couldn't create symlink from %s to %s: %s" % (dir_to_share, floo_room_dir, str(e)))
 
     # make & join room
-    create_room(room_name, dir_to_share)
+    create_room(room_name, floo_room_dir, dir_to_share)
 
 
-def create_room(room_name, path=None):
+def create_room(room_name, ln_path=None, share_path=None):
     try:
         api.create_room(room_name)
         room_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, room_name)
@@ -169,18 +169,18 @@ def create_room(room_name, path=None):
     except urllib2.HTTPError as e:
         if e.code != 409:
             raise
-        if path:
+        if ln_path:
             while True:
                 room_name = vim_input('Room %s already exists. Choose another name: ' % room_name, room_name + "1")
-                new_path = os.path.join(os.path.dirname(path), room_name)
+                new_path = os.path.join(os.path.dirname(ln_path), room_name)
                 try:
-                    os.rename(path, new_path)
+                    os.rename(ln_path, new_path)
                 except OSError:
                     continue
-                path = new_path
+                ln_path = new_path
                 break
 
-        return create_room(room_name, path)
+        return create_room(room_name, ln_path, share_path)
     except Exception as e:
         sublime.error_message('Unable to create room: %s' % str(e))
         return
@@ -189,7 +189,7 @@ def create_room(room_name, path=None):
         webbrowser.open(room_url + '/settings', new=2, autoraise=True)
     except Exception:
         msg.debug("Couldn't open a browser. Thats OK!")
-    join_room(room_url, lambda x: agent.protocol.create_buf(path))
+    join_room(room_url, lambda x: agent.protocol.create_buf(share_path))
 
 
 @agent_and_protocol
@@ -209,13 +209,10 @@ def join_room(room_url, on_auth=None):
 
     G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['room']))
     utils.mkdir(os.path.dirname(G.PROJECT_PATH))
-    # try:
-    #     vim.command('lcd %s' % G.PROJECT_PATH)
-    # except Exception as e:
-    #     msg.log(str(e))
+    vim.command('cd %s' % G.PROJECT_PATH)
 
-    # TODO: really bad prompt here
     d = ''
+    # TODO: really bad prompt here
     prompt = "Give me a directory to destructively dump data into (or just press enter): "
     if not os.path.isdir(G.PROJECT_PATH):
         while True:
