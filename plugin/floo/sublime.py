@@ -10,7 +10,7 @@ def windows(*args, **kwargs):
 
 
 def set_timeout(func, timeout, *args, **kwargs):
-    then = time.time() + timeout
+    then = time.time() + (timeout / 1000.0)
     TIMEOUTS[then].append(lambda: func(*args, **kwargs))
 
 
