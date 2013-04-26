@@ -201,6 +201,7 @@ def join_room(room_url, on_auth=None):
 
     G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['room']))
     utils.mkdir(os.path.dirname(G.PROJECT_PATH))
+    vim.command('lcd %s' % G.PROJECT_PATH)
 
     # TODO: really bad prompt here
     d = ''
