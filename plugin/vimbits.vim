@@ -40,13 +40,9 @@ function! s:MaybeChanged()
     endif
 endfunction
 
-function! s:SetModifiable()
-    python is_modifiable()
-
-    if floo_is_modifiable
-        " this doesn't work for the first time from dired ?!?
-        setlocal nomodifiable
-    endif
+function! g:FlooSetReadOnly()
+    " this doesn't work for the first time from dired ?!?
+    setlocal nomodifiable
 endfunction
 
 function! s:SetAutoCmd()
@@ -68,7 +64,7 @@ function! s:SetAutoCmd()
             exec 'autocmd '. cmd .' * python maybe_new_file()'
         endfor
 
-        autocmd BufEnter * call s:SetModifiable()
+        autocmd BufWinEnter * python is_modifiable()
 
         " milliseconds
         exe 'setlocal updatetime=100'

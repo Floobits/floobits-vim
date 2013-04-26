@@ -81,17 +81,20 @@ def follow(follow_mode=None):
     agent.protocol.follow(follow_mode)
 
 
-def is_modifiable():
-    vim.command("let floo_is_modifiable = 0")
+def is_modifiable(name_to_check=None):
     if not agent or not agent.protocol:
         return
     vim_buf = vim.current.buffer
-    if not vim_buf.name:
+    name = vim_buf.name
+    if not name:
         return
-    if not agent.protocol.is_shared(vim_buf.name):
+    if name_to_check and name_to_check != name:
+        msg.warn('Can not call readonly on file: %s' % name)
+    if not agent.protocol.is_shared(name):
         return
     if 'patch' not in agent.protocol.perms:
-        vim.command("let floo_is_modifiable = 1")
+        vim.command("call g:FlooSetReadOnly()")
+        sublime.set_timeout(is_modifiable, 0, name)
 
 
 @agent_and_protocol
@@ -209,7 +212,6 @@ def join_room(room_url, on_auth=None):
 
     G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['room']))
     utils.mkdir(os.path.dirname(G.PROJECT_PATH))
-    vim.command('cd %s' % G.PROJECT_PATH)
 
     d = ''
     # TODO: really bad prompt here
@@ -230,6 +232,7 @@ def join_room(room_url, on_auth=None):
             except Exception as e:
                 return msg.error("Couldn't create symlink from %s to %s: %s" % (d, G.PROJECT_PATH, str(e)))
 
+    vim.command('cd %s' % G.PROJECT_PATH)
     msg.debug("joining room %s" % room_url)
 
     if agent:
