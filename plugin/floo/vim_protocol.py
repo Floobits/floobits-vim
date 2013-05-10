@@ -77,9 +77,9 @@ class View(object):
         line_num, col = self._offset_to_vim(offset)
         command = 'setpos(".", [%s, %s, %s, %s])' % (self.native_id, line_num, col, 0)
         msg.debug("setting pos: %s" % command)
-        # rv = int(vim.eval(command))
-        # if rv != 0:
-        #     msg.debug('SHIIIIIIIIT %s' % rv)
+        rv = int(vim.eval(command))
+        if rv != 0:
+            msg.debug('SHIIIIIIIIT %s' % rv)
 
     def get_cursor_position(self):
         """ [bufnum, lnum, col, off] """
