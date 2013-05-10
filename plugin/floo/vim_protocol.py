@@ -41,39 +41,17 @@ class View(object):
         return False
 
     def get_text(self):
-        current = vim.current.buffer
-        switch_back = False
-        if self.vim_buf != current:
-            switch_back = True
-            vim.command('edit! %s' % self.vim_buf.name)
-        # msg.debug('new vim buf is ', fresh_vim_buf == self.vim_buf, fresh_vim_buf.name, fresh_vim_buf[:])
         text = '\n'.join(self.vim_buf[:])
-        if switch_back:
-            vim.command('edit! %s' % current.name)
         return text.decode('utf-8')
 
     def set_text(self, text):
         msg.debug('\n\nabout to patch %s %s' % (str(self), self.vim_buf.name))
-        current = vim.current.buffer
-        msg.debug(current[:], self.vim_buf[:])
-        switch_back = False
-
-        if self.vim_buf != current:
-            switch_back = True
-            vim.command('edit! %s' % self.vim_buf.name)
         try:
             msg.debug("now buf is loadedish? %s" % vim.eval('bufloaded(%s)' % self.native_id))
             self.vim_buf[:] = text.encode('utf-8').split('\n')
         except Exception as e:
             msg.error("couldn't apply patches because: %s!\nThe unencoded text was: %s" % (str(e), text))
-            if switch_back:
-                vim.command('edit! %s' % current.name)
             raise
-        msg.debug(current[:], self.vim_buf[:])
-        if switch_back:
-            vim.command('edit! %s' % current.name)
-        msg.debug(current[:], self.vim_buf[:])
-        msg.debug(id(vim.current.buffer), id(self.vim_buf))
 
     def apply_patches(self, buf, patches):
         cursor_offset = self.get_cursor_offset()
