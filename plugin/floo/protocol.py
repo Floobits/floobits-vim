@@ -245,7 +245,7 @@ class BaseProtocol(object):
                 else:
                     raise Exception('different md5')
             except Exception:
-                open(buf_path, "a")
+                open(buf_path, "a").close()
                 self.agent.send_get_buf(buf_id)
 
         msg.debug(G.PROJECT_PATH)
@@ -275,13 +275,17 @@ class BaseProtocol(object):
         dmp_patches = DMP.patch_fromText(data['patch'])
         # TODO: run this in a separate thread
         if view:
+            msg.debug('view')
             old_text = view.get_text()
         else:
+            msg.debug('no view')
             old_text = buf.get('buf', '')
+        msg.debug('old text', old_text)
         md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
         if md5_before != data['md5_before']:
             msg.debug('maybe vim is lame and discarded a trailing newline')
             old_text += '\n'
+        msg.debug('old text', old_text)
         md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
         if md5_before != data['md5_before']:
             msg.warn('starting md5s don\'t match for %s. ours: %s patch: %s this is dangerous!' %

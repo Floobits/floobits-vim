@@ -41,15 +41,39 @@ class View(object):
         return False
 
     def get_text(self):
-        text = '\n'.join(self.vim_buf)
+        current = vim.current.buffer
+        switch_back = False
+        if self.vim_buf != current:
+            switch_back = True
+            vim.command('edit! %s' % self.vim_buf.name)
+        # msg.debug('new vim buf is ', fresh_vim_buf == self.vim_buf, fresh_vim_buf.name, fresh_vim_buf[:])
+        text = '\n'.join(self.vim_buf[:])
+        if switch_back:
+            vim.command('edit! %s' % current.name)
         return text.decode('utf-8')
 
     def set_text(self, text):
+        msg.debug('\n\nabout to patch %s %s' % (str(self), self.vim_buf.name))
+        current = vim.current.buffer
+        msg.debug(current[:], self.vim_buf[:])
+        switch_back = False
+
+        if self.vim_buf != current:
+            switch_back = True
+            vim.command('edit! %s' % self.vim_buf.name)
         try:
+            msg.debug("now buf is loadedish? %s" % vim.eval('bufloaded(%s)' % self.native_id))
             self.vim_buf[:] = text.encode('utf-8').split('\n')
         except Exception as e:
             msg.error("couldn't apply patches because: %s!\nThe unencoded text was: %s" % (str(e), text))
+            if switch_back:
+                vim.command('edit! %s' % current.name)
             raise
+        msg.debug(current[:], self.vim_buf[:])
+        if switch_back:
+            vim.command('edit! %s' % current.name)
+        msg.debug(current[:], self.vim_buf[:])
+        msg.debug(id(vim.current.buffer), id(self.vim_buf))
 
     def apply_patches(self, buf, patches):
         cursor_offset = self.get_cursor_offset()
@@ -73,11 +97,11 @@ class View(object):
 
     def set_cursor_position(self, offset):
         line_num, col = self._offset_to_vim(offset)
-        command = 'setpos(".", [%s, %s, %s, %s])' % (self.vim_buf.number, line_num, col, 0)
+        command = 'setpos(".", [%s, %s, %s, %s])' % (self.native_id, line_num, col, 0)
         msg.debug("setting pos: %s" % command)
-        rv = int(vim.eval(command))
-        if rv != 0:
-            msg.debug('SHIIIIIIIIT %s' % rv)
+        # rv = int(vim.eval(command))
+        # if rv != 0:
+        #     msg.debug('SHIIIIIIIIT %s' % rv)
 
     def get_cursor_position(self):
         """ [bufnum, lnum, col, off] """
@@ -101,7 +125,7 @@ class View(object):
         current = vim.current.buffer
         text = self.get_text()
         old_name = self.vim_buf.name
-        old_number = self.vim_buf.number
+        old_number = self.native_id
         with open(name, 'wb') as fd:
             fd.write(text.encode('utf-8'))
         vim.command('edit! %s' % name)
@@ -152,10 +176,15 @@ class Protocol(protocol.BaseProtocol):
         buf = self.FLOO_BUFS.get(buf_id)
         if not buf:
             return None
+
         vb = self.get_vim_buf_by_path(buf['path'])
-        if vb:
-            return View(vb, buf)
-        return None
+        if not vb:
+            return None
+
+        if vim.eval('bufloaded(%s)' % vb.number) == '0':
+            return None
+
+        return View(vb, buf)
 
     def create_view(self, buf):
         path = self.save_buf(buf)

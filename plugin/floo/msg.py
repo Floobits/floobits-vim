@@ -61,6 +61,7 @@ class MSG(object):
 
 
 def msg_format(message, *args, **kwargs):
+    message = str(message)
     message += ' '.join([str(x) for x in args])
     if kwargs:
         message = message.format(**kwargs)
