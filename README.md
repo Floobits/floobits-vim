@@ -1,6 +1,8 @@
 # Floobits Vim Plugin
 
-## Development status: Two way syncing works, but this plugin is not well-tested and not fully-featured.
+Real-time collaborative editing. Think Etherpad, but with native editors. This is the plugin for Vim. We're also working on plugins for [Emacs](https://github.com/Floobits/emacs-plugin) and [Sublime Text](https://github.com/Floobits/sublime-text-2-plugin).
+
+## Development status: Two way syncing works, but there are crashes when using splits. This plugin is not well-tested and not fully-featured.
 
 ## Installation
 
