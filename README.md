@@ -1,4 +1,4 @@
-# Floobits Vim Plugin
+# [Floobits](https://floobits.com/) Vim Plugin
 
 Real-time collaborative editing. Think Etherpad, but with native editors. This is the plugin for Vim. We're also working on plugins for [Emacs](https://github.com/Floobits/emacs-plugin) and [Sublime Text](https://github.com/Floobits/sublime-text-2-plugin).
 
