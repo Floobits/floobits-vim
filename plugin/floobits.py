@@ -25,6 +25,17 @@ floo_log_level = vim.eval('floo_log_level')
 msg.LOG_LEVEL = msg.LOG_LEVELS.get(floo_log_level.upper(), msg.LOG_LEVELS['MSG'])
 
 agent = None
+paused = True
+
+
+def floo_pause():
+    global paused
+    paused = True
+
+
+def floo_unpause():
+    global paused
+    paused = False
 
 
 def vim_input(prompt, default):
@@ -41,13 +52,18 @@ def global_tick():
     sublime.call_timeouts()
 
 
-def cursor_hold(*args, **kwargs):
+def cursor_hold():
     global_tick()
+    if paused:
+        return
+
     vim.command('call feedkeys("f\\e", "n")')
 
 
-def cursor_holdi(*args, **kwargs):
+def cursor_holdi():
     global_tick()
+    if paused:
+        return
     linelen = int(vim.eval("col('$')-1"))
     if linelen > 0:
         if int(vim.eval("col('.')")) == 1:
@@ -235,12 +251,17 @@ def join_room(room_url, on_auth=None):
     vim.command('cd %s' % G.PROJECT_PATH)
     msg.debug("joining room %s" % room_url)
 
+    def on_connect():
+        vim.command("set updatetime=100")
+
     if agent:
         agent.stop()
+        vim.command("set updatetime=4000")
+        floo_pause()
     try:
         agent = AgentConnection(on_auth=on_auth, Protocol=Protocol, **result)
         # owner and room name are slugfields so this should be safe
-        agent.connect()
+        agent.connect(on_connect)
     except Exception as e:
         msg.error(str(e))
         tb = traceback.format_exc()

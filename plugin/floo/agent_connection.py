@@ -121,7 +121,7 @@ class AgentConnection(object):
             msg.error('Floobits Error! Too many reconnect failures. Giving up.')
         self.retries -= 1
 
-    def connect(self):
+    def connect(self, cb):
         self.empty_selects = 0
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
@@ -144,6 +144,7 @@ class AgentConnection(object):
         msg.debug('Connected!')
         self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
         self.send_auth()
+        cb()
 
     def _get_from_queue(self):
         while True:
