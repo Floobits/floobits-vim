@@ -245,7 +245,10 @@ class BaseProtocol(object):
                 else:
                     raise Exception('different md5')
             except Exception:
-                open(buf_path, "a").close()
+                try:
+                    open(buf_path, "a").close()
+                except Exception as e:
+                    msg.debug("couldn't touch file: %s becuase %s" % (buf_path, e))
                 self.agent.send_get_buf(buf_id)
 
         msg.debug(G.PROJECT_PATH)
