@@ -65,7 +65,6 @@ function! s:SetAutoCmd()
         endfor
 
         autocmd BufWinEnter * python is_modifiable()
-        set updatetime=4000
         " milliseconds
     augroup END
 endfunction

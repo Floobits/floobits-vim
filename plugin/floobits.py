@@ -57,7 +57,7 @@ def cursor_hold():
     if paused:
         return
 
-    vim.command('call feedkeys("f\\e", "n")')
+    return vim.command("call feedkeys(\"f\\e\", 'n')")
 
 
 def cursor_holdi():
@@ -252,7 +252,8 @@ def join_room(room_url, on_auth=None):
     msg.debug("joining room %s" % room_url)
 
     def on_connect():
-        vim.command("set updatetime=100")
+        floo_unpause()
+        vim.command("set updatetime=250")
 
     if agent:
         agent.stop()
