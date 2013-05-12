@@ -97,6 +97,10 @@ class View(object):
 
     def highlight(self, ranges, user_id):
         msg.debug('highlighting ranges %s' % (ranges))
+        region = "floobits-user-%s" % str(user_id)
+        # vim.command(":syntax clear %s" % region)
+        # vim.command(":hi %s guibg=#33ff33" % region)
+        # vim.command(":syntax region %s start=/\%20l/ end=/\%30l/" % region)
 
     def rename(self, name):
         msg.debug('renaming %s to %s' % (self.vim_buf.name, name))

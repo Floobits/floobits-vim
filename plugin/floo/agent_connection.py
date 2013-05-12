@@ -213,7 +213,6 @@ class AgentConnection(object):
                     self.sock_q.task_done()
                     continue
                 try:
-                    msg.debug('writing patch: %s' % p)
                     self.sock.sendall(p)
                     self.sock_q.task_done()
                 except Exception as e:
