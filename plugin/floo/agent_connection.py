@@ -155,6 +155,7 @@ class AgentConnection(object):
 
     def handle(self, req):
         self.net_buf += req
+        new_data = False
         while True:
             before, sep, after = self.net_buf.partition('\n')
             if not sep:
@@ -166,7 +167,11 @@ class AgentConnection(object):
                 msg.error('Data:', before)
                 raise e
             self.protocol.handle(data)
+            new_data = True
             self.net_buf = after
+        #XXX move to protocol :(
+        if new_data:
+            vim.command('redraw')
 
     def select(self):
         if not self.sock:

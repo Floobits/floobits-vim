@@ -61,7 +61,6 @@ def global_tick():
     if agent:
         agent.tick()
         #TODO: optimize
-        vim.command('redraw')
 
     sublime.call_timeouts()
 
