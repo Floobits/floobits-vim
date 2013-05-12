@@ -4,6 +4,7 @@ import json
 import traceback
 import urllib2
 import webbrowser
+import tempfile
 
 import vim
 from floo import dmp_monkey
@@ -28,6 +29,16 @@ agent = None
 paused = True
 
 
+def spawn_ticker():
+    tempfile.mkstemp()
+
+
+def remote_reply():
+    response = vim.eval("remote_read('floo')")
+    print('got reply', response)
+    raise Exception(response)
+
+
 def floo_pause():
     global paused
     paused = True
@@ -49,6 +60,9 @@ def global_tick():
     """a hack to make vim evented like"""
     if agent:
         agent.tick()
+        #TODO: optimize
+        vim.command('redraw')
+
     sublime.call_timeouts()
 
 
@@ -56,7 +70,7 @@ def cursor_hold():
     global_tick()
     if paused:
         return
-
+    return
     return vim.command("call feedkeys(\"f\\e\", 'n')")
 
 
