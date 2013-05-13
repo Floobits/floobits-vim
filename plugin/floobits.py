@@ -22,10 +22,6 @@ from floo.vim_protocol import Protocol
 
 utils.load_settings()
 
-
-CLIENT_SERVER_SUPPORT = vim.eval('has("clientserver")')
-
-
 # enable debug with let floo_log_level = 'debug'
 floo_log_level = vim.eval('floo_log_level')
 msg.LOG_LEVEL = msg.LOG_LEVELS.get(floo_log_level.upper(), msg.LOG_LEVELS['MSG'])
@@ -34,6 +30,7 @@ agent = None
 call_feedkeys = False
 ticker = None
 ticker_errors = 0
+using_feedkeys = False
 
 ticker_python = """import sys; import subprocess; import time
 args = ['{binary}', '--servername', '{servername}', '--remote-expr', 'g:floobits_global_tick()']
@@ -60,17 +57,23 @@ def buf_enter():
 
 def enable_floo_feedkeys():
     global call_feedkeys
+    if not using_feedkeys:
+        return
     call_feedkeys = True
     vim.command("set updatetime=250")
 
 
 def disable_floo_feedkeys():
     global call_feedkeys
+    if not using_feedkeys:
+        return
     call_feedkeys = False
     vim.command("set updatetime=4000")
 
 
 def fallback_to_feedkeys(warning):
+    global using_feedkeys
+    using_feedkeys = True
     msg.warn(warning)
     enable_floo_feedkeys()
 
@@ -95,7 +98,7 @@ def ticker_watcher(ticker):
 def spawn_ticker():
     global ticker
 
-    if not CLIENT_SERVER_SUPPORT:
+    if not bool(int(vim.eval('has("clientserver")'))):
         return fallback_to_feedkeys("This VIM was not compiled with clientserver support.\
         You should consider using a vim with this enabled (or emacs)!\
         Falling back to f//e hack which will break some key commands.\
@@ -293,7 +296,7 @@ def delete_buf():
     agent.protocol.delete_buf(name)
 
 
-def _on_stop():
+def stop_everything():
     global agent
     if agent:
         agent.stop()
@@ -304,7 +307,7 @@ def _on_stop():
     #TODO: get this value from vim and reset it
     vim.command("set updatetime=4000")
 #NOTE: not strictly necessary
-atexit.register(_on_stop)
+atexit.register(stop_everything)
 
 
 def join_room(room_url, on_auth=None):
@@ -341,7 +344,7 @@ def join_room(room_url, on_auth=None):
     vim.command('cd %s' % G.PROJECT_PATH)
     msg.debug("joining room %s" % room_url)
 
-    _on_stop()
+    stop_everything()
     try:
         spawn_ticker()
         agent = AgentConnection(on_auth=on_auth, Protocol=Protocol, **result)
@@ -351,10 +354,11 @@ def join_room(room_url, on_auth=None):
         msg.error(str(e))
         tb = traceback.format_exc()
         msg.debug(tb)
-        _on_stop()
+        stop_everything()
 
 
 def part_room():
-    if not agent or not agent.stop():
+    if not agent:
         return msg.warn('Unable to part room: You are not joined to a room.')
+    stop_everything()
     msg.log('You left the room.')
