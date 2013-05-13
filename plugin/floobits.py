@@ -74,6 +74,7 @@ def disable_floo_feedkeys():
 def fallback_to_feedkeys(warning):
     global using_feedkeys
     using_feedkeys = True
+    warning += " Falling back to f//e hack which will break some key commands. You may need to call FlooPause/FlooUnPause before some commands."
     msg.warn(warning)
     enable_floo_feedkeys()
 
@@ -89,33 +90,31 @@ def ticker_watcher(ticker):
     msg.warn('respawning new ticker')
     ticker_errors += 1
     if ticker_errors > 10:
-        return fallback_to_feedkeys('Trouble with floobits external ticker, falling back to f//e hack.\
- You may need to call FlooPause/FlooUnPause before some commands')
-    spawn_ticker()
+        return fallback_to_feedkeys('Too much trouble with the floobits external ticker.')
+    start_event_loop()
     sublime.set_timeout(ticker_watcher, 2000, ticker)
 
 
-def spawn_ticker():
+def start_event_loop():
     global ticker
 
     if not bool(int(vim.eval('has("clientserver")'))):
-        return fallback_to_feedkeys("This VIM was not compiled with clientserver support.\
-        You should consider using a vim with this enabled (or emacs)!\
-        Falling back to f//e hack which will break some key commands.\
-        You may need to call FlooPause/FlooUnPause before some commands.")
+        return fallback_to_feedkeys("This VIM was not compiled with clientserver support. You should consider using a different vim!")
+    print G
+    exe = getattr(G, 'VIM_EXECUTABLE', None)
+    if not exe:
+        return fallback_to_feedkeys("Your vim was compiled with clientserver, but I don't know the name of the vim executable.  Please define it in your ~/.floorc file [vim_executable mvim].")
 
     servername = vim.eval("v:servername")
     if not servername:
-        return fallback_to_feedkeys('Trouble with floobits external ticker, falling back to f//e hack.\
-            You may need to call FlooPause/FlooUnPause before some commands')
+        return fallback_to_feedkeys('I can not identify the servername of this vim. You may need to pass --servername to vim at startup.')
 
-    evaler = ticker_python.format(binary='mvim', servername=servername, sleep='0.2')
+    evaler = ticker_python.format(binary=exe, servername=servername, sleep='0.2')
     ticker = subprocess.Popen(['python', '-c', evaler],
         stderr=subprocess.PIPE,
         stdout=subprocess.PIPE)
     ticker.poll()
     sublime.set_timeout(ticker_watcher, 500, ticker)
-    return True
 
 
 def vim_input(prompt, default):
@@ -134,14 +133,14 @@ def global_tick():
 
 def cursor_hold():
     global_tick()
-    if call_feedkeys:
+    if not call_feedkeys:
         return
     return vim.command("call feedkeys(\"f\\e\", 'n')")
 
 
 def cursor_holdi():
     global_tick()
-    if call_feedkeys:
+    if not call_feedkeys:
         return
     linelen = int(vim.eval("col('$')-1"))
     if linelen > 0:
@@ -346,7 +345,7 @@ def join_room(room_url, on_auth=None):
 
     stop_everything()
     try:
-        spawn_ticker()
+        start_event_loop()
         agent = AgentConnection(on_auth=on_auth, Protocol=Protocol, **result)
         # owner and room name are slugfields so this should be safe
         agent.connect()
