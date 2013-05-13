@@ -97,22 +97,21 @@ class View(object):
 
     def highlight(self, ranges, user_id):
         msg.debug('highlighting ranges %s' % (ranges))
-        region = "floobitsuser%s" % str(user_id)
-        for _range in ranges:
-            start, _ = self._offset_to_vim(_range[0])
-            end, _ = self._offset_to_vim(_range[1])
-            if start == end:
-                if start == 1:
-                    end += 1
-                else:
-                    start -= 1
-            print(_range, start, end, region)
-            vim.command(":syntax clear %s" % region)
-            vim.command(":hi %s guibg=#33ff33" % region)
-            vim_region = ":syntax region {region} start=/\%{start}l/ end=/\%{end}l/".\
-                format(region=region, start=start, end=end)
-            print(vim_region)
-            vim.command(vim_region)
+
+        # region = "floobitsuser%s" % str(user_id)
+        # for _range in ranges:
+        #     start, _ = self._offset_to_vim(_range[0])
+        #     end, _ = self._offset_to_vim(_range[1])
+        #     if start == end:
+        #         if start == 1:
+        #             end += 1
+        #         else:
+        #             start -= 1
+        #     vim.command(":syntax clear %s" % region)
+        #     vim.command(":hi %s guibg=#33ff33" % region)
+        #     vim_region = ":syntax region {region} start=/\%{start}l/ end=/\%{end}l/".\
+        #         format(region=region, start=start, end=end)
+        #     vim.command(vim_region)
 
     def rename(self, name):
         msg.debug('renaming %s to %s' % (self.vim_buf.name, name))
