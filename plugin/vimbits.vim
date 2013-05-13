@@ -45,7 +45,7 @@ function! g:FlooSetReadOnly()
     setlocal nomodifiable
 endfunction
 
-function! g:global_tick()
+function! g:floobits_global_tick()
     python global_tick()
 endfunction
 
@@ -69,6 +69,7 @@ function! s:SetAutoCmd()
         endfor
 
         autocmd BufWinEnter * python is_modifiable()
+        autocmd BufEnter * python buf_enter()
         " milliseconds
     augroup END
 endfunction
@@ -79,8 +80,8 @@ command! FlooPartRoom :python part_room()
 command! FlooToggleFollowMode :python follow()
 command! FlooPing :python maybe_selection_changed(True)
 command! FlooDeleteBuf :python delete_buf()
-command! FlooPause :python floo_pause()
-command! FlooUnPause :python floo_unpause()
+command! FlooPause :python disable_floo_feedkeys()
+command! FlooUnPause :python enable_floo_feedkeys()
 command! -nargs=1 FlooCreateRoom :python create_room(<f-args>)
 command! -nargs=1 FlooShareDir :python share_dir(<f-args>)
 

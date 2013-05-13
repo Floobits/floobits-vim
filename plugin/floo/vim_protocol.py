@@ -235,28 +235,5 @@ class Protocol(protocol.BaseProtocol):
         if not view:
             msg.log('view for buf %s not found. not updating' % buf['id'])
             return
-
-        # visible_region = view.visible_region()
-        # viewport_position = view.viewport_position()
-        # region = sublime.Region(0, view.size())
-        # # deep copy
-        # selections = [x for x in view.sel()]
         self.MODIFIED_EVENTS.put(1)
         view.set_text(buf['buf'])
-        # try:
-        #     edit = view.begin_edit()
-        #     view.replace(edit, region, buf['buf'])
-        # except Exception as e:
-        #     msg.error('Exception updating view: %s' % e)
-        # finally:
-        #     view.end_edit(edit)
-        # sublime.set_timeout(lambda: view.set_viewport_position(viewport_position, False), 0)
-        # view.sel().clear()
-        # view.show(visible_region, False)
-        # for sel in selections:
-        #     view.sel().add(sel)
-        # if 'patch' in G.PERMS:
-        #     view.set_read_only(False)
-        # else:
-        #     view.set_status('Floobits', 'You don\'t have write permission. Buffer is read-only.')
-        #     view.set_read_only(True)
