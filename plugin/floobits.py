@@ -100,7 +100,7 @@ def start_event_loop():
 
     if not bool(int(vim.eval('has("clientserver")'))):
         return fallback_to_feedkeys("This VIM was not compiled with clientserver support. You should consider using a different vim!")
-    print G
+
     exe = getattr(G, 'VIM_EXECUTABLE', None)
     if not exe:
         return fallback_to_feedkeys("Your vim was compiled with clientserver, but I don't know the name of the vim executable.  Please define it in your ~/.floorc file [vim_executable mvim].")
