@@ -103,7 +103,7 @@ def start_event_loop():
 
     exe = getattr(G, 'VIM_EXECUTABLE', None)
     if not exe:
-        return fallback_to_feedkeys("Your vim was compiled with clientserver, but I don't know the name of the vim executable.  Please define it in your ~/.floorc file [vim_executable mvim].")
+        return fallback_to_feedkeys("Your vim was compiled with clientserver, but I don't know the name of the vim executable.  Please define it in your ~/.floorc using the vim_executable directive. e.g. 'vim_executable mvim'.")
 
     servername = vim.eval("v:servername")
     if not servername:
@@ -111,8 +111,8 @@ def start_event_loop():
 
     evaler = ticker_python.format(binary=exe, servername=servername, sleep='0.2')
     ticker = subprocess.Popen(['python', '-c', evaler],
-        stderr=subprocess.PIPE,
-        stdout=subprocess.PIPE)
+                              stderr=subprocess.PIPE,
+                              stdout=subprocess.PIPE)
     ticker.poll()
     sublime.set_timeout(ticker_watcher, 500, ticker)
 
