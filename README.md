@@ -2,8 +2,7 @@
 
 Real-time collaborative editing. Think Etherpad, but with native editors. This is the plugin for Vim. We're also working on plugins for [Emacs](https://github.com/Floobits/emacs-plugin) and [Sublime Text](https://github.com/Floobits/sublime-text-2-plugin).
 
-## Development status: This plugin is fairly stable.  Unfortunately, vim doesn't make it possible to have an event loop which does't interfer with the user.
-As a consequence, some key sequences will be interrupted.  For now, you can call :FlooPause/Unpause before them; alternatively, you can type your key sequences really quickly.  We are exploring other options.
+## Development status: Two way syncing works, but there are crashes when using splits. This plugin is not well-tested and not fully-featured.
 
 ## Installation
 

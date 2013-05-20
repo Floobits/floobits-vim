@@ -121,7 +121,7 @@ class AgentConnection(object):
             msg.error('Floobits Error! Too many reconnect failures. Giving up.')
         self.retries -= 1
 
-    def connect(self, cb):
+    def connect(self, cb=None):
         self.empty_selects = 0
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
@@ -144,7 +144,8 @@ class AgentConnection(object):
         msg.debug('Connected!')
         self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
         self.send_auth()
-        cb()
+        if cb:
+            cb()
 
     def _get_from_queue(self):
         while True:
@@ -155,6 +156,7 @@ class AgentConnection(object):
 
     def handle(self, req):
         self.net_buf += req
+        new_data = False
         while True:
             before, sep, after = self.net_buf.partition('\n')
             if not sep:
@@ -166,7 +168,11 @@ class AgentConnection(object):
                 msg.error('Data:', before)
                 raise e
             self.protocol.handle(data)
+            new_data = True
             self.net_buf = after
+        #XXX move to protocol :(
+        if new_data:
+            vim.command('redraw')
 
     def select(self):
         if not self.sock:
@@ -208,7 +214,6 @@ class AgentConnection(object):
                     self.sock_q.task_done()
                     continue
                 try:
-                    msg.debug('writing patch: %s' % p)
                     self.sock.sendall(p)
                     self.sock_q.task_done()
                 except Exception as e:

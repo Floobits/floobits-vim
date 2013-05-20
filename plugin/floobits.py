@@ -3,7 +3,9 @@ import os
 import json
 import traceback
 import urllib2
+import atexit
 import webbrowser
+import subprocess
 
 import vim
 from floo import dmp_monkey
@@ -25,17 +27,94 @@ floo_log_level = vim.eval('floo_log_level')
 msg.LOG_LEVEL = msg.LOG_LEVELS.get(floo_log_level.upper(), msg.LOG_LEVELS['MSG'])
 
 agent = None
-paused = True
+call_feedkeys = False
+ticker = None
+ticker_errors = 0
+using_feedkeys = False
+
+ticker_python = """import sys; import subprocess; import time
+args = ['{binary}', '--servername', '{servername}', '--remote-expr', 'g:floobits_global_tick()']
+while True:
+    time.sleep({sleep})
+    # TODO: learn to speak vim or something :(
+    proc = subprocess.Popen(args,
+        stderr=subprocess.PIPE,
+        stdout=subprocess.PIPE)
+    (stdoutdata, stderrdata) = proc.communicate()
+    # # yes, this is stupid...
+    if stdoutdata.strip() == '0':
+        continue
+    if len(stderrdata) == 0:
+        continue
+    sys.stderr.write(stderrdata)
+    sys.exit(1)
+"""
 
 
-def floo_pause():
-    global paused
-    paused = True
+def buf_enter():
+    pass
 
 
-def floo_unpause():
-    global paused
-    paused = False
+def enable_floo_feedkeys():
+    global call_feedkeys
+    if not using_feedkeys:
+        return
+    call_feedkeys = True
+    vim.command("set updatetime=250")
+
+
+def disable_floo_feedkeys():
+    global call_feedkeys
+    if not using_feedkeys:
+        return
+    call_feedkeys = False
+    vim.command("set updatetime=4000")
+
+
+def fallback_to_feedkeys(warning):
+    global using_feedkeys
+    using_feedkeys = True
+    warning += " Falling back to f//e hack which will break some key commands. You may need to call FlooPause/FlooUnPause before some commands."
+    msg.warn(warning)
+    enable_floo_feedkeys()
+
+
+def ticker_watcher(ticker):
+    global ticker_errors
+
+    if not agent:
+        return
+    ticker.poll()
+    if ticker.returncode is None:
+        return
+    msg.warn('respawning new ticker')
+    ticker_errors += 1
+    if ticker_errors > 10:
+        return fallback_to_feedkeys('Too much trouble with the floobits external ticker.')
+    start_event_loop()
+    sublime.set_timeout(ticker_watcher, 2000, ticker)
+
+
+def start_event_loop():
+    global ticker
+
+    if not bool(int(vim.eval('has("clientserver")'))):
+        return fallback_to_feedkeys("This VIM was not compiled with clientserver support. You should consider using a different vim!")
+
+    exe = getattr(G, 'VIM_EXECUTABLE', None)
+    if not exe:
+        return fallback_to_feedkeys("Your vim was compiled with clientserver, but I don't know the name of the vim executable.  Please define it in your ~/.floorc using the vim_executable directive. e.g. 'vim_executable mvim'.")
+
+    servername = vim.eval("v:servername")
+    if not servername:
+        return fallback_to_feedkeys('I can not identify the servername of this vim. You may need to pass --servername to vim at startup.')
+
+    evaler = ticker_python.format(binary=exe, servername=servername, sleep='0.2')
+    ticker = subprocess.Popen(['python', '-c', evaler],
+                              stderr=subprocess.PIPE,
+                              stdout=subprocess.PIPE)
+    ticker.poll()
+    sublime.set_timeout(ticker_watcher, 500, ticker)
 
 
 def vim_input(prompt, default):
@@ -54,15 +133,14 @@ def global_tick():
 
 def cursor_hold():
     global_tick()
-    if paused:
+    if not call_feedkeys:
         return
-
     return vim.command("call feedkeys(\"f\\e\", 'n')")
 
 
 def cursor_holdi():
     global_tick()
-    if paused:
+    if not call_feedkeys:
         return
     linelen = int(vim.eval("col('$')-1"))
     if linelen > 0:
@@ -217,6 +295,20 @@ def delete_buf():
     agent.protocol.delete_buf(name)
 
 
+def stop_everything():
+    global agent
+    if agent:
+        agent.stop()
+        agent = None
+    if ticker:
+        ticker.kill()
+    disable_floo_feedkeys()
+    #TODO: get this value from vim and reset it
+    vim.command("set updatetime=4000")
+#NOTE: not strictly necessary
+atexit.register(stop_everything)
+
+
 def join_room(room_url, on_auth=None):
     global agent
     msg.debug("room url is %s" % room_url)
@@ -251,28 +343,21 @@ def join_room(room_url, on_auth=None):
     vim.command('cd %s' % G.PROJECT_PATH)
     msg.debug("joining room %s" % room_url)
 
-    def on_connect():
-        floo_unpause()
-        vim.command("set updatetime=250")
-
-    if agent:
-        agent.stop()
-        vim.command("set updatetime=4000")
-        floo_pause()
+    stop_everything()
     try:
+        start_event_loop()
         agent = AgentConnection(on_auth=on_auth, Protocol=Protocol, **result)
         # owner and room name are slugfields so this should be safe
-        agent.connect(on_connect)
+        agent.connect()
     except Exception as e:
         msg.error(str(e))
         tb = traceback.format_exc()
         msg.debug(tb)
-        if agent:
-            agent.stop()
-            agent = None
+        stop_everything()
 
 
 def part_room():
-    if not agent or not agent.stop():
+    if not agent:
         return msg.warn('Unable to part room: You are not joined to a room.')
+    stop_everything()
     msg.log('You left the room.')

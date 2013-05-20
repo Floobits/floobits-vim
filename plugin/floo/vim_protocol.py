@@ -98,6 +98,21 @@ class View(object):
     def highlight(self, ranges, user_id):
         msg.debug('highlighting ranges %s' % (ranges))
 
+        # region = "floobitsuser%s" % str(user_id)
+        # for _range in ranges:
+        #     start, _ = self._offset_to_vim(_range[0])
+        #     end, _ = self._offset_to_vim(_range[1])
+        #     if start == end:
+        #         if start == 1:
+        #             end += 1
+        #         else:
+        #             start -= 1
+        #     vim.command(":syntax clear %s" % region)
+        #     vim.command(":hi %s guibg=#33ff33" % region)
+        #     vim_region = ":syntax region {region} start=/\%{start}l/ end=/\%{end}l/".\
+        #         format(region=region, start=start, end=end)
+        #     vim.command(vim_region)
+
     def rename(self, name):
         msg.debug('renaming %s to %s' % (self.vim_buf.name, name))
         current = vim.current.buffer
@@ -219,28 +234,5 @@ class Protocol(protocol.BaseProtocol):
         if not view:
             msg.log('view for buf %s not found. not updating' % buf['id'])
             return
-
-        # visible_region = view.visible_region()
-        # viewport_position = view.viewport_position()
-        # region = sublime.Region(0, view.size())
-        # # deep copy
-        # selections = [x for x in view.sel()]
         self.MODIFIED_EVENTS.put(1)
         view.set_text(buf['buf'])
-        # try:
-        #     edit = view.begin_edit()
-        #     view.replace(edit, region, buf['buf'])
-        # except Exception as e:
-        #     msg.error('Exception updating view: %s' % e)
-        # finally:
-        #     view.end_edit(edit)
-        # sublime.set_timeout(lambda: view.set_viewport_position(viewport_position, False), 0)
-        # view.sel().clear()
-        # view.show(visible_region, False)
-        # for sel in selections:
-        #     view.sel().add(sel)
-        # if 'patch' in G.PERMS:
-        #     view.set_read_only(False)
-        # else:
-        #     view.set_status('Floobits', 'You don\'t have write permission. Buffer is read-only.')
-        #     view.set_read_only(True)

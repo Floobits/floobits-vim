@@ -109,7 +109,6 @@ def patch_apply(self, patches, text):
             # NOTE: better some of the time!
             # position[1] -= too_close
         positions.append(position)
-        msg.debug("pos", position)
     # Strip the padding off.
     # TODO: strip out context
     text = text[len(nullPadding):-len(nullPadding)]
