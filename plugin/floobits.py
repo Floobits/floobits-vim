@@ -202,6 +202,8 @@ def maybe_new_file():
 def share_dir(dir_to_share):
     dir_to_share = os.path.expanduser(dir_to_share)
     dir_to_share = utils.unfuck_path(dir_to_share)
+    dir_to_share = os.path.abspath(dir_to_share)
+
     room_name = os.path.basename(dir_to_share)
     floo_room_dir = os.path.join(G.COLAB_DIR, G.USERNAME, room_name)
 
@@ -274,6 +276,7 @@ def create_room(room_name, ln_path=None, share_path=None):
                     os.rename(ln_path, new_path)
                 except OSError:
                     continue
+                msg.debug('renamed ln %s to %s' % (ln_path, new_path))
                 ln_path = new_path
                 break
 

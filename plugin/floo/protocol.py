@@ -372,7 +372,7 @@ class BaseProtocol(object):
         del self.FLOO_BUFS[data['id']]
         path = utils.get_full_path(data['path'])
         utils.rm(path)
-        msg.warn('deleted %s because %s told me too.' % (path, data.get('username', 'the internet')))
+        msg.warn('deleted %s because %s told me to.' % (path, data.get('username', 'the internet')))
 
     @buf_populated
     def on_highlight(self, data):

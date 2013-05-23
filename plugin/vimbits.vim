@@ -61,7 +61,6 @@ function! s:SetAutoCmd()
 
         autocmd CursorHold * python cursor_hold()
         autocmd CursorHoldI * python cursor_holdi()
-        autocmd RemoteReply * python remote_reply()
         autocmd CursorMoved * python maybe_selection_changed()
         autocmd CursorMovedI * python maybe_selection_changed()
         for cmd in s:new_buf_events
