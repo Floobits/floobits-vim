@@ -16,7 +16,9 @@ You will also need to define
 in your ~/.floorc file. If you use MacVim, your floorc should probably contain the line:
 `vim_executable mvim
 This option will sometimes call redraw which can make the minibuffer blink on ocassion.
+
 2. CursorHold/CursorHoldI with feedkeys.
+
 If your Vim wasn't launched as a server, or something goes wrong, floobits falls back to making an event loop by repeatedly triggering autocommands.
 This will unfortuantely escape any key sequence, like ctrl-w j, unless you finish it within one tick of the event loop.  You can call 
 `:FlooPause and :FlooUnpause 
