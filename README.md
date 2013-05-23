@@ -27,7 +27,9 @@ This option will sometimes call redraw which can make the minibuffer blink on oc
 
 If your Vim wasn't launched as a server, or something goes wrong, floobits falls back to making an event loop by repeatedly triggering autocommands.
 This will unfortuantely escape any key sequence, like ctrl-w j, unless you finish it within one tick of the event loop.  You can call 
-`:FlooPause and :FlooUnpause 
+
+`:FlooPause and :FlooUnpause `
+
 before them.  Alternatively, you can type really quickly.  
 
 Unfortunately, at the end of the day, Vim is purposefully designed to make async actions impossible and these are the only options available.
