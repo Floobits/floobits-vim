@@ -10,11 +10,11 @@ This plugin uses two methods to enable async actions in Vim which have different
 1. Vim Server and --remote-expr.
 
 To take advantage of this method, you should launch vim as a vim server.  Some versions of vim do this automatically, like MacVim.  On others, you may need to invoke vim like so:
-`vim --servername superawesomename
+`vim --servername superawesomename`
 You will also need to define 
-`vim_executable exectable_name 
+`vim_executable exectable_name `
 in your ~/.floorc file. If you use MacVim, your floorc should probably contain the line:
-`vim_executable mvim
+`vim_executable mvim`
 This option will sometimes call redraw which can make the minibuffer blink on ocassion.
 
 2. CursorHold/CursorHoldI with feedkeys.
