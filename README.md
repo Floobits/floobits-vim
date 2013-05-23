@@ -2,13 +2,23 @@
 
 Real-time collaborative editing. Think Etherpad, but with native editors. This is the plugin for Vim. We're also working on plugins for [Emacs](https://github.com/Floobits/emacs-plugin) and [Sublime Text](https://github.com/Floobits/sublime-text-2-plugin).
 
-## Development status: This plugin is fairly stable.  Unfortunately, vim doesn't make it possible to have an event loop which does't interfer with the user.
+## Development status: fairly stable.  
+
+Unfortunately, vim doesn't make it possible to have an event loop which does't interfer with the user.
 This plugin uses two methods to enable async actions in Vim- it will fall back to the second in the case of something going wrong with the first.
 
-1. Vim Server- launch vim as a vim server.  You will also need to define `vim_executable exectable_name` in your ~/.floorc file. If you use MacVim, this is probably mvim for you.
-2. We use an autocommand on CursorHold/CursorHoldI and then call feedkeys with f//e.  This will unfortuantely escape any key sequence you are doing unless you do it really quickly.  You can call :FlooPause/Unpause before them; alternatively, you can type your key sequences really quickly.  
+1. Vim Server and --remote-expr.
 
-Unfortunately, at the end of the day, Vim is purposefully designed to make async actions impossible.
+To take advantage, you should launch vim as a vim server.  Some versions of vim do this automatically, like MacVim.  On others, you may need to invoke vim like so:
+`vim --servername superawesomename
+You will also need to define `vim_executable exectable_name` in your ~/.floorc file. If you use MacVim, this is probably mvim for you.
+2. CursorHold/CursorHoldI with feedkeys.
+If your Vim wasn't launched as a server, or something goes wrong, floobits falls back to making an event loop by repeatedly triggering autocommands.
+This will unfortuantely escape any key sequence, like ctrl-w j, unless you finish it within one tick of the event loop.  You can call 
+`:FlooPause and :FlooUnpause 
+before them.  Alternatively, you can type really quickly.  
+
+Unfortunately, at the end of the day, Vim is purposefully designed to make async actions impossible and these are the only options available.
 
 ## Installation
 
