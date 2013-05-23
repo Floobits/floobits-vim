@@ -1,62 +1,60 @@
 # [Floobits](https://floobits.com/) Vim Plugin
 
-Real-time collaborative editing. Think Etherpad, but with native editors. This is the plugin for Vim. We're also working on [Emacs](https://github.com/Floobits/emacs-plugin) and have a working plugin for [Sublime Text](https://github.com/Floobits/sublime-text-2-plugin) as well as a web based editor.
+Real-time collaborative editing. Think Etherpad, but with native editors. This is the plugin for Vim. We're also working on [Emacs](https://github.com/Floobits/floobits-emacs) and have a working plugin for [Sublime Text](https://github.com/Floobits/floobits-sublime) as well as a web-based editor.
 
-## Development status: fairly stable.  
+## Development status: fairly stable.
 
-Unfortunately, vim doesn't make it possible to have an event loop which does't interfer with the user.
-This plugin uses two methods to enable async actions in Vim which have different side effects.  Floobits will fall back to the second in the case of something going wrong with the first.
+Unfortunately, Vim's plugin API has few options for running event-driven code. We've figured out two ways, which are described below. Floobits will fall back to the second method if something goes wrong with the first.
 
-1. Vim Server and --remote-expr.
+## 1. Vim Server and --remote-expr (Recommended)
 
-To take advantage of this method, you should launch vim as a vim server.  Some versions of vim do this automatically, like MacVim.  On others, you may need to invoke vim like so:
+To take advantage of this method, you should launch Vim as a server.  Some versions of Vim do this automatically, like MacVim.  On others, you may need to invoke Vim like so:
 
 `vim --servername superawesomename`
 
-You will also need to define 
-
-`vim_executable exectable_name `
-
-in your ~/.floorc file. If you use MacVim, your floorc should probably contain the line:
+You will also need to define `vim_executable exectable_name` in your ~/.floorc file. If you use MacVim, your floorc should contain the line:
 
 `vim_executable mvim`
 
-This option will sometimes call redraw which can make the minibuffer blink on ocassion.
+This option will sometimes call redraw, which can make the minibuffer blink on ocassion.
 
-2. CursorHold/CursorHoldI with feedkeys.
+## 2. CursorHold/CursorHoldI with feedkeys.
 
 If your Vim wasn't launched as a server, or something goes wrong, floobits falls back to making an event loop by repeatedly triggering autocommands.
-This will unfortuantely escape any key sequence, like ctrl-w j, unless you finish it within one tick of the event loop.  You can call 
-
-`:FlooPause and :FlooUnpause `
-
-to pause/unpause the event loop if you have to.  Alternatively, you can type really quickly.  
+This will unfortuantely escape any key sequence, like ctrl-w j, unless you finish it within one tick of the event loop.  You can call  `:FlooPause` and `:FlooUnpause` to pause/unpause the event loop if you have to. Alternatively, you can type really quickly.
 
 Unfortunately, at the end of the day, Vim is purposefully designed to make async actions impossible and these are the only options available.
+
 
 ## Installation
 
 Assuming you have [Vundle](https://github.com/gmarik/vundle) or [Pathogen](https://github.com/tpope/vim-pathogen):
 
-1. `cd ~/.vim/bundle` and `git clone https://github.com/Floobits/vim-plugin Floobits`
+1. `cd ~/.vim/bundle` and `git clone https://github.com/Floobits/floobits-vim Floobits`
 1. Vundle users: Add `Bundle 'Floobits'` to your `~/.vimrc`. Pathogen users should skip this step.
 1. Add your Floobits username and API secret to `~/.floorc`.
 
-A typical floorc looks like this:
+A typical `~/.floorc` looks like this:
 
     username myuser
     secret gii9Ka8aZei3ej1eighu2vi8D
     vim_executable mvim
 
+
 ## Usage
 
-* To join a room, use `:FlooJoinRoom https://floobits.com/r/room_owner/room_name/`. Room urls are the same as what you see in the web editor.
-* To part a room, use `:FlooPartRoom`.
-* To toggle follow mode, use `:FlooToggleFollowMode`.
-* To make everyone in the room jump to your cursor, use `:FlooPing`.
+* `:FlooShareDir /path/to/files`. Share a directory with others. This will create a new room, populate it with the files in that directory, and open the room's settings in your browser.
+* `:FlooJoinRoom https://floobits.com/r/room_owner/room_name/`. Join a Floobits room. Room URLs are the same as what you see in the web editor.
+* `:FlooPartRoom`. Leave the room.
+* `:FlooToggleFollowMode`. Toggle follow mode. Follow mode will follow the most recent changes to buffers.
+* `:FlooSummon`. Make everyone in the room jump to your cursor.
+* `:FlooPause`. Pause the event loop so you can type keyboard shortcuts. (Only necessary in feedkeys fall-back mode.)
+* `:FlooUnPause`. Resume the event loop so you can collaborate again. (Only necessary in feedkeys fall-back mode.)
+* `:FlooDeleteBuf`. Delete the current buffer from the room.
+
 
 ## Troubleshooting
 
 Other plugins can interfere with Floobits. For example, [YouCompleteMe](https://github.com/Valloric/YouCompleteMe) changes `updatetime` to 2000 milliseconds. This causes increased latency and decreased reliability when collaborating. add `let g:ycm_allow_changing_updatetime = 0` to your `~/.vimrc`.
 
-If you experience problems, try disabling other plugins before submitting a bug report.
+If you experience problems, try disabling other plugins before [submitting a bug report](https://github.com/Floobits/floobits-vim/issues).
