@@ -30,7 +30,7 @@ This will unfortuantely escape any key sequence, like ctrl-w j, unless you finis
 
 `:FlooPause and :FlooUnpause `
 
-before them.  Alternatively, you can type really quickly.  
+to pause/unpause the event loop if you have to.  Alternatively, you can type really quickly.  
 
 Unfortunately, at the end of the day, Vim is purposefully designed to make async actions impossible and these are the only options available.
 
