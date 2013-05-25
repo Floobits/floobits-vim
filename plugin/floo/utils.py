@@ -160,7 +160,7 @@ def unfuck_path(p):
 
 
 def to_rel_path(p):
-    return os.path.relpath(p, G.PROJECT_PATH)
+    return os.path.relpath(p, G.PROJECT_PATH).decode('utf-8')
 
 
 def to_scheme(secure):
