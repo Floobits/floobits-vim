@@ -14,6 +14,12 @@ endif
 if !exists("floo_log_level")
     let floo_log_level = "msg"
 endif
+if !exists("floo_delete_local_files")
+    let floo_delete_local_files = 1
+endif
+if !exists("floo_show_highlights")
+    let floo_show_highlights = 1
+endif
 
 " p flag expands the absolute path. Sorry for the global
 let g:floobits_plugin_dir = expand("<sfile>:p:h")

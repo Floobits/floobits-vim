@@ -371,6 +371,9 @@ class BaseProtocol(object):
         # TODO: somehow tell the user about this. maybe delete on disk too?
         del self.FLOO_BUFS[data['id']]
         path = utils.get_full_path(data['path'])
+        if not G.DELETE_LOCAL_FILES:
+            msg.log('Not deleting %s because delete_local_files is disabled' % path)
+            return
         utils.rm(path)
         msg.warn('deleted %s because %s told me to.' % (path, data.get('username', 'the internet')))
 
