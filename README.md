@@ -31,7 +31,7 @@ Unfortunately, at the end of the day, Vim is purposefully designed to make async
 Assuming you have [Vundle](https://github.com/gmarik/vundle) or [Pathogen](https://github.com/tpope/vim-pathogen):
 
 1. `cd ~/.vim/bundle` and `git clone https://github.com/Floobits/floobits-vim Floobits`
-1. Vundle users: Add `Bundle 'Floobits/floobits-vim'` to your `~/.vimrc`. Pathogen users should skip this step.
+1. Vundle users: Add `Bundle 'Floobits'` to your `~/.vimrc`. Pathogen users should skip this step.
 1. Add your Floobits username and API secret to `~/.floorc`.
 
 A typical `~/.floorc` looks like this:
