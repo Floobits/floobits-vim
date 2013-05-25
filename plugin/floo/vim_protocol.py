@@ -202,12 +202,11 @@ class Protocol(protocol.BaseProtocol):
             msg.debug('get_buf: %s is not shared' % vim_buf.name)
             return None
 
-        rel_path = utils.to_rel_path(vim_buf.name)
-        for buf_id, buf in self.FLOO_BUFS.iteritems():
-            if rel_path == buf['path']:
-                return buf
+        buf = self.get_buf_by_path(vim_buf.name)
+        if buf:
+            return buf
 
-        msg.debug('get_buf: no buf has path %s' % rel_path)
+        msg.debug('get_buf: no buf has path %s' % vim_buf.name)
         return False
 
     def save_buf(self, buf):
