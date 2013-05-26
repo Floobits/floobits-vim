@@ -18,7 +18,7 @@ class View(object):
         self.buf = buf
 
     def __repr__(self):
-        return '%s %s %s' % (self.native_id, self.buf['id'], self.buf['path'].encode('utf-8'))
+        return '%s %s %s' % (self.native_id, self.buf['id'], self.buf['path'])
 
     def __str__(self):
         return repr(self)
