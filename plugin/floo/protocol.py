@@ -88,7 +88,10 @@ class BaseProtocol(object):
         self.follow_mode = follow_mode
         msg.log('follow mode is %s' % {True: 'enabled', False: 'disabled'}[self.follow_mode])
 
-    def create_buf(self, path):
+    def create_buf(self, path, force=False):
+        if G.SPARSE_MODE and not force:
+            msg.debug("Skipping %s because user enabled sparse mode." % path)
+            return
         if 'create_buf' not in self.perms:
             msg.error("Skipping %s. You don't have permission to create buffers in this room." % path)
             return
@@ -103,11 +106,12 @@ class BaseProtocol(object):
                     f_path = os.path.join(dirpath, f)
                     if f[0] == '.':
                         msg.log('Not creating buf for hidden file %s' % f_path)
+                        continue
                     if f in self.ignored_names:
                         # TODO: prompt instead of being lame
                         msg.log('Not creating buf for ignored file %s' % f_path)
-                    else:
-                        sublime.set_timeout(self.create_buf, 0, f_path)
+                        continue
+                    sublime.set_timeout(self.create_buf, 0, f_path, force)
             return
 
         if self.get_buf_by_path(path):
