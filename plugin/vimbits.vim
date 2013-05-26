@@ -20,6 +20,9 @@ endif
 if !exists("floo_show_highlights")
     let floo_show_highlights = 1
 endif
+if !exists("floo_sparse_mode")
+    let floo_sparse_mode = 0
+endif
 
 " p flag expands the absolute path. Sorry for the global
 let g:floobits_plugin_dir = expand("<sfile>:p:h")
@@ -89,7 +92,9 @@ command! FlooDeleteBuf :python delete_buf()
 command! FlooPause :python disable_floo_feedkeys()
 command! FlooUnPause :python enable_floo_feedkeys()
 command! -nargs=1 FlooCreateRoom :python create_room(<f-args>)
-command! -nargs=1 FlooShareDir :python share_dir(<f-args>)
+command! -nargs=1 -complete=file FlooShareDir :python share_dir(<f-args>)
+
+command! -nargs=? -complete=file FlooAddBuf :python add_buf(<f-args>)
 
 call s:SetAutoCmd()
 let g:floobits_plugin_loaded = 1

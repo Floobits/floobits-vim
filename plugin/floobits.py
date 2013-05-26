@@ -28,6 +28,7 @@ msg.LOG_LEVEL = msg.LOG_LEVELS.get(floo_log_level.upper(), msg.LOG_LEVELS['MSG']
 
 G.DELETE_LOCAL_FILES = bool(vim.eval('floo_delete_local_files'))
 G.SHOW_HIGHLIGHTS = bool(vim.eval('floo_show_highlights'))
+G.SPARSE_MODE = bool(vim.eval('floo_sparse_mode'))
 
 agent = None
 call_feedkeys = False
@@ -293,6 +294,12 @@ def create_room(room_name, ln_path=None, share_path=None):
     except Exception:
         msg.debug("Couldn't open a browser. Thats OK!")
     join_room(room_url, lambda x: agent.protocol.create_buf(share_path))
+
+
+@agent_and_protocol
+def add_buf(path=None):
+    path = path or vim.current.buffer.name
+    agent.protocol.create_buf(path, True)
 
 
 @agent_and_protocol
