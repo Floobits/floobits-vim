@@ -353,6 +353,7 @@ def join_room(room_url, on_auth=None):
             except Exception as e:
                 return msg.error("Couldn't create symlink from %s to %s: %s" % (d, G.PROJECT_PATH, str(e)))
 
+    G.PROJECT_PATH = os.path.realpath(G.PROJECT_PATH + os.sep)
     vim.command('cd %s' % G.PROJECT_PATH)
     msg.debug("joining room %s" % room_url)
 
