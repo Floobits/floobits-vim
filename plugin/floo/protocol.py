@@ -138,7 +138,7 @@ class BaseProtocol(object):
         name = data.get('name')
         if not name:
             return msg.error('no name in data?!?')
-        func = getattr(self, "on_%s" % (name), None)
+        func = getattr(self, "on_%s" % (name))
         if not func:
             return msg.debug('unknown name', name, 'data:', data)
         func(data)

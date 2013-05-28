@@ -92,7 +92,7 @@ command! FlooDeleteBuf :python delete_buf()
 command! FlooPause :python disable_floo_feedkeys()
 command! FlooUnPause :python enable_floo_feedkeys()
 command! -nargs=1 FlooCreateRoom :python create_room(<f-args>)
-command! -nargs=1 -complete=file FlooShareDir :python share_dir(<f-args>)
+command! -nargs=1 -complete=dir FlooShareDir :python share_dir(<f-args>)
 
 command! -nargs=? -complete=file FlooAddBuf :python add_buf(<f-args>)
 

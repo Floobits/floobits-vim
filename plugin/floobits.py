@@ -121,9 +121,9 @@ def start_event_loop():
     sublime.set_timeout(ticker_watcher, 500, ticker)
 
 
-def vim_input(prompt, default):
+def vim_input(prompt, default, completion=""):
     vim.command('call inputsave()')
-    vim.command("let user_input = input('%s', '%s')" % (prompt, default))
+    vim.command("let user_input = input('%s', '%s', '%s')" % (prompt, default, completion))
     vim.command('call inputrestore()')
     return vim.eval('user_input')
 
@@ -336,17 +336,23 @@ def join_room(room_url, on_auth=None):
 
     d = ''
     # TODO: really bad prompt here
-    prompt = "Give me a directory to destructively dump data into (or just press enter): "
+    prompt = "Give me a directory to sync data to (or just press enter): "
     if not os.path.isdir(G.PROJECT_PATH):
         while True:
-            d = vim_input(prompt, d)
+            d = vim_input(prompt, d, "dir")
             if d == '':
                 utils.mkdir(G.PROJECT_PATH)
                 break
             d = os.path.realpath(os.path.expanduser(d))
-            if not os.path.isdir(d):
+            if os.path.isfile(d):
                 prompt = '%s is not a directory. Enter an existing path (or press enter): ' % d
                 continue
+            if not os.path.isdir(d):
+                try:
+                    utils.mkdir(d)
+                except Exception as e:
+                    prompt = "Couldn't make dir: %s because %s " % (d, str(e))
+                    continue
             try:
                 os.symlink(d, G.PROJECT_PATH)
                 break
