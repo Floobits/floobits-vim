@@ -31,6 +31,7 @@ class View(object):
                 break
             current_offset += next_offset
         col = offset - current_offset
+        msg.debug('offset %s is line %s column %s' % (offset, line_num + 1, col + 1))
         return line_num + 1, col + 1
 
     @property
@@ -97,21 +98,27 @@ class View(object):
 
     def highlight(self, ranges, user_id):
         msg.debug('highlighting ranges %s' % (ranges))
+        return
+        # TODO: figure out how to highlight a region
+        region = "floobitsuser%s" % str(user_id)
+        for _range in ranges:
+            start_row, start_col = self._offset_to_vim(_range[0])
+            end_row, end_col = self._offset_to_vim(_range[1])
+            vim.command(":syntax clear %s" % region)
+            vim.command(":highlight %s guibg=#33ff33" % region)
+            if start_row == end_row and start_col == end_col:
+                end_col += 1
+            # vim_region = ":syntax region {region} start=/\%{start_col}v.\%{start_row}l/ end=/\%{end_col}v.\%{end_row}l/".\
+            #     format(region=region, start_col=start_col, start_row=start_row, end_col=end_col, end_row=end_row)
+            # msg.debug("highlight command: %s" % vim_region)
+            # vim.command(vim_region)
+            # matchadd({group}, {pattern}[, {priority}[, {id}]])
 
-        # region = "floobitsuser%s" % str(user_id)
-        # for _range in ranges:
-        #     start, _ = self._offset_to_vim(_range[0])
-        #     end, _ = self._offset_to_vim(_range[1])
-        #     if start == end:
-        #         if start == 1:
-        #             end += 1
-        #         else:
-        #             start -= 1
-        #     vim.command(":syntax clear %s" % region)
-        #     vim.command(":hi %s guibg=#33ff33" % region)
-        #     vim_region = ":syntax region {region} start=/\%{start}l/ end=/\%{end}l/".\
-        #         format(region=region, start=start, end=end)
-        #     vim.command(vim_region)
+            vim.command(":call matchdelete({user_id})".format(user_id=user_id))
+            matchadd = ":call matchadd('{region}', '\%{start_col}v.\%{start_row}l', 10000, {user_id})" \
+                .format(region=region, start_col=start_col, start_row=start_row, user_id=user_id)
+            msg.debug("highlight command: %s" % matchadd)
+            vim.command(matchadd)
 
     def rename(self, name):
         msg.debug('renaming %s to %s' % (self.vim_buf.name, name))
