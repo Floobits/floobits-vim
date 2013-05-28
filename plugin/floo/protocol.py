@@ -271,6 +271,7 @@ class BaseProtocol(object):
 
     @buf_populated
     def on_patch(self, data):
+        added_newline = False
         buf_id = data['id']
         buf = self.FLOO_BUFS[buf_id]
         view = self.get_view(buf_id)
@@ -288,10 +289,14 @@ class BaseProtocol(object):
         if md5_before != data['md5_before']:
             msg.debug('maybe vim is lame and discarded a trailing newline')
             old_text += '\n'
+            added_newline = True
         md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
         if md5_before != data['md5_before']:
             msg.warn('starting md5s don\'t match for %s. ours: %s patch: %s this is dangerous!' %
                     (buf['path'], md5_before, data['md5_before']))
+            if added_newline:
+                old_text = old_text[:-1]
+                md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
 
         t = DMP.patch_apply(dmp_patches, old_text)
 
