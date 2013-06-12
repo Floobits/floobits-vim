@@ -19,7 +19,7 @@ from floo import utils
 from floo import api
 from floo.vim_protocol import Protocol
 
-
+FLOOBITS_VERSION = "0.1"
 utils.load_settings()
 
 # enable debug with let floo_log_level = 'debug'
@@ -54,9 +54,32 @@ while True:
     sys.exit(1)
 """
 
+FLOOBITS_INFO = """
+floobits_version: {version}
+# not updated until FlooJoinWorkspace is called
+mode: {mode}
+updatetime: {updatetime}
+clientserver_support: {cs}
+servername: {servername}
+ticker_errors: {ticker_errors}
+"""
+
 
 def buf_enter():
     pass
+
+
+def floo_info():
+    kwargs = {
+        'cs': bool(int(vim.eval('has("clientserver")'))),
+        'mode': call_feedkeys and 'feedkeys' or 'client-server',
+        'servername': vim.eval("v:servername"),
+        'ticker_errors': ticker_errors,
+        'updatetime': vim.eval('&l:updatetime'),
+        'version': FLOOBITS_VERSION,
+    }
+
+    msg.log(FLOOBITS_INFO.format(**kwargs))
 
 
 def enable_floo_feedkeys():
