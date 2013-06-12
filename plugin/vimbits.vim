@@ -83,18 +83,26 @@ function! s:SetAutoCmd()
 endfunction
 
 "TODO: populate with a default url of https://floobits.com/r/
+command! -nargs=1 FlooJoinWorkspace :python join_room(<f-args>)
 command! -nargs=1 FlooJoinRoom :python join_room(<f-args>)
+
+command! FlooLeaveWorkspace :python part_room()
 command! FlooPartRoom :python part_room()
+
 command! FlooToggleFollowMode :python follow()
-command! FlooPing :python maybe_selection_changed(True)
+
 command! FlooSummon :python maybe_selection_changed(True)
+command! FlooPing :python maybe_selection_changed(True)
+
 command! FlooDeleteBuf :python delete_buf()
+
 command! FlooPause :python disable_floo_feedkeys()
 command! FlooUnPause :python enable_floo_feedkeys()
-command! -nargs=1 FlooCreateRoom :python create_room(<f-args>)
-command! -nargs=1 -complete=dir FlooShareDir :python share_dir(<f-args>)
 
+command! -nargs=1 -complete=dir FlooShareDir :python share_dir(<f-args>)
 command! -nargs=? -complete=file FlooAddBuf :python add_buf(<f-args>)
+
+command! FlooInfo :python floo_info()
 
 call s:SetAutoCmd()
 let g:floobits_plugin_loaded = 1
