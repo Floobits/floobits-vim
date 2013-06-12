@@ -9,21 +9,21 @@ https://floobits.com/
 
 COMMANDS
 
-                                                *FlooJoinRoom*
-:FlooJoinRoom [url]         Joins a Floobits room. URLs look like
-                            https://floobits.com/r/room_owner/room_name/
-                            Room urls are the same as what you see in the web
-                            editor.
+                                                *FlooJoinWorkspace*
+:FlooJoinWorkspace [url]    Joins a Floobits workspace. URLs look like
+                            https://floobits.com/r/owner/workspace_name/
+                            workspace urls are the same as what you see in the 
+                            web editor.
 
-                                                *FlooPartRoom*
-:FlooPartRoom               Leaves a Floobits room.
+                                                *FlooLeaveWorkspace*
+:FlooLeaveWorkspace         Leaves a Floobits workspace.
 
                                                 *FlooToggleFollowMode*
 :FlooToggleFollowMode       Follow mode follows the most recent change in a
-                            room.
+                            workspace.
 
-                                                *FlooPing*
-:FlooPing                   Force everyone else in the room to jump to your
+                                                *FlooSummon*
+:FlooSummon                 Force everyone else in the workspace to jump to your
                             cursor.
 
 TROUBLESHOOTING

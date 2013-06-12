@@ -93,7 +93,7 @@ class BaseProtocol(object):
             msg.debug("Skipping %s because user enabled sparse mode." % path)
             return
         if 'create_buf' not in self.perms:
-            msg.error("Skipping %s. You don't have permission to create buffers in this room." % path)
+            msg.error("Skipping %s. You don't have permission to create buffers in this workspace." % path)
             return
         if not self.is_shared(path):
             msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
@@ -115,7 +115,7 @@ class BaseProtocol(object):
             return
 
         if self.get_buf_by_path(path):
-            msg.debug('Buf %s already exists in room. Skipping adding.' % path)
+            msg.debug('Buf %s already exists in workspace. Skipping adding.' % path)
             return
 
         try:
@@ -260,10 +260,10 @@ class BaseProtocol(object):
         self.agent.on_auth()
 
     def on_join(self, data):
-        msg.log('%s joined the room' % data['username'])
+        msg.log('%s joined the workspace' % data['username'])
 
     def on_part(self, data):
-        msg.log('%s left the room' % data['username'])
+        msg.log('%s left the workspace' % data['username'])
         region_key = 'floobits-highlight-%s' % (data['user_id'])
         for window in sublime.windows():
             for view in window.views():
@@ -366,7 +366,7 @@ class BaseProtocol(object):
                 buf_to_delete = buf
                 break
         if buf_to_delete is None:
-            msg.error('%s is not in this room' % path)
+            msg.error('%s is not in this workspace' % path)
             return
         msg.log('deleting buffer ', rel_path)
         event = {

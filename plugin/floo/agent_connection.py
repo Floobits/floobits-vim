@@ -76,14 +76,14 @@ class AgentConnection(object):
     def on_auth(self):
         self.authed = True
         self.retries = G.MAX_RETRIES
-        msg.log('Successfully joined room %s/%s' % (self.owner, self.room))
+        msg.log('Successfully joined workspace %s/%s' % (self.owner, self.room))
         if self._on_auth:
             self._on_auth(self)
             self._on_auth = None
 
     def stop(self, log=True):
         if log:
-            msg.log('Disconnecting from room %s/%s' % (self.owner, self.room))
+            msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.room))
         sublime.cancel_timeout(self.reconnect_timeout)
         self.reconnect_timeout = None
         try:

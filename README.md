@@ -43,14 +43,14 @@ vim_executable mvim
 
 ## Usage
 
-* `:FlooShareDir /path/to/files`. Share a directory with others. This will create a new room, populate it with the files in that directory, and open the room's settings in your browser.
-* `:FlooJoinRoom https://floobits.com/r/room_owner/room_name/`. Join a Floobits room. Room URLs are the same as what you see in the web editor.
-* `:FlooPartRoom`. Leave the room.
+* `:FlooShareDir /path/to/files`. Share a directory with others. This will create a new workspace, populate it with the files in that directory, and open the workspace's settings in your browser.
+* `:FlooJoinWorkspace https://floobits.com/r/owner/workspace_name/`. Join a Floobits workspace. Workspace URLs are the same as what you see in the web editor.
+* `:FlooPartWorkspace`. Leave the workspace.
 * `:FlooToggleFollowMode`. Toggle follow mode. Follow mode will follow the most recent changes to buffers.
-* `:FlooSummon`. Make everyone in the room jump to your cursor.
+* `:FlooSummon`. Make everyone in the workspace jump to your cursor.
 * `:FlooPause`. Pause the event loop so you can type keyboard shortcuts. (Only necessary in feedkeys fall-back mode.)
 * `:FlooUnPause`. Resume the event loop so you can collaborate again. (Only necessary in feedkeys fall-back mode.)
-* `:FlooDeleteBuf`. Delete the current buffer from the room.
+* `:FlooDeleteBuf`. Delete the current buffer from the workspace.
 
 
 ## Troubleshooting
