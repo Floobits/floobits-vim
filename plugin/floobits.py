@@ -244,9 +244,9 @@ def share_dir(dir_to_share):
                 if result['owner'] == G.USERNAME:
                     try:
                         api.create_room(room_name)
-                        msg.debug('Created room %s' % room_url)
+                        msg.debug('Created workspace %s' % room_url)
                     except Exception as e:
-                        msg.debug('Tried to create room' + str(e))
+                        msg.debug('Tried to create workspace' + str(e))
                 # they wanted to share teh dir, so always share it
                 return join_room(room_url, lambda x: agent.protocol.create_buf(dir_to_share))
 
@@ -260,7 +260,7 @@ def share_dir(dir_to_share):
     except Exception as e:
         return msg.error("Couldn't create symlink from %s to %s: %s" % (dir_to_share, floo_room_dir, str(e)))
 
-    # make & join room
+    # make & join workspace
     create_room(room_name, floo_room_dir, dir_to_share)
 
 
@@ -268,13 +268,13 @@ def create_room(room_name, ln_path=None, share_path=None):
     try:
         api.create_room(room_name)
         room_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, room_name)
-        msg.debug('Created room %s' % room_url)
+        msg.debug('Created workspace %s' % room_url)
     except urllib2.HTTPError as e:
         if e.code != 409:
             raise
         if ln_path:
             while True:
-                room_name = vim_input('Room %s already exists. Choose another name: ' % room_name, room_name + "1")
+                room_name = vim_input('Workspace %s already exists. Choose another name: ' % room_name, room_name + "1")
                 new_path = os.path.join(os.path.dirname(ln_path), room_name)
                 try:
                     os.rename(ln_path, new_path)
@@ -286,7 +286,7 @@ def create_room(room_name, ln_path=None, share_path=None):
 
         return create_room(room_name, ln_path, share_path)
     except Exception as e:
-        sublime.error_message('Unable to create room: %s' % str(e))
+        sublime.error_message('Unable to create workspace: %s' % str(e))
         return
 
     try:
@@ -324,7 +324,7 @@ atexit.register(stop_everything)
 
 def join_room(room_url, on_auth=None):
     global agent
-    msg.debug("room url is %s" % room_url)
+    msg.debug("workspace url is %s" % room_url)
 
     try:
         result = utils.parse_url(room_url)
@@ -361,13 +361,13 @@ def join_room(room_url, on_auth=None):
 
     G.PROJECT_PATH = os.path.realpath(G.PROJECT_PATH + os.sep)
     vim.command('cd %s' % G.PROJECT_PATH)
-    msg.debug("joining room %s" % room_url)
+    msg.debug("joining workspace %s" % room_url)
 
     stop_everything()
     try:
         start_event_loop()
         agent = AgentConnection(on_auth=on_auth, Protocol=Protocol, **result)
-        # owner and room name are slugfields so this should be safe
+        # owner and workspace name are slugfields so this should be safe
         agent.connect()
     except Exception as e:
         msg.error(str(e))
@@ -378,6 +378,6 @@ def join_room(room_url, on_auth=None):
 
 def part_room():
     if not agent:
-        return msg.warn('Unable to part room: You are not joined to a room.')
+        return msg.warn('Unable to leave workspace: You are not joined to a workspace.')
     stop_everything()
-    msg.log('You left the room.')
+    msg.log('You left the workspace.')
