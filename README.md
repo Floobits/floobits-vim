@@ -7,7 +7,7 @@ Real-time collaborative editing. Think Etherpad, but with native editors. This i
 Unfortunately, Vim's plugin API has few options for running event-driven code. We've figured out two ways, which are described below. Floobits will fall back to the second method if something goes wrong with the first.
 
 
-## 1. Vim Server and --remote-expr (Recommended, unless you are a heavy user of leader key sequences)
+## 1. Vim Server and --remote-expr (Recommended)
 
 To take advantage of this method, you should launch Vim as a server.  Some versions of Vim do this automatically, like MacVim.  On others, you may need to invoke Vim like so:
 
@@ -39,7 +39,7 @@ secret gii9Ka8aZei3ej1eighu2vi8D
 vim_executable mvim
 ```
 
-* [Vundle](https://github.com/gmarik/vundle) users: Add `Bundle 'Floobits/floobits-vim'` to your `~/.vimrc`. 
+* [Vundle](https://github.com/gmarik/vundle) users: Add `Bundle 'Floobits/floobits-vim'` to your `~/.vimrc`.
 * [Pathogen](https://github.com/tpope/vim-pathogen) users: `cd ~/.vim/bundle` and `git clone https://github.com/Floobits/floobits-vim Floobits`
 
 
