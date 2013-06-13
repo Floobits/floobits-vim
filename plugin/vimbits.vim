@@ -96,8 +96,8 @@ command! FlooPing :python maybe_selection_changed(True)
 
 command! FlooDeleteBuf :python delete_buf()
 
-command! FlooPause :python disable_floo_feedkeys()
-command! FlooUnPause :python enable_floo_feedkeys()
+command! FlooPause :python floo_pause()
+command! FlooUnPause :python floo_unpause()
 
 command! -nargs=1 -complete=dir FlooShareDir :python share_dir(<f-args>)
 command! -nargs=? -complete=file FlooAddBuf :python add_buf(<f-args>)

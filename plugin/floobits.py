@@ -72,7 +72,7 @@ def buf_enter():
 def floo_info():
     kwargs = {
         'cs': bool(int(vim.eval('has("clientserver")'))),
-        'mode': call_feedkeys and 'feedkeys' or 'client-server',
+        'mode': (using_feedkeys and 'feedkeys') or 'client-server',
         'servername': vim.eval("v:servername"),
         'ticker_errors': ticker_errors,
         'updatetime': vim.eval('&l:updatetime'),
@@ -82,20 +82,28 @@ def floo_info():
     msg.log(FLOOBITS_INFO.format(**kwargs))
 
 
-def enable_floo_feedkeys():
-    global call_feedkeys
-    if not using_feedkeys:
-        return
-    call_feedkeys = True
-    vim.command("set updatetime=250")
+def floo_pause():
+    global call_feedkeys, ticker
+
+    if using_feedkeys:
+        call_feedkeys = False
+        vim.command("set updatetime=4000")
+    else:
+        try:
+            ticker.kill()
+        except Exception as e:
+            print(e)
+        del ticker
 
 
-def disable_floo_feedkeys():
+def floo_unpause():
     global call_feedkeys
-    if not using_feedkeys:
-        return
-    call_feedkeys = False
-    vim.command("set updatetime=4000")
+
+    if using_feedkeys:
+        call_feedkeys = True
+        vim.command("set updatetime=250")
+    else:
+        start_event_loop()
 
 
 def fallback_to_feedkeys(warning):
@@ -103,7 +111,7 @@ def fallback_to_feedkeys(warning):
     using_feedkeys = True
     warning += " Falling back to f//e hack which will break some key commands. You may need to call FlooPause/FlooUnPause before some commands."
     msg.warn(warning)
-    enable_floo_feedkeys()
+    floo_unpause()
 
 
 def ticker_watcher(ticker):
@@ -136,7 +144,7 @@ def start_event_loop():
     if not servername:
         return fallback_to_feedkeys('I can not identify the servername of this vim. You may need to pass --servername to vim at startup.')
 
-    evaler = ticker_python.format(binary=exe, servername=servername, sleep='0.2')
+    evaler = ticker_python.format(binary=exe, servername=servername, sleep='1.0')
     ticker = subprocess.Popen(['python', '-c', evaler],
                               stderr=subprocess.PIPE,
                               stdout=subprocess.PIPE)
@@ -336,9 +344,7 @@ def stop_everything():
     if agent:
         agent.stop()
         agent = None
-    if ticker:
-        ticker.kill()
-    disable_floo_feedkeys()
+    floo_pause()
     #TODO: get this value from vim and reset it
     vim.command("set updatetime=4000")
 #NOTE: not strictly necessary
