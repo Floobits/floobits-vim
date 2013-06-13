@@ -6,6 +6,7 @@ Real-time collaborative editing. Think Etherpad, but with native editors. This i
 
 Unfortunately, Vim's plugin API has few options for running event-driven code. We've figured out two ways, which are described below. Floobits will fall back to the second method if something goes wrong with the first.
 
+
 ## 1. Vim Server and --remote-expr (Recommended, unless you are a heavy user of leader key sequences)
 
 To take advantage of this method, you should launch Vim as a server.  Some versions of Vim do this automatically, like MacVim.  On others, you may need to invoke Vim like so:
@@ -16,17 +17,15 @@ You will also need to define `vim_executable exectable_name` in your ~/.floorc f
 
 `vim_executable mvim`
 
-This option will sometimes call redraw, which can make the minibuffer blink on ocassion.
+This option will sometimes call redraw, which can make the minibuffer blink on occasion.
 
-The biggest disadvantage of this method is that Vim will cancel leader keys.
+The biggest disadvantage of this method is that Vim will cancel leader key maps. If this is an issue, you can call  `:FlooPause` and `:FlooUnpause` to pause/unpause the event loop. Alternatively, you can type really quickly.
 
 
 ## 2. CursorHold/CursorHoldI with feedkeys.
 
-If your Vim wasn't launched as a server, or something goes wrong, floobits falls back to making an event loop by repeatedly triggering autocommands.
+If your Vim wasn't launched as a server, or something goes wrong, Floobits falls back to making an event loop by repeatedly triggering autocommands.
 This will unfortuantely escape any key sequence, like ctrl-w j, unless you finish it within one tick of the event loop.  You can call  `:FlooPause` and `:FlooUnpause` to pause/unpause the event loop if you have to. Alternatively, you can type really quickly.
-
-Unfortunately, at the end of the day, Vim is purposefully designed to make async actions impossible and these are the only options available.
 
 
 ## Installation
@@ -51,8 +50,8 @@ vim_executable mvim
 * `:FlooPartWorkspace`. Leave the workspace.
 * `:FlooToggleFollowMode`. Toggle follow mode. Follow mode will follow the most recent changes to buffers.
 * `:FlooSummon`. Make everyone in the workspace jump to your cursor.
-* `:FlooPause`. Pause the event loop so you can type keyboard shortcuts. (Only necessary in feedkeys fall-back mode.)
-* `:FlooUnPause`. Resume the event loop so you can collaborate again. (Only necessary in feedkeys fall-back mode.)
+* `:FlooPause`. Pause the event loop so you can type keyboard shortcuts.
+* `:FlooUnPause`. Resume the event loop so you can collaborate again.
 * `:FlooDeleteBuf`. Delete the current buffer from the workspace.
 
 
