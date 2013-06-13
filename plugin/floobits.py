@@ -36,10 +36,31 @@ ticker = None
 ticker_errors = 0
 using_feedkeys = False
 
-ticker_python = """import sys; import subprocess; import time
+ticker_python = """import sys; import subprocess; import time; import fcntl; import os
 args = ['{binary}', '--servername', '{servername}', '--remote-expr', 'g:floobits_global_tick()']
+
+def read(fd):
+    buf = ''
+    while True:
+        try:
+            d = os.read(fd, 1024)
+            if not d or d == '':
+                break
+            buf += d
+        except (IOError, OSError):
+            break
+    return buf
+
+stdin = sys.stdin.fileno()
+fl = fcntl.fcntl(stdin, fcntl.F_GETFL)
+fcntl.fcntl(stdin, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+
+
 while True:
     time.sleep({sleep})
+    data = read(stdin)
+    if data:
+        time.sleep(1)
     # TODO: learn to speak vim or something :(
     proc = subprocess.Popen(args,
         stderr=subprocess.PIPE,
@@ -65,6 +86,65 @@ ticker_errors: {ticker_errors}
 """
 
 
+OLD_MAPS = []
+
+
+def disable_loop():
+#    print('pre')
+    if ticker is None:
+        print("omg no ticker")
+        return
+    ticker.stdin.write('1')
+    ticker.stdin.flush()
+    print('d')
+
+
+def enable_loop():
+#    vim.command('exe ' + rhs)
+    print("HELLO")
+    return
+
+
+def unset_maps():
+    for seq, rhs in OLD_MAPS:
+        cmd = "map %s %s" % (seq, rhs)
+        vim.command(cmd)
+
+
+def set_maps():
+    vim.command('redir => floo_maps')
+    vim.command('silent map')
+    vim.command('redir END')
+    maps = vim.eval('floo_maps')
+
+    i = 0
+    for key_map in maps.split('\n'):
+        if not key_map:
+            continue
+        mode = key_map[0]
+        if mode not in ('n', ' '):
+            continue
+        remainder = key_map[3:]
+        seq, remainder = remainder.split(None, 1)
+        flag = remainder.split(None, 1)[0]
+        if flag in ('*', '&'):
+            continue
+        if flag in ('@',):
+            flag, remainder = remainder.split(None, 1)
+        else:
+            flag = None
+        maparg = vim.eval("maparg('%s', '%s')" % (seq, mode))
+        rhs = maparg
+        print(rhs)
+        OLD_MAPS.append((seq, rhs))
+        #    :map  _ls  :!ls -l %<CR>:echo "the end"<CR>
+        cmd = "map %s :call g:floo_disable_loop()<CR>%s" % (seq, rhs)
+        print(cmd)
+        vim.command(cmd)
+        #:nnoremap <buffer> <leader>x dd
+        i += 1
+
+
 def buf_enter():
     pass
 
@@ -80,6 +160,21 @@ def floo_info():
     }
 
     msg.log(FLOOBITS_INFO.format(**kwargs))
+
+
+def floo_pause():
+    if call_feedkeys:
+        disable_floo_feedkeys()
+    else:
+        unset_maps()
+        # TODO: send something to child to tell it to sleep/hang longer
+
+
+def floo_unpause():
+    if call_feedkeys:
+        enable_floo_feedkeys()
+    else:
+        set_maps()
 
 
 def enable_floo_feedkeys():
@@ -139,6 +234,7 @@ def start_event_loop():
     evaler = ticker_python.format(binary=exe, servername=servername, sleep='0.2')
     ticker = subprocess.Popen(['python', '-c', evaler],
                               stderr=subprocess.PIPE,
+                              stdin=subprocess.PIPE,
                               stdout=subprocess.PIPE)
     ticker.poll()
     sublime.set_timeout(ticker_watcher, 500, ticker)
@@ -162,7 +258,10 @@ def cursor_hold():
     global_tick()
     if not call_feedkeys:
         return
-    return vim.command("call feedkeys(\"f\\e\", 'n')")
+    # let K_IGNORE = "\x80\xFD\x35" " internal key code that is ignored
+    #return vim.command("call feedkeys(\"\\x80\\xFD\\x35\")")
+    return vim.command("call feedkeys(\"\<Right>\<Left>\",'n')")
+#    return vim.command("call feedkeys(\"f\\e\", 'n')")
 
 
 def cursor_holdi():

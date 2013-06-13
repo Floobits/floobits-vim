@@ -1,4 +1,4 @@
-" Copyright Floobits LLC 2013
+" Copyright Floobits Inc 2013
 
 if !has('python')
     echohl WarningMsg |
@@ -43,6 +43,14 @@ else
     finish
 endif
 
+function! g:floo_disable_loop()
+    python disable_loop()
+endfunction
+
+function! g:floo_enable_loop()
+    python enable_loop()
+endfunction
+
 function! s:MaybeChanged()
     if &modified
         python maybe_buffer_changed()
@@ -57,6 +65,11 @@ endfunction
 function! g:floobits_global_tick()
     python global_tick()
 endfunction
+
+let mapleader = "t"
+
+nmap <leader>t :py import time; print time.ctime() <cr>
+nmap <leader>w :w!<cr>
 
 function! s:SetAutoCmd()
     let s:vim_events = ['InsertEnter', 'InsertChange', 'InsertLeave', 'QuickFixCmdPost', 'FileChangedShellPost', 'CursorMoved', 'CursorMovedI']
@@ -96,13 +109,16 @@ command! FlooPing :python maybe_selection_changed(True)
 
 command! FlooDeleteBuf :python delete_buf()
 
-command! FlooPause :python disable_floo_feedkeys()
-command! FlooUnPause :python enable_floo_feedkeys()
+command! FlooPause :python floo_pause()
+command! FlooUnPause :python floo_unpause()
 
 command! -nargs=1 -complete=dir FlooShareDir :python share_dir(<f-args>)
 command! -nargs=? -complete=file FlooAddBuf :python add_buf(<f-args>)
 
 command! FlooInfo :python floo_info()
+command! FlooMap :python set_maps()
+command! FlooUnMap :python unset_maps()
 
+:python set_maps()
 call s:SetAutoCmd()
 let g:floobits_plugin_loaded = 1
