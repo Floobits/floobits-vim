@@ -2,11 +2,11 @@
 
 Real-time collaborative editing. Think Etherpad, but with native editors. This is the plugin for Vim. We also have plugins for [Emacs](https://github.com/Floobits/floobits-emacs) and [Sublime Text](https://github.com/Floobits/floobits-sublime), as well as a web-based editor.
 
-## Development status: fairly stable.
+### Development status: fairly stable, but conflicts with some Vim features such as keymaps.
 
 Unfortunately, Vim's plugin API has few options for running event-driven code. We've figured out two ways, which are described below. Floobits will fall back to the second method if something goes wrong with the first.
 
-## 1. Vim Server and --remote-expr (Recommended)
+## 1. Vim Server and --remote-expr (Recommended, unless you are a heavy user of leader key sequences)
 
 To take advantage of this method, you should launch Vim as a server.  Some versions of Vim do this automatically, like MacVim.  On others, you may need to invoke Vim like so:
 
@@ -17,6 +17,9 @@ You will also need to define `vim_executable exectable_name` in your ~/.floorc f
 `vim_executable mvim`
 
 This option will sometimes call redraw, which can make the minibuffer blink on ocassion.
+
+The biggest disadvantage of this method is that Vim will cancel leader keys.
+
 
 ## 2. CursorHold/CursorHoldI with feedkeys.
 
