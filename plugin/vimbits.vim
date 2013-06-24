@@ -33,7 +33,7 @@ import vim
 sys.path.append(vim.eval("g:floobits_plugin_dir"))
 
 END_PYTHON
-
+echo(expand("<sfile>:p:h")."/floobits.py")
 if filereadable(expand("<sfile>:p:h")."/floobits.py")
     pyfile <sfile>:p:h/floobits.py
 else
@@ -65,19 +65,18 @@ function! s:SetAutoCmd()
         " kill autocommands on reload
         autocmd!
         for cmd in s:vim_events
-            exec 'autocmd '. cmd .' * call s:MaybeChanged()'
+            "exec 'autocmd '. cmd .' * call s:MaybeChanged()'
         endfor
-
         autocmd CursorHold * python cursor_hold()
-        autocmd CursorHoldI * python cursor_holdi()
-        autocmd CursorMoved * python maybe_selection_changed()
-        autocmd CursorMovedI * python maybe_selection_changed()
+        "autocmd CursorHoldI * python cursor_holdi()
+        "autocmd CursorMoved * python maybe_selection_changed()
+        "autocmd CursorMovedI * python maybe_selection_changed()
         for cmd in s:new_buf_events
-            exec 'autocmd '. cmd .' * python maybe_new_file()'
+         "   exec 'autocmd '. cmd .' * python maybe_new_file()'
         endfor
 
-        autocmd BufWinEnter * python is_modifiable()
-        autocmd BufEnter * python buf_enter()
+        "autocmd BufWinEnter * python is_modifiable()
+        "autocmd BufEnter * python buf_enter()
         " milliseconds
     augroup END
 endfunction

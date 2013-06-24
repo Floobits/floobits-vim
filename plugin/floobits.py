@@ -8,11 +8,12 @@ import webbrowser
 import subprocess
 
 import vim
+
 from floo import dmp_monkey
 dmp_monkey.monkey_patch()
 
-from floo import sublime
 from floo import AgentConnection
+from floo import sublime
 from floo import msg
 from floo import shared as G
 from floo import utils
@@ -162,21 +163,29 @@ def vim_input(prompt, default, completion=""):
 def global_tick():
     """a hack to make vim evented like"""
     if agent:
+        print('ticking')
         agent.tick()
-    sublime.call_timeouts()
+    # sublime.call_timeouts()
 
-
+import time
+previous = time.time()
 def cursor_hold():
+    global previous
     global_tick()
     if not call_feedkeys:
         return
-    return vim.command("call feedkeys(\"f\\e\", 'n')")
+    current = time.time()
+    print current - previous
+    previous = current
+    return vim.command('call feedkeys("\x80\xFD\x35")')
+    # return vim.command("call feedkeys(\"f\\e\", 'n')")
 
 
 def cursor_holdi():
     global_tick()
     if not call_feedkeys:
         return
+    #return vim.command('call feedkeys("\x80\xFD\x35")')
     linelen = int(vim.eval("col('$')-1"))
     if linelen > 0:
         if int(vim.eval("col('.')")) == 1:
