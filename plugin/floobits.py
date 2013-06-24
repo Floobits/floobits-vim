@@ -89,11 +89,13 @@ def floo_pause():
         call_feedkeys = False
         vim.command("set updatetime=4000")
     else:
+        if ticker is None:
+            return
         try:
             ticker.kill()
         except Exception as e:
             print(e)
-        del ticker
+        ticker = None
 
 
 def floo_unpause():
