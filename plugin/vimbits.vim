@@ -1,4 +1,4 @@
-" Copyright Floobits LLC 2013
+" Copyright Floobits Inc 2013
 
 if !has('python')
     echohl WarningMsg |
