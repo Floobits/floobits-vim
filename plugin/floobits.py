@@ -307,7 +307,7 @@ def create_room(room_name, ln_path=None, share_path=None):
             raise
         if ln_path:
             while True:
-                room_name = vim_input('Workspace %s already exists. Choose another name: ' % room_name, room_name + "1")
+                room_name = vim_input('Workspace %s already exists. Choose another name: ' % (room_name, room_name + "1"))
                 new_path = os.path.join(os.path.dirname(ln_path), room_name)
                 try:
                     os.rename(ln_path, new_path)
