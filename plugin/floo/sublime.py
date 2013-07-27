@@ -11,7 +11,7 @@ def windows(*args, **kwargs):
     return []
 
 
-def set_timeout(func, timeout, *args, **kwargs):
+def set_timeout(func, timeout):
     global top_timeout_id
     timeout_id = top_timeout_id
     top_timeout_id + 1
@@ -22,7 +22,7 @@ def set_timeout(func, timeout, *args, **kwargs):
         if timeout_id in cancelled_timeouts:
             cancelled_timeouts.remove(timeout_id)
             return
-        func(*args, **kwargs)
+        func()
 
     then = time.time() + (timeout / 1000.0)
     timeouts[then].append(timeout_func)
