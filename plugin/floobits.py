@@ -336,7 +336,7 @@ def create_room(room_name, ln_path=None, share_path=None):
 @agent_and_protocol
 def add_buf(path=None):
     path = path or vim.current.buffer.name
-    agent.protocol.create_buf(path, True)
+    agent.protocol.create_buf(path, force=True)
 
 
 @agent_and_protocol
