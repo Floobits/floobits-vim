@@ -154,9 +154,13 @@ def start_event_loop():
     sublime.set_timeout(ticker_watcher, 500, ticker)
 
 
-def vim_input(prompt, default, completion=""):
+def vim_input(prompt, default, completion=None):
     vim.command('call inputsave()')
-    vim.command("let user_input = input('%s', '%s', '%s')" % (prompt, default, completion))
+    if completion:
+        cmd = "let user_input = input('%s', '%s', '%s')" % (prompt, default, completion)
+    else:
+        cmd = "let user_input = input('%s', '%s')" % (prompt, default)
+    vim.command(cmd)
     vim.command('call inputrestore()')
     return vim.eval('user_input')
 
@@ -307,7 +311,7 @@ def create_room(room_name, ln_path=None, share_path=None):
             raise
         if ln_path:
             while True:
-                room_name = vim_input('Workspace %s already exists. Choose another name: ' % (room_name))
+                room_name = vim_input('Workspace %s already exists. Choose another name: ' % room_name, room_name + "1")
                 new_path = os.path.join(os.path.dirname(ln_path), room_name)
                 try:
                     os.rename(ln_path, new_path)
