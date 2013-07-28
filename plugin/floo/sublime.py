@@ -3,8 +3,6 @@ import time
 
 
 timeouts = defaultdict(list)
-top_timeout_id = 0
-cancelled_timeouts = set()
 
 
 def windows(*args, **kwargs):
@@ -12,26 +10,8 @@ def windows(*args, **kwargs):
 
 
 def set_timeout(func, timeout):
-    global top_timeout_id
-    timeout_id = top_timeout_id
-    top_timeout_id + 1
-    if top_timeout_id > 100000:
-        top_timeout_id = 0
-
-    def timeout_func():
-        if timeout_id in cancelled_timeouts:
-            cancelled_timeouts.remove(timeout_id)
-            return
-        func()
-
     then = time.time() + (timeout / 1000.0)
-    timeouts[then].append(timeout_func)
-    return timeout_id
-
-
-def cancel_timeout(timeout_id):
-    if timeout_id in timeouts:
-        cancelled_timeouts.add(timeout_id)
+    timeouts[then].append(func)
 
 
 def call_timeouts():
