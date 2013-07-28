@@ -74,7 +74,7 @@ def floo_info():
         'servername': vim.eval("v:servername"),
         'ticker_errors': ticker_errors,
         'updatetime': vim.eval('&l:updatetime'),
-        'version': FLOOBITS_VERSION,
+        'version': G.__PLUGIN_VERSION__,
     }
 
     msg.log(FLOOBITS_INFO.format(**kwargs))

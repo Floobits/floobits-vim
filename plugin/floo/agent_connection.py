@@ -15,7 +15,6 @@ except ImportError:
 import vim
 
 from common import cert, msg, shared as G, utils
-import sublime
 
 
 class AgentConnection(object):
