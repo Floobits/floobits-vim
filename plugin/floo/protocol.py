@@ -243,7 +243,7 @@ class BaseProtocol(object):
 
     def on_room_info(self, data):
         # Success! Reset counter
-        self.room_info = data
+        self.workspace_info = data
         self.perms = data['perms']
 
         if 'patch' not in data['perms']:
@@ -256,7 +256,7 @@ class BaseProtocol(object):
                 'host': self.agent.host,
                 'owner': self.agent.owner,
                 'port': self.agent.port,
-                'room': self.agent.room,
+                'workspace': self.agent.workspace,
                 'secure': self.agent.secure,
             })
         }

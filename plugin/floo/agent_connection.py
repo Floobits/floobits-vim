@@ -36,11 +36,11 @@ class AgentConnection(object):
         self.port = port or G.DEFAULT_PORT
         self.secure = secure
         self.owner = owner
-        self.room = workspace
+        self.workspace = workspace
         self.retries = self.MAX_RETRIES
         self._on_auth = on_auth
         self.empty_selects = 0
-        self.room_info = {}
+        self.workspace_info = {}
         self.protocol = Protocol(self)
         self.cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
 
@@ -61,7 +61,7 @@ class AgentConnection(object):
         self.put({
             'username': self.username,
             'secret': self.secret,
-            'room': self.room,
+            'room': self.workspace,
             'room_owner': self.owner,
             'client': self.protocol.CLIENT,
             'platform': sys.platform,
@@ -74,15 +74,15 @@ class AgentConnection(object):
 
     def on_auth(self):
         self.authed = True
-        self.retries = G.MAX_RETRIES
-        msg.log('Successfully joined workspace %s/%s' % (self.owner, self.room))
+        self.retries = self.MAX_RETRIES
+        msg.log('Successfully joined workspace %s/%s' % (self.owner, self.workspace))
         if self._on_auth:
             self._on_auth(self)
             self._on_auth = None
 
     def stop(self, log=True):
         if log:
-            msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.room))
+            msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.workspace))
         utils.cancel_timeout(self.reconnect_timeout)
         self.reconnect_timeout = None
         try:
@@ -113,7 +113,7 @@ class AgentConnection(object):
             self.sock.close()
         except Exception:
             pass
-        self.room_info = {}
+        self.workspace_info = {}
         self.net_buf = ''
         self.sock = None
         self.authed = False

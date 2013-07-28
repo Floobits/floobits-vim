@@ -143,8 +143,8 @@ class Protocol(protocol.BaseProtocol):
     """understands vim"""
     CLIENT = 'VIM'
 
-    def on_room_info(self, room_info):
-        super(Protocol, self).on_room_info(room_info)
+    def on_room_info(self, workspace_info):
+        super(Protocol, self).on_room_info(workspace_info)
         vim.command(':Explore %s' % G.PROJECT_PATH)
 
     def maybe_selection_changed(self, vim_buf, is_ping):
