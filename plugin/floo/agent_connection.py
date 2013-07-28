@@ -14,22 +14,20 @@ except ImportError:
 
 import vim
 
-import msg
+from common import cert, msg, shared as G, utils
 import sublime
-import shared as G
-
-
-CERT = os.path.join(vim.eval("g:floobits_plugin_dir"), 'startssl-ca.pem')
-msg.debug("CERT is ", CERT)
 
 
 class AgentConnection(object):
+    MAX_RETRIES = 20
+    INITIAL_RECONNECT_DELAY = 500
+
     ''' Simple chat server using select '''
-    def __init__(self, owner, room, host=None, port=None, secure=True, on_auth=None, Protocol=None):
+    def __init__(self, owner, workspace, host=None, port=None, secure=True, on_auth=None, Protocol=None):
         self.sock_q = Queue.Queue()
         self.sock = None
         self.net_buf = ''
-        self.reconnect_delay = 500
+        self.reconnect_delay = self.INITIAL_RECONNECT_DELAY
         self.reconnect_timeout = None
         self.username = G.USERNAME
         self.secret = G.SECRET
@@ -38,12 +36,13 @@ class AgentConnection(object):
         self.port = port or G.DEFAULT_PORT
         self.secure = secure
         self.owner = owner
-        self.room = room
-        self.retries = 20
+        self.room = workspace
+        self.retries = self.MAX_RETRIES
         self._on_auth = on_auth
         self.empty_selects = 0
         self.room_info = {}
         self.protocol = Protocol(self)
+        self.cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
 
     def tick(self):
         self.protocol.push()
@@ -84,7 +83,7 @@ class AgentConnection(object):
     def stop(self, log=True):
         if log:
             msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.room))
-        sublime.cancel_timeout(self.reconnect_timeout)
+        utils.cancel_timeout(self.reconnect_timeout)
         self.reconnect_timeout = None
         try:
             self.retries = -1
@@ -123,7 +122,7 @@ class AgentConnection(object):
             self.reconnect_delay = 10000
         if self.retries > 0:
             msg.log('Floobits: Reconnecting in %sms' % self.reconnect_delay)
-            self.reconnect_timeout = sublime.set_timeout(self.connect, int(self.reconnect_delay))
+            self.reconnect_timeout = utils.set_timeout(self.connect, int(self.reconnect_delay))
         elif self.retries == 0:
             msg.error('Floobits Error! Too many reconnect failures. Giving up.')
         self.retries -= 1
@@ -133,8 +132,10 @@ class AgentConnection(object):
         self.empty_selects = 0
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
-            if ssl:  # ST2 on linux doesn't have the ssl module. Not sure about windows
-                self.sock = ssl.wrap_socket(self.sock, ca_certs=CERT, cert_reqs=ssl.CERT_REQUIRED)
+            if ssl:
+                with open(self.cert_path, 'wb') as cert_fd:
+                    cert_fd.write(cert.CA_CERT.encode('utf-8'))
+                self.sock = ssl.wrap_socket(self.sock, ca_certs=self.cert_path, cert_reqs=ssl.CERT_REQUIRED)
             else:
                 msg.debug('No SSL module found. Connection will not be encrypted.')
                 if self.port == G.DEFAULT_PORT:
@@ -150,7 +151,7 @@ class AgentConnection(object):
             return
         self.sock.setblocking(0)
         msg.debug('Connected!')
-        self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
+        self.reconnect_delay = self.INITIAL_RECONNECT_DELAY
         self.send_auth()
         if cb:
             cb()

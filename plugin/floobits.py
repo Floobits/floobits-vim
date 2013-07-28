@@ -11,16 +11,13 @@ import vim
 from floo import dmp_monkey
 dmp_monkey.monkey_patch()
 
+from floo.common import api, msg, shared as G, utils
 from floo import sublime
 from floo import AgentConnection
-from floo import msg
-from floo import shared as G
-from floo import utils
-from floo import api
 from floo.vim_protocol import Protocol
 
 FLOOBITS_VERSION = "0.1"
-utils.load_settings()
+utils.reload_settings()
 
 # enable debug with let floo_log_level = 'debug'
 floo_log_level = vim.eval('floo_log_level')
@@ -129,7 +126,7 @@ def ticker_watcher(ticker):
     if ticker_errors > 10:
         return fallback_to_feedkeys('Too much trouble with the floobits external ticker.')
     start_event_loop()
-    sublime.set_timeout(ticker_watcher, 2000, ticker)
+    utils.set_timeout(ticker_watcher, 2000, ticker)
 
 
 def start_event_loop():
@@ -151,7 +148,7 @@ def start_event_loop():
                               stderr=subprocess.PIPE,
                               stdout=subprocess.PIPE)
     ticker.poll()
-    sublime.set_timeout(ticker_watcher, 500, ticker)
+    utils.set_timeout(ticker_watcher, 500, ticker)
 
 
 def vim_input(prompt, default, completion=None):
@@ -229,7 +226,7 @@ def is_modifiable(name_to_check=None):
         return
     if 'patch' not in agent.protocol.perms:
         vim.command("call g:FlooSetReadOnly()")
-        sublime.set_timeout(is_modifiable, 0, name)
+        utils.set_timeout(is_modifiable, 0, name)
 
 
 @agent_and_protocol
@@ -272,8 +269,8 @@ def share_dir(dir_to_share):
         except Exception as e:
             msg.error(str(e))
         else:
-            room_name = result['room']
-            floo_room_dir = os.path.join(G.COLAB_DIR, result['owner'], result['room'])
+            room_name = result['workspace']
+            floo_room_dir = os.path.join(G.COLAB_DIR, result['owner'], result['workspace'])
             # they have previously joined the room
             if os.path.realpath(floo_room_dir) == os.path.realpath(dir_to_share):
                 # it could have been deleted, try to recreate it if possible
@@ -366,7 +363,7 @@ def join_room(room_url, on_auth=None):
     except Exception as e:
         return msg.error(str(e))
 
-    G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['room']))
+    G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
     utils.mkdir(os.path.dirname(G.PROJECT_PATH))
 
     d = ''
