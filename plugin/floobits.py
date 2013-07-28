@@ -278,7 +278,9 @@ def share_dir(dir_to_share):
                 # TODO: org or something here?
                 if result['owner'] == G.USERNAME:
                     try:
-                        api.create_workspace(workspace_name)
+                        api.create_workspace({
+                            'name': workspace_name
+                        })
                         msg.debug('Created workspace %s' % workspace_url)
                     except Exception as e:
                         msg.debug('Tried to create workspace' + str(e))
@@ -301,12 +303,18 @@ def share_dir(dir_to_share):
 
 def create_workspace(workspace_name, ln_path=None, share_path=None):
     try:
-        api.create_workspace(workspace_name)
+        api.create_workspace({
+            'name': workspace_name
+        })
         workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
         msg.debug('Created workspace %s' % workspace_url)
     except urllib2.HTTPError as e:
-        if e.code != 409:
-            raise
+        err_body = e.read()
+        msg.error('Unable to create workspace: %s %s' % (unicode(e), err_body))
+        if e.code not in [400, 402, 409]:
+            return sublime.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
+
+
         if ln_path:
             while True:
                 workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + "1")

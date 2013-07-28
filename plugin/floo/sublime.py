@@ -1,3 +1,4 @@
+import sys
 from collections import defaultdict
 import time
 
@@ -33,3 +34,7 @@ def error_message(*args, **kwargs):
 class Region(object):
     def __init__(*args, **kwargs):
         pass
+
+
+def platform():
+    return sys.platform
