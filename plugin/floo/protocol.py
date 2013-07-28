@@ -192,7 +192,7 @@ class BaseProtocol(object):
                 continue
 
             reported.add(vb_id)
-            patch = utils.FlooPatch(view)
+            patch = utils.FlooPatch(view.get_text(), buf)
             # Update the current copy of the buffer
             buf['buf'] = patch.current
             buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
