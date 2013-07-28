@@ -4,9 +4,7 @@ import time
 
 import vim
 
-import msg
-import shared as G
-import utils
+from common import msg, shared as G, utils
 import protocol
 
 

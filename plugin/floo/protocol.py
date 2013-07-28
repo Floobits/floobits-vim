@@ -252,7 +252,7 @@ class BaseProtocol(object):
         utils.mkdir(G.PROJECT_PATH)
 
         floo_json = {
-            'url': utils.to_room_url({
+            'url': utils.to_workspace_url({
                 'host': self.agent.host,
                 'owner': self.agent.owner,
                 'port': self.agent.port,

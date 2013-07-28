@@ -8,15 +8,16 @@ import webbrowser
 import subprocess
 
 import vim
-from floo import dmp_monkey
-dmp_monkey.monkey_patch()
 
 from floo.common import api, msg, shared as G, utils
 from floo import sublime
 from floo import AgentConnection
 from floo.vim_protocol import Protocol
 
-FLOOBITS_VERSION = "0.1"
+
+G.__VERSION__ = '0.02'
+G.__PLUGIN_VERSION__ = '0.2'
+
 utils.reload_settings()
 
 # enable debug with let floo_log_level = 'debug'
