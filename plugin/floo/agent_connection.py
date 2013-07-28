@@ -29,7 +29,7 @@ class AgentConnection(object):
         self.sock_q = Queue.Queue()
         self.sock = None
         self.net_buf = ''
-        self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
+        self.reconnect_delay = 500
         self.reconnect_timeout = None
         self.username = G.USERNAME
         self.secret = G.SECRET
@@ -39,7 +39,7 @@ class AgentConnection(object):
         self.secure = secure
         self.owner = owner
         self.room = room
-        self.retries = G.MAX_RETRIES
+        self.retries = 20
         self._on_auth = on_auth
         self.empty_selects = 0
         self.room_info = {}
