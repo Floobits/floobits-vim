@@ -25,9 +25,9 @@ utils.reload_settings()
 floo_log_level = vim.eval('floo_log_level')
 msg.LOG_LEVEL = msg.LOG_LEVELS.get(floo_log_level.upper(), msg.LOG_LEVELS['MSG'])
 
-G.DELETE_LOCAL_FILES = bool(vim.eval('floo_delete_local_files'))
-G.SHOW_HIGHLIGHTS = bool(vim.eval('floo_show_highlights'))
-G.SPARSE_MODE = bool(vim.eval('floo_sparse_mode'))
+G.DELETE_LOCAL_FILES = bool(int(vim.eval('floo_delete_local_files')))
+G.SHOW_HIGHLIGHTS = bool(int(vim.eval('floo_show_highlights')))
+G.SPARSE_MODE = bool(int(vim.eval('floo_sparse_mode')))
 
 agent = None
 call_feedkeys = False

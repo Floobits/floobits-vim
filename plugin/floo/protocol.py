@@ -148,7 +148,7 @@ class BaseProtocol(object):
                 'path': rel_path,
                 'encoding': encoding,
             }
-            G.AGENT.put(event)
+            self.agent.put(event)
         except (IOError, OSError):
             msg.error('Failed to open %s.' % path)
         except Exception as e:
