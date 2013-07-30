@@ -1,6 +1,7 @@
 # coding: utf-8
 import os
 import json
+import re
 import traceback
 import urllib2
 import atexit
@@ -223,7 +224,7 @@ def is_modifiable(name_to_check=None):
         return
     if name_to_check and name_to_check != name:
         msg.warn('Can not call readonly on file: %s' % name)
-    if not agent.protocol.is_shared(name):
+    if not utils.is_shared(name):
         return
     if 'patch' not in agent.protocol.perms:
         vim.command("call g:FlooSetReadOnly()")
@@ -285,7 +286,7 @@ def share_dir(dir_to_share):
                     except Exception as e:
                         msg.debug('Tried to create workspace' + str(e))
                 # they wanted to share teh dir, so always share it
-                return join_workspace(workspace_url, lambda x: agent.protocol.create_buf(dir_to_share))
+                return join_workspace(workspace_url, lambda x: agent.protocol.create_buf(dir_to_share, force=True))
 
     # link to what they want to share
     try:
@@ -301,7 +302,7 @@ def share_dir(dir_to_share):
     create_workspace(workspace_name, floo_workspace_dir, dir_to_share)
 
 
-def create_workspace(workspace_name, ln_path=None, share_path=None):
+def create_workspace(workspace_name, ln_path, share_path=None):
     try:
         api.create_workspace({
             'name': workspace_name
@@ -314,8 +315,22 @@ def create_workspace(workspace_name, ln_path=None, share_path=None):
         if e.code not in [400, 402, 409]:
             return sublime.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
 
-
-        if ln_path:
+        if e.code == 400:
+            while True:
+                workspace_name = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
+                workspace_name = vim_input('Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:' % workspace_name, workspace_name)
+                new_path = os.path.join(os.path.dirname(ln_path), workspace_name)
+                try:
+                    os.rename(ln_path, new_path)
+                except OSError:
+                    continue
+                msg.debug('renamed ln %s to %s' % (ln_path, new_path))
+                ln_path = new_path
+                break
+        elif e.code == 402:
+            # TODO: better behavior. ask to create a public workspace instead
+            return sublime.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
+        elif e.code == 409:
             while True:
                 workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + "1")
                 new_path = os.path.join(os.path.dirname(ln_path), workspace_name)
@@ -336,7 +351,7 @@ def create_workspace(workspace_name, ln_path=None, share_path=None):
         webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
     except Exception:
         msg.debug("Couldn't open a browser. Thats OK!")
-    join_workspace(workspace_url, lambda x: agent.protocol.create_buf(share_path))
+    join_workspace(workspace_url, lambda x: agent.protocol.create_buf(share_path, force=True))
 
 
 @agent_and_protocol

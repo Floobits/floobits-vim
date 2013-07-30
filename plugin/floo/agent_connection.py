@@ -31,6 +31,7 @@ class AgentConnection(object):
         self.username = G.USERNAME
         self.secret = G.SECRET
         self.authed = False
+        G.JOINED_WORKSPACE = False
         self.host = host or G.DEFAULT_HOST
         self.port = port or G.DEFAULT_PORT
         self.secure = secure
@@ -73,6 +74,7 @@ class AgentConnection(object):
 
     def on_auth(self):
         self.authed = True
+        G.JOINED_WORKSPACE = True
         self.retries = self.MAX_RETRIES
         msg.log('Successfully joined workspace %s/%s' % (self.owner, self.workspace))
         if self._on_auth:
@@ -116,6 +118,7 @@ class AgentConnection(object):
         self.net_buf = ''
         self.sock = None
         self.authed = False
+        G.JOINED_WORKSPACE = False
         self.reconnect_delay *= 1.5
         if self.reconnect_delay > 10000:
             self.reconnect_delay = 10000

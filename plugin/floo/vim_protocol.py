@@ -203,7 +203,7 @@ class Protocol(protocol.BaseProtocol):
             msg.debug('get:buf buffer has no filename')
             return None
 
-        if not self.is_shared(vim_buf.name):
+        if not utils.is_shared(vim_buf.name):
             msg.debug('get_buf: %s is not shared' % vim_buf.name)
             return None
 

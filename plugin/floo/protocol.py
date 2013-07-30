@@ -73,16 +73,6 @@ class BaseProtocol(object):
     def on_msg(self, data):
         raise NotImplemented()
 
-    def is_shared(self, p):
-        if not self.agent.is_ready():
-            msg.debug('agent is not ready. %s is not shared' % p)
-            return False
-        p = utils.unfuck_path(p)
-        # TODO: tokenize on path seps and then look for ..
-        if utils.to_rel_path(p).find("../") == 0:
-            return False
-        return True
-
     def follow(self, follow_mode=None):
         if follow_mode is None:
             follow_mode = not self.follow_mode
@@ -373,7 +363,7 @@ class BaseProtocol(object):
 
         path = utils.get_full_path(path)
 
-        if not self.is_shared(path):
+        if not utils.is_shared(path):
             msg.error('Skipping deleting %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
 
