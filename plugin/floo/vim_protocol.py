@@ -4,9 +4,7 @@ import time
 
 import vim
 
-import msg
-import shared as G
-import utils
+from common import msg, shared as G, utils
 import protocol
 
 
@@ -145,8 +143,8 @@ class Protocol(protocol.BaseProtocol):
     """understands vim"""
     CLIENT = 'VIM'
 
-    def on_room_info(self, room_info):
-        super(Protocol, self).on_room_info(room_info)
+    def on_room_info(self, workspace_info):
+        super(Protocol, self).on_room_info(workspace_info)
         vim.command(':Explore %s' % G.PROJECT_PATH)
 
     def maybe_selection_changed(self, vim_buf, is_ping):
@@ -205,7 +203,7 @@ class Protocol(protocol.BaseProtocol):
             msg.debug('get:buf buffer has no filename')
             return None
 
-        if not self.is_shared(vim_buf.name):
+        if not utils.is_shared(vim_buf.name):
             msg.debug('get_buf: %s is not shared' % vim_buf.name)
             return None
 

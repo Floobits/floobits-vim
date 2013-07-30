@@ -5,12 +5,13 @@ import json
 import hashlib
 import collections
 import Queue
+import stat
+import base64
 
-from lib import diff_match_patch as dmp
 
-import msg
-import shared as G
-import utils
+from common import ignore, msg, shared as G, utils
+from common.lib import DMP
+
 import sublime
 
 
@@ -72,67 +73,86 @@ class BaseProtocol(object):
     def on_msg(self, data):
         raise NotImplemented()
 
-    def is_shared(self, p):
-        if not self.agent.is_ready():
-            msg.debug('agent is not ready. %s is not shared' % p)
-            return False
-        p = utils.unfuck_path(p)
-        # TODO: tokenize on path seps and then look for ..
-        if utils.to_rel_path(p).find("../") == 0:
-            return False
-        return True
-
     def follow(self, follow_mode=None):
         if follow_mode is None:
             follow_mode = not self.follow_mode
         self.follow_mode = follow_mode
         msg.log('follow mode is %s' % {True: 'enabled', False: 'disabled'}[self.follow_mode])
 
-    def create_buf(self, path, force=False):
+    def create_buf(self, path, ig=None, force=False):
         if G.SPARSE_MODE and not force:
             msg.debug("Skipping %s because user enabled sparse mode." % path)
             return
-        if 'create_buf' not in self.perms:
-            msg.error("Skipping %s. You don't have permission to create buffers in this workspace." % path)
-            return
-        if not self.is_shared(path):
+        if not utils.is_shared(path):
             msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
+        if os.path.islink(path):
+            msg.error('Skipping adding %s because it is a symlink.' % path)
+            return
+        ignored = ig and ig.is_ignored(path)
+        if ignored:
+            msg.log('Not creating buf: %s' % (ignored))
+            return
+        msg.debug('create_buf: path is %s' % path)
         if os.path.isdir(path):
-            for dirpath, dirnames, filenames in os.walk(path):
-                # Don't care about hidden stuff
-                dirnames[:] = [d for d in dirnames if d[0] != '.']
-                for f in filenames:
-                    f_path = os.path.join(dirpath, f)
-                    if f[0] == '.':
-                        msg.log('Not creating buf for hidden file %s' % f_path)
+            if ig is None:
+                try:
+                    ig = ignore.build_ignores(path)
+                except Exception as e:
+                    msg.error('Error adding %s: %s' % (path, unicode(e)))
+                    return
+            try:
+                paths = os.listdir(path)
+            except Exception as e:
+                msg.error('Error listing path %s: %s' % (path, unicode(e)))
+                return
+            for p in paths:
+                p_path = os.path.join(path, p)
+                if p[0] == '.':
+                    if p not in ignore.HIDDEN_WHITELIST:
+                        msg.log('Not creating buf for hidden path %s' % p_path)
                         continue
-                    if f in self.ignored_names:
-                        # TODO: prompt instead of being lame
-                        msg.log('Not creating buf for ignored file %s' % f_path)
-                        continue
-                    sublime.set_timeout(self.create_buf, 0, f_path, force)
+                ignored = ig.is_ignored(p_path)
+                if ignored:
+                    msg.log('Not creating buf: %s' % (ignored))
+                    continue
+                try:
+                    s = os.lstat(p_path)
+                except Exception as e:
+                    msg.error('Error lstat()ing path %s: %s' % (path, unicode(e)))
+                    continue
+                if stat.S_ISDIR(s.st_mode):
+                    child_ig = ignore.Ignore(ig, p_path)
+                    utils.set_timeout(self.create_buf, 0, p_path, child_ig)
+                elif stat.S_ISREG(s.st_mode):
+                    utils.set_timeout(self.create_buf, 0, p_path, ig)
             return
-
-        if self.get_buf_by_path(path):
-            msg.debug('Buf %s already exists in workspace. Skipping adding.' % path)
-            return
-
         try:
             buf_fd = open(path, 'rb')
-            buf = buf_fd.read().decode('utf-8')
+            buf = buf_fd.read()
+            encoding = 'utf8'
             rel_path = utils.to_rel_path(path)
-            msg.debug('creating buffer ', rel_path)
+            existing_buf = self.get_buf_by_path(path)
+            if existing_buf and existing_buf['md5'] == hashlib.md5(buf).hexdigest():
+                msg.debug('%s already exists and has the same md5. Skipping creating.' % path)
+                return
+            try:
+                buf = buf.decode('utf-8')
+            except Exception:
+                buf = base64.b64encode(buf).decode('utf-8')
+                encoding = 'base64'
+            msg.log('creating buffer ', rel_path)
             event = {
                 'name': 'create_buf',
                 'buf': buf,
                 'path': rel_path,
+                'encoding': encoding,
             }
             self.agent.put(event)
         except (IOError, OSError):
             msg.error('Failed to open %s.' % path)
         except Exception as e:
-            msg.error('Failed to create buffer %s: %s' % (path, str(e)))
+            msg.error('Failed to create buffer %s: %s' % (path, unicode(e)))
 
     def handle(self, data):
         name = data.get('name')
@@ -162,7 +182,7 @@ class BaseProtocol(object):
                 continue
 
             reported.add(vb_id)
-            patch = utils.FlooPatch(view)
+            patch = utils.FlooPatch(view.get_text(), buf)
             # Update the current copy of the buffer
             buf['buf'] = patch.current
             buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
@@ -213,7 +233,7 @@ class BaseProtocol(object):
 
     def on_room_info(self, data):
         # Success! Reset counter
-        self.room_info = data
+        self.workspace_info = data
         self.perms = data['perms']
 
         if 'patch' not in data['perms']:
@@ -222,11 +242,11 @@ class BaseProtocol(object):
         utils.mkdir(G.PROJECT_PATH)
 
         floo_json = {
-            'url': utils.to_room_url({
+            'url': utils.to_workspace_url({
                 'host': self.agent.host,
                 'owner': self.agent.owner,
                 'port': self.agent.port,
-                'room': self.agent.room,
+                'workspace': self.agent.workspace,
                 'secure': self.agent.secure,
             })
         }
@@ -275,7 +295,6 @@ class BaseProtocol(object):
         buf_id = data['id']
         buf = self.FLOO_BUFS[buf_id]
         view = self.get_view(buf_id)
-        DMP = dmp.diff_match_patch()
         if len(data['patch']) == 0:
             msg.error('wtf? no patches to apply. server is being stupid')
             return
@@ -344,7 +363,7 @@ class BaseProtocol(object):
 
         path = utils.get_full_path(path)
 
-        if not self.is_shared(path):
+        if not utils.is_shared(path):
             msg.error('Skipping deleting %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
 

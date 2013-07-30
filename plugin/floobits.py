@@ -1,6 +1,7 @@
 # coding: utf-8
 import os
 import json
+import re
 import traceback
 import urllib2
 import atexit
@@ -8,27 +9,25 @@ import webbrowser
 import subprocess
 
 import vim
-from floo import dmp_monkey
-dmp_monkey.monkey_patch()
 
+from floo.common import api, msg, shared as G, utils
 from floo import sublime
 from floo import AgentConnection
-from floo import msg
-from floo import shared as G
-from floo import utils
-from floo import api
 from floo.vim_protocol import Protocol
 
-FLOOBITS_VERSION = "0.1"
-utils.load_settings()
+
+G.__VERSION__ = '0.02'
+G.__PLUGIN_VERSION__ = '0.2'
+
+utils.reload_settings()
 
 # enable debug with let floo_log_level = 'debug'
 floo_log_level = vim.eval('floo_log_level')
 msg.LOG_LEVEL = msg.LOG_LEVELS.get(floo_log_level.upper(), msg.LOG_LEVELS['MSG'])
 
-G.DELETE_LOCAL_FILES = bool(vim.eval('floo_delete_local_files'))
-G.SHOW_HIGHLIGHTS = bool(vim.eval('floo_show_highlights'))
-G.SPARSE_MODE = bool(vim.eval('floo_sparse_mode'))
+G.DELETE_LOCAL_FILES = bool(int(vim.eval('floo_delete_local_files')))
+G.SHOW_HIGHLIGHTS = bool(int(vim.eval('floo_show_highlights')))
+G.SPARSE_MODE = bool(int(vim.eval('floo_sparse_mode')))
 
 agent = None
 call_feedkeys = False
@@ -76,7 +75,7 @@ def floo_info():
         'servername': vim.eval("v:servername"),
         'ticker_errors': ticker_errors,
         'updatetime': vim.eval('&l:updatetime'),
-        'version': FLOOBITS_VERSION,
+        'version': G.__PLUGIN_VERSION__,
     }
 
     msg.log(FLOOBITS_INFO.format(**kwargs))
@@ -129,7 +128,7 @@ def ticker_watcher(ticker):
     if ticker_errors > 10:
         return fallback_to_feedkeys('Too much trouble with the floobits external ticker.')
     start_event_loop()
-    sublime.set_timeout(ticker_watcher, 2000, ticker)
+    utils.set_timeout(ticker_watcher, 2000, ticker)
 
 
 def start_event_loop():
@@ -151,7 +150,7 @@ def start_event_loop():
                               stderr=subprocess.PIPE,
                               stdout=subprocess.PIPE)
     ticker.poll()
-    sublime.set_timeout(ticker_watcher, 500, ticker)
+    utils.set_timeout(ticker_watcher, 500, ticker)
 
 
 def vim_input(prompt, default, completion=None):
@@ -225,11 +224,11 @@ def is_modifiable(name_to_check=None):
         return
     if name_to_check and name_to_check != name:
         msg.warn('Can not call readonly on file: %s' % name)
-    if not agent.protocol.is_shared(name):
+    if not utils.is_shared(name):
         return
     if 'patch' not in agent.protocol.perms:
         vim.command("call g:FlooSetReadOnly()")
-        sublime.set_timeout(is_modifiable, 0, name)
+        utils.set_timeout(is_modifiable, 0, name)
 
 
 @agent_and_protocol
@@ -245,8 +244,8 @@ def share_dir(dir_to_share):
     dir_to_share = utils.unfuck_path(dir_to_share)
     dir_to_share = os.path.abspath(dir_to_share)
 
-    room_name = os.path.basename(dir_to_share)
-    floo_room_dir = os.path.join(G.COLAB_DIR, G.USERNAME, room_name)
+    workspace_name = os.path.basename(dir_to_share)
+    floo_workspace_dir = os.path.join(G.COLAB_DIR, G.USERNAME, workspace_name)
 
     if os.path.isfile(dir_to_share):
         return msg.error('give me a directory please')
@@ -265,54 +264,76 @@ def share_dir(dir_to_share):
     except Exception:
         msg.warn("couldn't read the floo_info file: %s" % floo_file)
 
-    room_url = info.get('url')
-    if room_url:
+    workspace_url = info.get('url')
+    if workspace_url:
         try:
-            result = utils.parse_url(room_url)
+            result = utils.parse_url(workspace_url)
         except Exception as e:
             msg.error(str(e))
         else:
-            room_name = result['room']
-            floo_room_dir = os.path.join(G.COLAB_DIR, result['owner'], result['room'])
-            # they have previously joined the room
-            if os.path.realpath(floo_room_dir) == os.path.realpath(dir_to_share):
+            workspace_name = result['workspace']
+            floo_workspace_dir = os.path.join(G.COLAB_DIR, result['owner'], result['workspace'])
+            # they have previously joined the workspace
+            if os.path.realpath(floo_workspace_dir) == os.path.realpath(dir_to_share):
                 # it could have been deleted, try to recreate it if possible
                 # TODO: org or something here?
                 if result['owner'] == G.USERNAME:
                     try:
-                        api.create_room(room_name)
-                        msg.debug('Created workspace %s' % room_url)
+                        api.create_workspace({
+                            'name': workspace_name
+                        })
+                        msg.debug('Created workspace %s' % workspace_url)
                     except Exception as e:
                         msg.debug('Tried to create workspace' + str(e))
                 # they wanted to share teh dir, so always share it
-                return join_room(room_url, lambda x: agent.protocol.create_buf(dir_to_share))
+                return join_workspace(workspace_url, lambda x: agent.protocol.create_buf(dir_to_share, force=True))
 
     # link to what they want to share
     try:
-        utils.mkdir(os.path.dirname(floo_room_dir))
-        os.symlink(dir_to_share, floo_room_dir)
+        utils.mkdir(os.path.dirname(floo_workspace_dir))
+        os.symlink(dir_to_share, floo_workspace_dir)
     except OSError as e:
         if e.errno != 17:
             raise
     except Exception as e:
-        return msg.error("Couldn't create symlink from %s to %s: %s" % (dir_to_share, floo_room_dir, str(e)))
+        return msg.error("Couldn't create symlink from %s to %s: %s" % (dir_to_share, floo_workspace_dir, str(e)))
 
     # make & join workspace
-    create_room(room_name, floo_room_dir, dir_to_share)
+    create_workspace(workspace_name, floo_workspace_dir, dir_to_share)
 
 
-def create_room(room_name, ln_path=None, share_path=None):
+def create_workspace(workspace_name, ln_path, share_path=None):
     try:
-        api.create_room(room_name)
-        room_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, room_name)
-        msg.debug('Created workspace %s' % room_url)
+        api.create_workspace({
+            'name': workspace_name
+        })
+        workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
+        msg.debug('Created workspace %s' % workspace_url)
     except urllib2.HTTPError as e:
-        if e.code != 409:
-            raise
-        if ln_path:
+        err_body = e.read()
+        msg.error('Unable to create workspace: %s %s' % (unicode(e), err_body))
+        if e.code not in [400, 402, 409]:
+            return sublime.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
+
+        if e.code == 400:
             while True:
-                room_name = vim_input('Workspace %s already exists. Choose another name: ' % room_name, room_name + "1")
-                new_path = os.path.join(os.path.dirname(ln_path), room_name)
+                workspace_name = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
+                workspace_name = vim_input('Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:' % workspace_name, workspace_name)
+                new_path = os.path.join(os.path.dirname(ln_path), workspace_name)
+                try:
+                    os.rename(ln_path, new_path)
+                except OSError:
+                    continue
+                msg.debug('renamed ln %s to %s' % (ln_path, new_path))
+                ln_path = new_path
+                break
+        elif e.code == 402:
+            # TODO: better behavior. ask to create a public workspace instead
+            return sublime.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
+        elif e.code == 409:
+            while True:
+                workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + "1")
+                new_path = os.path.join(os.path.dirname(ln_path), workspace_name)
                 try:
                     os.rename(ln_path, new_path)
                 except OSError:
@@ -321,22 +342,22 @@ def create_room(room_name, ln_path=None, share_path=None):
                 ln_path = new_path
                 break
 
-        return create_room(room_name, ln_path, share_path)
+        return create_workspace(workspace_name, ln_path, share_path)
     except Exception as e:
         sublime.error_message('Unable to create workspace: %s' % str(e))
         return
 
     try:
-        webbrowser.open(room_url + '/settings', new=2, autoraise=True)
+        webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
     except Exception:
         msg.debug("Couldn't open a browser. Thats OK!")
-    join_room(room_url, lambda x: agent.protocol.create_buf(share_path))
+    join_workspace(workspace_url, lambda x: agent.protocol.create_buf(share_path, force=True))
 
 
 @agent_and_protocol
 def add_buf(path=None):
     path = path or vim.current.buffer.name
-    agent.protocol.create_buf(path, True)
+    agent.protocol.create_buf(path, force=True)
 
 
 @agent_and_protocol
@@ -357,16 +378,16 @@ def stop_everything():
 atexit.register(stop_everything)
 
 
-def join_room(room_url, on_auth=None):
+def join_workspace(workspace_url, on_auth=None):
     global agent
-    msg.debug("workspace url is %s" % room_url)
+    msg.debug("workspace url is %s" % workspace_url)
 
     try:
-        result = utils.parse_url(room_url)
+        result = utils.parse_url(workspace_url)
     except Exception as e:
         return msg.error(str(e))
 
-    G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['room']))
+    G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
     utils.mkdir(os.path.dirname(G.PROJECT_PATH))
 
     d = ''
@@ -396,7 +417,7 @@ def join_room(room_url, on_auth=None):
 
     G.PROJECT_PATH = os.path.realpath(G.PROJECT_PATH + os.sep)
     vim.command('cd %s' % G.PROJECT_PATH)
-    msg.debug("joining workspace %s" % room_url)
+    msg.debug("joining workspace %s" % workspace_url)
 
     stop_everything()
     try:
@@ -411,7 +432,7 @@ def join_room(room_url, on_auth=None):
         stop_everything()
 
 
-def part_room():
+def part_workspace():
     if not agent:
         return msg.warn('Unable to leave workspace: You are not joined to a workspace.')
     stop_everything()

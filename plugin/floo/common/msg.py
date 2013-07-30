@@ -1,9 +1,15 @@
 import os
 import time
 
-import sublime
+try:
+    from . import shared as G
+    assert G
+    unicode = str
+    python2 = False
+except ImportError:
+    python2 = True
+    import shared as G
 
-import shared as G
 
 LOG_LEVELS = {
     'DEBUG': 1,
@@ -13,27 +19,19 @@ LOG_LEVELS = {
 }
 
 LOG_LEVEL = LOG_LEVELS['MSG']
+LOG_FILE = os.path.join(G.BASE_DIR, 'msgs.floobits.log')
 
 
-def get_or_create_chat(cb=None):
-    def return_view():
-        G.CHAT_VIEW_PATH = G.CHAT_VIEW.file_name()
-        G.CHAT_VIEW.set_read_only(True)
-        if cb:
-            return cb(G.CHAT_VIEW)
+try:
+    fd = open(LOG_FILE, 'w')
+    fd.close()
+except Exception as e:
+    pass
 
-    def open_view():
-        if not G.CHAT_VIEW:
-            p = os.path.join(G.COLAB_DIR, 'msgs.floobits.log')
-            G.CHAT_VIEW = G.ROOM_WINDOW.open_file(p)
 
-        if G.CHAT_VIEW.is_loading():
-            return sublime.set_timeout(open_view, 50)
-
-        sublime.set_timeout(return_view, 0)
-
-    # Can't call open_file outside main thread
-    sublime.set_timeout(open_view, 0)
+# Overridden by each editor
+def editor_log(msg):
+    print(msg)
 
 
 class MSG(object):
@@ -46,36 +44,44 @@ class MSG(object):
     def display(self):
         if self.level < LOG_LEVEL:
             return
-        print str(self)
-        # TODO: REMOVE ME
-        fd = open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), "a+")
-        fd.write(str(self))
-        fd.close()
+
+        if G.LOG_TO_CONSOLE or G.CHAT_VIEW is None:
+            # TODO: ridiculously inefficient
+            try:
+                fd = open(LOG_FILE, 'a+')
+                fd.write(unicode(self))
+                fd.close()
+            except Exception as e:
+                print(unicode(e))
+            print(unicode(self))
+        else:
+            editor_log(unicode(self))
 
     def __str__(self):
-        return unicode(self).encode('utf-8')
+        if python2:
+            return self.__unicode__().encode('utf-8')
+        return self.__unicode__()
 
     def __unicode__(self):
         if self.username:
             msg = '[{time}] <{user}> {msg}\n'
         else:
             msg = '[{time}] {msg}\n'
-        return unicode(msg).format(user=self.username, time=time.ctime(self.timestamp), msg=self.msg.decode('utf-8'))
+        return unicode(msg).format(user=self.username, time=time.ctime(self.timestamp), msg=self.msg)
 
 
 def msg_format(message, *args, **kwargs):
-    message = str(message)
     message += ' '.join([unicode(x) for x in args])
     if kwargs:
-        message = message.format(**kwargs)
+        message = unicode(message).format(**kwargs)
     return message
 
 
 def _log(message, level, *args, **kwargs):
-    MSG(msg_format(message, *args, **kwargs), level=level).display()
+    if level >= LOG_LEVEL:
+        MSG(msg_format(message, *args, **kwargs), level=level).display()
 
 
-# TODO: use introspection?
 def debug(message, *args, **kwargs):
     _log(message, LOG_LEVELS['DEBUG'], *args, **kwargs)
 
