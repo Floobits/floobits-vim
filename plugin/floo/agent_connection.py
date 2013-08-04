@@ -68,7 +68,7 @@ class AgentConnection(object):
             'version': G.__VERSION__
         })
 
-    def send_buf_saved(self, buf_id):
+    def send_saved(self, buf_id):
         self.put({'name': 'saved', 'id': buf_id})
 
     def send_msg(self, msg):
