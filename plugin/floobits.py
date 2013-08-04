@@ -244,7 +244,7 @@ def on_save():
     vim_buf = vim.current.buffer
     buf = agent.protocol.get_buf(vim_buf)
     if buf:
-        agent.send_saved(buf.id)
+        agent.send_saved(buf['id'])
 
 
 def share_dir(dir_to_share):
