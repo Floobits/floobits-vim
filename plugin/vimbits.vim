@@ -78,6 +78,7 @@ function! s:SetAutoCmd()
 
         autocmd BufWinEnter * python is_modifiable()
         autocmd BufEnter * python buf_enter()
+        autocmd BufWritePost * python on_save()
         " milliseconds
     augroup END
 endfunction

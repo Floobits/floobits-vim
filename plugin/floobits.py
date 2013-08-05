@@ -239,6 +239,14 @@ def maybe_new_file():
         agent.protocol.create_buf(vim_buf.name)
 
 
+@agent_and_protocol
+def on_save():
+    vim_buf = vim.current.buffer
+    buf = agent.protocol.get_buf(vim_buf)
+    if buf:
+        agent.send_saved(buf['id'])
+
+
 def share_dir(dir_to_share):
     dir_to_share = os.path.expanduser(dir_to_share)
     dir_to_share = utils.unfuck_path(dir_to_share)
