@@ -185,7 +185,7 @@ class AgentConnection(object):
             new_data = True
             self.net_buf = after
         #XXX move to protocol :(
-        if new_data:
+        if new_data and not G.TICK:
             vim.command('redraw')
 
     def select(self):

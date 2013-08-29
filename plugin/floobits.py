@@ -28,6 +28,8 @@ msg.LOG_LEVEL = msg.LOG_LEVELS.get(floo_log_level.upper(), msg.LOG_LEVELS['MSG']
 G.DELETE_LOCAL_FILES = bool(int(vim.eval('floo_delete_local_files')))
 G.SHOW_HIGHLIGHTS = bool(int(vim.eval('floo_show_highlights')))
 G.SPARSE_MODE = bool(int(vim.eval('floo_sparse_mode')))
+G.TICK = bool(int(vim.eval('has("tick")')))
+
 
 agent = None
 call_feedkeys = False
@@ -134,7 +136,7 @@ def ticker_watcher(ticker):
 def start_event_loop():
     global ticker
 
-    if bool(int(vim.eval('has("tick")'))):
+    if G.TICK:
         msg.debug('compiled with ticker. awesome')
         return
 
