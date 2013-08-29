@@ -134,6 +134,10 @@ def ticker_watcher(ticker):
 def start_event_loop():
     global ticker
 
+    if bool(int(vim.eval('has("tick")'))):
+        msg.debug('compiled with ticker. awesome')
+        return
+
     if not bool(int(vim.eval('has("clientserver")'))):
         return fallback_to_feedkeys("This VIM was not compiled with clientserver support. You should consider using a different vim!")
 
