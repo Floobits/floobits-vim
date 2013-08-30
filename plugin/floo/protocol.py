@@ -38,6 +38,7 @@ class BaseProtocol(object):
     def __init__(self, agent):
         self.agent = agent
         self.perms = []
+        self.read_only = True
         self.follow_mode = False
         self.chat_deck = collections.deque(maxlen=10)
         self.ignored_names = ['node_modules']
@@ -172,7 +173,7 @@ class BaseProtocol(object):
             if view.is_loading():
                 msg.debug('View for buf %s is not ready. Ignoring change event' % buf['id'])
                 continue
-            if 'patch' not in self.perms:
+            if self.read_only:
                 continue
             vb_id = view.native_id
             if vb_id in reported:
@@ -236,8 +237,10 @@ class BaseProtocol(object):
         self.workspace_info = data
         self.perms = data['perms']
 
-        if 'patch' not in data['perms']:
-            msg.log('We don\'t have patch permission. Setting buffers to read-only')
+        if 'patch' in data['perms']:
+            self.read_only = False
+        else:
+            msg.log('We don\'t have patch permission. Buffers will be read-only')
 
         utils.mkdir(G.PROJECT_PATH)
 

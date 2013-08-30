@@ -76,7 +76,6 @@ function! s:SetAutoCmd()
             exec 'autocmd '. cmd .' * python maybe_new_file()'
         endfor
 
-        autocmd BufWinEnter * python is_modifiable()
         autocmd BufEnter * python buf_enter()
         autocmd BufWritePost * python on_save()
         " milliseconds

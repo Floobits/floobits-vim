@@ -221,22 +221,6 @@ def follow(follow_mode=None):
     agent.protocol.follow(follow_mode)
 
 
-def is_modifiable(name_to_check=None):
-    if not agent or not agent.protocol:
-        return
-    vim_buf = vim.current.buffer
-    name = vim_buf.name
-    if not name:
-        return
-    if name_to_check and name_to_check != name:
-        msg.warn('Can not call readonly on file: %s' % name)
-    if not utils.is_shared(name):
-        return
-    if 'patch' not in agent.protocol.perms:
-        vim.command("call g:FlooSetReadOnly()")
-        utils.set_timeout(is_modifiable, 0, name)
-
-
 @agent_and_protocol
 def maybe_new_file():
     vim_buf = vim.current.buffer
