@@ -199,7 +199,7 @@ class Protocol(protocol.BaseProtocol):
 
     def get_buf(self, vim_buf):
         """None- no sharing, False- should be but isn't """
-        if vim_buf.name is None:
+        if vim_buf.name is None or vim_buf.name == "":
             msg.debug('get:buf buffer has no filename')
             return None
 
