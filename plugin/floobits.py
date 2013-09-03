@@ -6,6 +6,7 @@ import traceback
 import atexit
 import webbrowser
 import subprocess
+from functools import wraps
 from urllib2 import HTTPError
 
 import vim
@@ -202,6 +203,7 @@ def cursor_holdi():
 
 
 def agent_and_protocol(func):
+    @wraps(func)
     def wrapped(*args, **kwargs):
         if agent and agent.protocol:
             return func(*args, **kwargs)
