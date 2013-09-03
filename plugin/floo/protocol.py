@@ -333,13 +333,13 @@ class BaseProtocol(object):
             utils.mkdir(new_dir)
             self.FLOO_BUFS[buf_id] = buf
             try:
-                data = open(buf_path, 'r').read()
-                md5 = hashlib.md5(data).hexdigest()
+                text = open(buf_path, 'r').read()
+                md5 = hashlib.md5(text).hexdigest()
                 if md5 == buf['md5']:
                     msg.debug('md5 sums match. not getting buffer')
                     if buf['encoding'] == 'utf8':
-                        data = data.decode('utf-8')
-                    buf['buf'] = data
+                        text = text.decode('utf-8')
+                    buf['buf'] = text
                 elif self.agent.get_bufs:
                     self.agent.send_get_buf(buf_id)
             except Exception:
