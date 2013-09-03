@@ -421,11 +421,11 @@ def join_workspace(workspace_url, d='', on_auth=None):
                 except Exception as e:
                     prompt = "Couldn't make dir: %s because %s " % (d, str(e))
                     continue
-            try:
-                utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
-                break
-            except Exception as e:
-                return msg.error("Error adding workspace to persistent.json: %s" % str(e))
+            break
+    try:
+        utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
+    except Exception as e:
+        return msg.error("Error adding workspace to persistent.json: %s" % str(e))
 
     G.PROJECT_PATH = os.path.realpath(G.PROJECT_PATH + os.sep)
     vim.command('cd %s' % G.PROJECT_PATH)
