@@ -190,7 +190,7 @@ class AgentConnection(object):
 
     def select(self):
         if not self.sock:
-            msg.error('select(): No socket.')
+            msg.warn('select(): No socket.')
             return self.reconnect()
 
         try:

@@ -102,6 +102,7 @@ command! FlooPause :python floo_pause()
 command! FlooUnPause :python floo_unpause()
 
 command! -nargs=1 -complete=dir FlooShareDir :python share_dir(<f-args>)
+command! -nargs=1 -complete=dir FlooShareDirPrivate :python share_dir_private(<f-args>)
 command! -nargs=? -complete=file FlooAddBuf :python add_buf(<f-args>)
 
 command! FlooInfo :python floo_info()
