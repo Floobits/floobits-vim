@@ -435,7 +435,8 @@ def join_workspace(workspace_url, d='', sync_to_disk=True):
         else:
             on_auth = lambda agent: agent.protocol.create_buf(d, force=True)
 
-        agent = AgentConnection(on_auth=on_auth, get_bufs=sync_to_disk, **result)
+        agent = AgentConnection(result['owner'], result['workspace'], on_auth, sync_to_disk,
+            secure=result['secure'], host=result['host'], port=result['port'])
         # owner and workspace name are slugfields so this should be safe
         agent.connect()
     except Exception as e:
