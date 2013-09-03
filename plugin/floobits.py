@@ -187,8 +187,11 @@ def vim_input(prompt, default, completion=None):
 
 def global_tick():
     """a hack to make vim evented like"""
+    global agent
     if agent:
         agent.tick()
+        if agent.retries < 0:
+            agent = None
     sublime.call_timeouts()
 
 
