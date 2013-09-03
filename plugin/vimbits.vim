@@ -87,7 +87,6 @@ endfunction
 
 "TODO: populate with a default url of https://floobits.com/r/
 command! -nargs=1 FlooJoinWorkspace :python join_workspace(<f-args>)
-command! -nargs=1 FlooJoinworkspace :python join_workspace(<f-args>)
 
 command! FlooLeaveWorkspace :python part_workspace()
 command! FlooPartworkspace :python part_workspace()

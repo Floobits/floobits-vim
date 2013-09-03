@@ -3,27 +3,31 @@ import os
 import json
 import re
 import traceback
-import urllib2
 import atexit
 import webbrowser
 import subprocess
+from functools import wraps
+from urllib2 import HTTPError
 
 import vim
 
-from floo.common import api, msg, shared as G, utils
+from floo.common import api, migrations, msg, shared as G, utils
 from floo import sublime
 from floo import AgentConnection
 from floo.vim_protocol import Protocol
 
 
-G.__VERSION__ = '0.02'
-G.__PLUGIN_VERSION__ = '0.2'
+G.__VERSION__ = '0.03'
+G.__PLUGIN_VERSION__ = '0.3'
 
 utils.reload_settings()
 
 # enable debug with let floo_log_level = 'debug'
 floo_log_level = vim.eval('floo_log_level')
 msg.LOG_LEVEL = msg.LOG_LEVELS.get(floo_log_level.upper(), msg.LOG_LEVELS['MSG'])
+
+migrations.rename_floobits_dir()
+migrations.migrate_symlinks()
 
 G.DELETE_LOCAL_FILES = bool(int(vim.eval('floo_delete_local_files')))
 G.SHOW_HIGHLIGHTS = bool(int(vim.eval('floo_show_highlights')))
@@ -199,6 +203,7 @@ def cursor_holdi():
 
 
 def agent_and_protocol(func):
+    @wraps(func)
     def wrapped(*args, **kwargs):
         if agent and agent.protocol:
             return func(*args, **kwargs)
@@ -243,7 +248,8 @@ def share_dir(dir_to_share):
     dir_to_share = os.path.abspath(dir_to_share)
 
     workspace_name = os.path.basename(dir_to_share)
-    floo_workspace_dir = os.path.join(G.COLAB_DIR, G.USERNAME, workspace_name)
+    G.PROJECT_PATH = os.path.realpath(dir_to_share)
+    msg.debug('%s %s %s' % (G.USERNAME, workspace_name, G.PROJECT_PATH))
 
     if os.path.isfile(dir_to_share):
         return msg.error('give me a directory please')
@@ -270,77 +276,52 @@ def share_dir(dir_to_share):
             msg.error(str(e))
         else:
             workspace_name = result['workspace']
-            floo_workspace_dir = os.path.join(G.COLAB_DIR, result['owner'], result['workspace'])
-            # they have previously joined the workspace
-            if os.path.realpath(floo_workspace_dir) == os.path.realpath(dir_to_share):
-                # it could have been deleted, try to recreate it if possible
-                # TODO: org or something here?
-                if result['owner'] == G.USERNAME:
-                    try:
-                        api.create_workspace({
-                            'name': workspace_name
-                        })
-                        msg.debug('Created workspace %s' % workspace_url)
-                    except Exception as e:
-                        msg.debug('Tried to create workspace' + str(e))
-                # they wanted to share teh dir, so always share it
-                return join_workspace(workspace_url, lambda x: agent.protocol.create_buf(dir_to_share, force=True))
+            try:
+                # TODO: blocking. beachballs sublime 2 if API is super slow
+                api.get_workspace_by_url(workspace_url)
+            except HTTPError:
+                workspace_url = None
+                workspace_name = os.path.basename(dir_to_share)
+            else:
+                utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, dir_to_share)
 
-    # link to what they want to share
-    try:
-        utils.mkdir(os.path.dirname(floo_workspace_dir))
-        os.symlink(dir_to_share, floo_workspace_dir)
-    except OSError as e:
-        if e.errno != 17:
-            raise
-    except Exception as e:
-        return msg.error("Couldn't create symlink from %s to %s: %s" % (dir_to_share, floo_workspace_dir, str(e)))
+    workspace_url = utils.get_workspace_by_path(dir_to_share) or workspace_url
+
+    if workspace_url:
+        try:
+            api.get_workspace_by_url(workspace_url)
+        except HTTPError:
+            pass
+        else:
+            return join_workspace(workspace_url, dir_to_share, lambda x: agent.protocol.create_buf(dir_to_share, force=True))
 
     # make & join workspace
-    create_workspace(workspace_name, floo_workspace_dir, dir_to_share)
+    create_workspace(workspace_name, dir_to_share)
 
 
-def create_workspace(workspace_name, ln_path, share_path=None):
+def create_workspace(workspace_name, share_path):
     try:
         api.create_workspace({
             'name': workspace_name
         })
         workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
         msg.debug('Created workspace %s' % workspace_url)
-    except urllib2.HTTPError as e:
+    except HTTPError as e:
         err_body = e.read()
         msg.error('Unable to create workspace: %s %s' % (unicode(e), err_body))
         if e.code not in [400, 402, 409]:
             return sublime.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
 
         if e.code == 400:
-            while True:
-                workspace_name = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
-                workspace_name = vim_input('Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:' % workspace_name, workspace_name)
-                new_path = os.path.join(os.path.dirname(ln_path), workspace_name)
-                try:
-                    os.rename(ln_path, new_path)
-                except OSError:
-                    continue
-                msg.debug('renamed ln %s to %s' % (ln_path, new_path))
-                ln_path = new_path
-                break
+            workspace_name = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
+            workspace_name = vim_input('Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:' % workspace_name, workspace_name)
         elif e.code == 402:
             # TODO: better behavior. ask to create a public workspace instead
             return sublime.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
         elif e.code == 409:
-            while True:
-                workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + "1")
-                new_path = os.path.join(os.path.dirname(ln_path), workspace_name)
-                try:
-                    os.rename(ln_path, new_path)
-                except OSError:
-                    continue
-                msg.debug('renamed ln %s to %s' % (ln_path, new_path))
-                ln_path = new_path
-                break
+            workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + "1")
 
-        return create_workspace(workspace_name, ln_path, share_path)
+        return create_workspace(workspace_name, share_path)
     except Exception as e:
         sublime.error_message('Unable to create workspace: %s' % str(e))
         return
@@ -349,7 +330,7 @@ def create_workspace(workspace_name, ln_path, share_path=None):
         webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
     except Exception:
         msg.debug("Couldn't open a browser. Thats OK!")
-    join_workspace(workspace_url, lambda x: agent.protocol.create_buf(share_path, force=True))
+    join_workspace(workspace_url, share_path, lambda x: agent.protocol.create_buf(share_path, force=True))
 
 
 @agent_and_protocol
@@ -376,7 +357,7 @@ def stop_everything():
 atexit.register(stop_everything)
 
 
-def join_workspace(workspace_url, on_auth=None):
+def join_workspace(workspace_url, d='', on_auth=None):
     global agent
     msg.debug("workspace url is %s" % workspace_url)
 
@@ -385,18 +366,23 @@ def join_workspace(workspace_url, on_auth=None):
     except Exception as e:
         return msg.error(str(e))
 
-    G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
-    utils.mkdir(os.path.dirname(G.PROJECT_PATH))
+    if d:
+        G.PROJECT_PATH = d
+        utils.mkdir(G.PROJECT_PATH)
+    else:
+        try:
+            G.PROJECT_PATH = utils.get_persistent_data()['workspaces'][result['owner']][result['workspace']]['path']
+        except Exception:
+            G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
 
-    d = ''
+    d = G.PROJECT_PATH
     # TODO: really bad prompt here
-    prompt = "Give me a directory to sync data to (or just press enter): "
+    prompt = "Give me a directory to sync data to: "
     if not os.path.isdir(G.PROJECT_PATH):
         while True:
             d = vim_input(prompt, d, "dir")
             if d == '':
-                utils.mkdir(G.PROJECT_PATH)
-                break
+                continue
             d = os.path.realpath(os.path.expanduser(d))
             if os.path.isfile(d):
                 prompt = '%s is not a directory. Enter an existing path (or press enter): ' % d
@@ -408,14 +394,14 @@ def join_workspace(workspace_url, on_auth=None):
                     prompt = "Couldn't make dir: %s because %s " % (d, str(e))
                     continue
             try:
-                os.symlink(d, G.PROJECT_PATH)
+                utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
                 break
             except Exception as e:
-                return msg.error("Couldn't create symlink from %s to %s: %s" % (d, G.PROJECT_PATH, str(e)))
+                return msg.error("Error adding workspace to persistent.json: %s" % str(e))
 
     G.PROJECT_PATH = os.path.realpath(G.PROJECT_PATH + os.sep)
     vim.command('cd %s' % G.PROJECT_PATH)
-    msg.debug("joining workspace %s" % workspace_url)
+    msg.debug("Joining workspace %s" % workspace_url)
 
     stop_everything()
     try:
