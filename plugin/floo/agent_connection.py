@@ -133,7 +133,13 @@ class AgentConnection(object):
         self.retries -= 1
 
     def connect(self, cb=None):
-        self.stop(False)
+        utils.cancel_timeout(self.reconnect_timeout)
+        self.reconnect_timeout = None
+        try:
+            self.sock.shutdown(2)
+            self.sock.close()
+        except Exception:
+            pass
         self.empty_selects = 0
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
@@ -190,7 +196,7 @@ class AgentConnection(object):
 
     def select(self):
         if not self.sock:
-            msg.error('select(): No socket.')
+            msg.debug('select(): No socket.')
             return self.reconnect()
 
         try:

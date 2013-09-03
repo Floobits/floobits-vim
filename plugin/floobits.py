@@ -4,7 +4,6 @@ import json
 import re
 import traceback
 import atexit
-import webbrowser
 import subprocess
 from functools import wraps
 from urllib2 import HTTPError
@@ -163,6 +162,18 @@ def start_event_loop():
     utils.set_timeout(ticker_watcher, 500, ticker)
 
 
+def vim_choice(prompt, default, choices):
+    default = choices.index(default) + 1
+    choices_str = '\n'.join(['&%s' % choice for choice in choices])
+    try:
+        choice = int(vim.eval('confirm("%s", "%s", %s)' % (prompt, choices_str, default)))
+    except KeyboardInterrupt:
+        return None
+    if choice == 0:
+        return None
+    return choices[choice - 1]
+
+
 def vim_input(prompt, default, completion=None):
     vim.command('call inputsave()')
     if completion:
@@ -176,8 +187,11 @@ def vim_input(prompt, default, completion=None):
 
 def global_tick():
     """a hack to make vim evented like"""
+    global agent
     if agent:
         agent.tick()
+        if agent.retries < 0:
+            agent = None
     sublime.call_timeouts()
 
 
@@ -242,7 +256,11 @@ def on_save():
         agent.send_saved(buf['id'])
 
 
-def share_dir(dir_to_share):
+def share_dir_private(dir_to_share):
+    return share_dir(dir_to_share, perms={'AnonymousUser': []})
+
+
+def share_dir(dir_to_share, perms=None):
     dir_to_share = os.path.expanduser(dir_to_share)
     dir_to_share = utils.unfuck_path(dir_to_share)
     dir_to_share = os.path.abspath(dir_to_share)
@@ -295,15 +313,29 @@ def share_dir(dir_to_share):
         else:
             return join_workspace(workspace_url, dir_to_share, lambda x: agent.protocol.create_buf(dir_to_share, force=True))
 
-    # make & join workspace
-    create_workspace(workspace_name, dir_to_share)
+    orgs = api.get_orgs_can_admin()
+    orgs = json.loads(orgs.read().decode('utf-8'))
+    if len(orgs) == 0:
+        return create_workspace(workspace_name, dir_to_share, G.USERNAME, perms)
+    choices = []
+    choices.append(G.USERNAME)
+    for o in orgs:
+        choices.append(o['name'])
+
+    owner = vim_choice('Create workspace for:', G.USERNAME, choices)
+    if owner:
+        create_workspace(workspace_name, dir_to_share, owner, perms)
 
 
-def create_workspace(workspace_name, share_path):
+def create_workspace(workspace_name, share_path, owner, perms=None):
     try:
-        api.create_workspace({
-            'name': workspace_name
-        })
+        api_args = {
+            'name': workspace_name,
+            'owner': owner,
+        }
+        if perms:
+            api_args['perms'] = perms
+        api.create_workspace(api_args)
         workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
         msg.debug('Created workspace %s' % workspace_url)
     except HTTPError as e:
@@ -321,15 +353,11 @@ def create_workspace(workspace_name, share_path):
         elif e.code == 409:
             workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + "1")
 
-        return create_workspace(workspace_name, share_path)
+        return create_workspace(workspace_name, share_path, perms)
     except Exception as e:
         sublime.error_message('Unable to create workspace: %s' % str(e))
         return
 
-    try:
-        webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
-    except Exception:
-        msg.debug("Couldn't open a browser. Thats OK!")
     join_workspace(workspace_url, share_path, lambda x: agent.protocol.create_buf(share_path, force=True))
 
 
@@ -393,11 +421,11 @@ def join_workspace(workspace_url, d='', on_auth=None):
                 except Exception as e:
                     prompt = "Couldn't make dir: %s because %s " % (d, str(e))
                     continue
-            try:
-                utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
-                break
-            except Exception as e:
-                return msg.error("Error adding workspace to persistent.json: %s" % str(e))
+            break
+    try:
+        utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
+    except Exception as e:
+        return msg.error("Error adding workspace to persistent.json: %s" % str(e))
 
     G.PROJECT_PATH = os.path.realpath(G.PROJECT_PATH + os.sep)
     vim.command('cd %s' % G.PROJECT_PATH)
