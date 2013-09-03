@@ -7,15 +7,18 @@ import collections
 import Queue
 import stat
 import base64
-
+from functools import wraps
 
 from common import ignore, msg, shared as G, utils
 from common.lib import DMP
 
 import sublime
 
+MAX_FILE_SIZE = 1024 * 1024 * 5
 
-def buf_populated(func):
+
+def buf_populated(f):
+    @wraps(f)
     def wrapped(self, data):
         if data.get('id') is None:
             msg.debug('no buf id in data')
@@ -24,7 +27,7 @@ def buf_populated(func):
         if buf is None or 'buf' not in buf:
             msg.debug('buf is not populated yet')
             return
-        func(self, data)
+        f(self, data)
     return wrapped
 
 
@@ -87,61 +90,129 @@ class BaseProtocol(object):
         if not utils.is_shared(path):
             msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
+        if not ig:
+            ig = ignore.Ignore(None, path)
+        ignores = collections.deque([ig])
+        files = collections.deque()
+        self._create_buf_worker(ignores, files, [])
+
+    def _create_buf_worker(self, ignores, files, too_big):
+        quota = 10
+
+        # scan until we find a minimum of 10 files
+        while quota > 0 and ignores:
+            ig = ignores.popleft()
+            for new_path in self._scan_dir(ig):
+                if not new_path:
+                    continue
+                try:
+                    s = os.lstat(new_path)
+                except Exception as e:
+                    msg.error('Error lstat()ing path %s: %s' % (new_path, unicode(e)))
+                    continue
+                if stat.S_ISDIR(s.st_mode):
+                    ignores.append(ignore.Ignore(ig, new_path))
+                elif stat.S_ISREG(s.st_mode):
+                    if s.st_size > (MAX_FILE_SIZE):
+                        too_big.append(new_path)
+                    else:
+                        files.append(new_path)
+                    quota -= 1
+
+        can_upload = False
+        for f in utils.iter_n_deque(files, 10):
+            self.upload(f)
+            can_upload = True
+
+        if can_upload:
+            self.agent.select()
+
+        if ignores or files:
+            return utils.set_timeout(self._create_buf_worker, 25, ignores, files, too_big)
+
+        if too_big:
+            sublime.error_message("%s file(s) were not added because they were larger than 10 megabytes: \n%s" % (len(too_big), "\t".join(too_big)))
+
+        msg.log('All done syncing')
+
+    def _scan_dir(self, ig):
+        path = ig.path
+
+        if not utils.is_shared(path):
+            msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
+            return
         if os.path.islink(path):
             msg.error('Skipping adding %s because it is a symlink.' % path)
             return
-        ignored = ig and ig.is_ignored(path)
+        ignored = ig.is_ignored(path)
         if ignored:
             msg.log('Not creating buf: %s' % (ignored))
             return
+
         msg.debug('create_buf: path is %s' % path)
-        if os.path.isdir(path):
-            if ig is None:
-                try:
-                    ig = ignore.build_ignores(path)
-                except Exception as e:
-                    msg.error('Error adding %s: %s' % (path, unicode(e)))
-                    return
-            try:
-                paths = os.listdir(path)
-            except Exception as e:
-                msg.error('Error listing path %s: %s' % (path, unicode(e)))
-                return
-            for p in paths:
-                p_path = os.path.join(path, p)
-                if p[0] == '.':
-                    if p not in ignore.HIDDEN_WHITELIST:
-                        msg.log('Not creating buf for hidden path %s' % p_path)
-                        continue
-                ignored = ig.is_ignored(p_path)
-                if ignored:
-                    msg.log('Not creating buf: %s' % (ignored))
-                    continue
-                try:
-                    s = os.lstat(p_path)
-                except Exception as e:
-                    msg.error('Error lstat()ing path %s: %s' % (path, unicode(e)))
-                    continue
-                if stat.S_ISDIR(s.st_mode):
-                    child_ig = ignore.Ignore(ig, p_path)
-                    utils.set_timeout(self.create_buf, 0, p_path, child_ig)
-                elif stat.S_ISREG(s.st_mode):
-                    utils.set_timeout(self.create_buf, 0, p_path, ig)
+
+        if not os.path.isdir(path):
+            yield path
             return
+
         try:
-            buf_fd = open(path, 'rb')
-            buf = buf_fd.read()
+            paths = os.listdir(path)
+        except Exception as e:
+            msg.error('Error listing path %s: %s' % (path, unicode(e)))
+            return
+        for p in paths:
+            p_path = os.path.join(path, p)
+            if p[0] == '.':
+                if p not in ignore.HIDDEN_WHITELIST:
+                    msg.log('Not creating buf for hidden path %s' % p_path)
+                    continue
+            ignored = ig.is_ignored(p_path)
+            if ignored:
+                msg.log('Not creating buf: %s' % (ignored))
+                continue
+
+            yield p_path
+
+    def upload(self, path):
+        try:
+            with open(path, 'rb') as buf_fd:
+                buf = buf_fd.read()
             encoding = 'utf8'
             rel_path = utils.to_rel_path(path)
             existing_buf = self.get_buf_by_path(path)
-            if existing_buf and existing_buf['md5'] == hashlib.md5(buf).hexdigest():
-                msg.debug('%s already exists and has the same md5. Skipping creating.' % path)
+            if existing_buf:
+                buf_md5 = hashlib.md5(buf).hexdigest()
+                if existing_buf['md5'] == buf_md5:
+                    msg.debug('%s already exists and has the same md5. Skipping.' % path)
+                    return
+                msg.log('setting buffer ', rel_path)
+
+                existing_buf['buf'] = buf
+                existing_buf['md5'] = buf_md5
+
+                try:
+                    buf = buf.decode('utf-8')
+                except Exception:
+                    buf = base64.b64encode(buf).decode('utf-8')
+                    encoding = 'base64'
+
+                existing_buf['encoding'] = encoding
+
+                self.agent.put({
+                    'name': 'set_buf',
+                    'id': existing_buf['id'],
+                    'buf': buf,
+                    'md5': buf_md5,
+                    'encoding': encoding,
+                })
                 return
+
             try:
                 buf = buf.decode('utf-8')
             except Exception:
                 buf = base64.b64encode(buf).decode('utf-8')
                 encoding = 'base64'
+
             msg.log('creating buffer ', rel_path)
             event = {
                 'name': 'create_buf',
@@ -243,17 +314,16 @@ class BaseProtocol(object):
             msg.log('We don\'t have patch permission. Buffers will be read-only')
 
         utils.mkdir(G.PROJECT_PATH)
-
-        floo_json = {
-            'url': utils.to_workspace_url({
-                'host': self.agent.host,
-                'owner': self.agent.owner,
-                'port': self.agent.port,
-                'workspace': self.agent.workspace,
-                'secure': self.agent.secure,
-            })
-        }
         with open(os.path.join(G.PROJECT_PATH, '.floo'), 'w') as floo_fd:
+            floo_json = {
+                'url': utils.to_workspace_url({
+                    'host': self.agent.host,
+                    'owner': self.agent.owner,
+                    'port': self.agent.port,
+                    'workspace': self.agent.workspace,
+                    'secure': self.agent.secure,
+                })
+            }
             floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True))
 
         for buf_id, buf in data['bufs'].iteritems():
@@ -269,17 +339,23 @@ class BaseProtocol(object):
                 if md5 == buf['md5']:
                     msg.debug('md5 sums match. not getting buffer')
                     buf['buf'] = buf_buf
-                else:
-                    raise Exception('different md5')
+                elif self.agent.get_bufs:
+                    self.agent.send_get_buf(buf_id)
             except Exception:
-                try:
-                    open(buf_path, "a").close()
-                except Exception as e:
-                    msg.debug("couldn't touch file: %s becuase %s" % (buf_path, e))
+                # try:
+                #     open(buf_path, "a").close()
+                # except Exception as e:
+                #     msg.debug("couldn't touch file: %s becuase %s" % (buf_path, e))
                 self.agent.send_get_buf(buf_id)
 
-        msg.debug(G.PROJECT_PATH)
+        temp_data = data.get('temp_data', {})
+        hangout = temp_data.get('hangout', {})
+        hangout_url = hangout.get('url')
+        if hangout_url:
+            # self.prompt_join_hangout(hangout_url)
+            pass
 
+        msg.debug(G.PROJECT_PATH)
         self.agent.on_auth()
 
     def on_join(self, data):

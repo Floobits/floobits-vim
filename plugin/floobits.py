@@ -13,7 +13,6 @@ import vim
 from floo.common import api, migrations, msg, shared as G, utils
 from floo import sublime
 from floo import AgentConnection
-from floo.vim_protocol import Protocol
 
 
 G.__VERSION__ = '0.03'
@@ -264,10 +263,9 @@ def share_dir(dir_to_share, perms=None):
     dir_to_share = os.path.expanduser(dir_to_share)
     dir_to_share = utils.unfuck_path(dir_to_share)
     dir_to_share = os.path.abspath(dir_to_share)
+    dir_to_share = os.path.realpath(dir_to_share)
 
     workspace_name = os.path.basename(dir_to_share)
-    G.PROJECT_PATH = os.path.realpath(dir_to_share)
-    msg.debug('%s %s %s' % (G.USERNAME, workspace_name, G.PROJECT_PATH))
 
     if os.path.isfile(dir_to_share):
         return msg.error('give me a directory please')
@@ -311,7 +309,7 @@ def share_dir(dir_to_share, perms=None):
         except HTTPError:
             pass
         else:
-            return join_workspace(workspace_url, dir_to_share, lambda x: agent.protocol.create_buf(dir_to_share, force=True))
+            return join_workspace(workspace_url, dir_to_share, sync_to_disk=False)
 
     orgs = api.get_orgs_can_admin()
     orgs = json.loads(orgs.read().decode('utf-8'))
@@ -358,7 +356,7 @@ def create_workspace(workspace_name, share_path, owner, perms=None):
         sublime.error_message('Unable to create workspace: %s' % str(e))
         return
 
-    join_workspace(workspace_url, share_path, lambda x: agent.protocol.create_buf(share_path, force=True))
+    join_workspace(workspace_url, share_path, sync_to_disk=False)
 
 
 @agent_and_protocol
@@ -385,7 +383,7 @@ def stop_everything():
 atexit.register(stop_everything)
 
 
-def join_workspace(workspace_url, d='', on_auth=None):
+def join_workspace(workspace_url, d='', sync_to_disk=True):
     global agent
     msg.debug("workspace url is %s" % workspace_url)
 
@@ -395,25 +393,22 @@ def join_workspace(workspace_url, d='', on_auth=None):
         return msg.error(str(e))
 
     if d:
-        G.PROJECT_PATH = d
-        utils.mkdir(G.PROJECT_PATH)
+        utils.mkdir(d)
     else:
         try:
-            G.PROJECT_PATH = utils.get_persistent_data()['workspaces'][result['owner']][result['workspace']]['path']
+            d = utils.get_persistent_data()['workspaces'][result['owner']][result['workspace']]['path']
         except Exception:
-            G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
+            d = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
 
-    d = G.PROJECT_PATH
-    # TODO: really bad prompt here
     prompt = "Give me a directory to sync data to: "
-    if not os.path.isdir(G.PROJECT_PATH):
+    if not os.path.isdir(d):
         while True:
             d = vim_input(prompt, d, "dir")
             if d == '':
                 continue
             d = os.path.realpath(os.path.expanduser(d))
             if os.path.isfile(d):
-                prompt = '%s is not a directory. Enter an existing path (or press enter): ' % d
+                prompt = '%s is not a directory. Enter an existing path or a path I can create: ' % d
                 continue
             if not os.path.isdir(d):
                 try:
@@ -422,19 +417,25 @@ def join_workspace(workspace_url, d='', on_auth=None):
                     prompt = "Couldn't make dir: %s because %s " % (d, str(e))
                     continue
             break
+    d = os.path.abspath(os.path.realpath(d))
     try:
         utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
     except Exception as e:
         return msg.error("Error adding workspace to persistent.json: %s" % str(e))
 
-    G.PROJECT_PATH = os.path.realpath(G.PROJECT_PATH + os.sep)
+    G.PROJECT_PATH = d + os.sep
     vim.command('cd %s' % G.PROJECT_PATH)
     msg.debug("Joining workspace %s" % workspace_url)
 
     stop_everything()
     try:
         start_event_loop()
-        agent = AgentConnection(on_auth=on_auth, Protocol=Protocol, **result)
+        if sync_to_disk:
+            on_auth = lambda agent: agent
+        else:
+            on_auth = lambda agent: agent.protocol.create_buf(d, force=True)
+
+        agent = AgentConnection(on_auth=on_auth, get_bufs=sync_to_disk, **result)
         # owner and workspace name are slugfields so this should be safe
         agent.connect()
     except Exception as e:
