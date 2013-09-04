@@ -216,31 +216,36 @@ def cursor_holdi():
         vim.command("call feedkeys(\"\ei\",'n')")
 
 
-def agent_and_protocol(func):
-    @wraps(func)
-    def wrapped(*args, **kwargs):
-        if agent and agent.protocol:
-            return func(*args, **kwargs)
-        msg.debug('ignoring request becuase there is no agent: %s' % func.__name__)
-    return wrapped
+def is_connected(warn=False):
+    def outer(func):
+        @wraps(func)
+        def wrapped(*args, **kwargs):
+            if agent and agent.protocol:
+                return func(*args, **kwargs)
+            if warn:
+                msg.error('ignoring request (%s) because you aren\'t in a workspace.' % func.__name__)
+            else:
+                msg.debug('ignoring request (%s) because you aren\'t in a workspace.' % func.__name__)
+        return wrapped
+    return outer
 
 
-@agent_and_protocol
+@is_connected()
 def maybe_selection_changed(ping=False):
     agent.protocol.maybe_selection_changed(vim.current.buffer, ping)
 
 
-@agent_and_protocol
+@is_connected()
 def maybe_buffer_changed():
     agent.protocol.maybe_buffer_changed(vim.current.buffer)
 
 
-@agent_and_protocol
+@is_connected()
 def follow(follow_mode=None):
     agent.protocol.follow(follow_mode)
 
 
-@agent_and_protocol
+@is_connected()
 def maybe_new_file():
     vim_buf = vim.current.buffer
     buf = agent.protocol.get_buf(vim_buf)
@@ -248,7 +253,7 @@ def maybe_new_file():
         agent.protocol.create_buf(vim_buf.name)
 
 
-@agent_and_protocol
+@is_connected()
 def on_save():
     vim_buf = vim.current.buffer
     buf = agent.protocol.get_buf(vim_buf)
@@ -256,7 +261,7 @@ def on_save():
         agent.send_saved(buf['id'])
 
 
-@agent_and_protocol
+@is_connected(True)
 def open_in_browser():
     url = agent.workspace_url
     if 'kick' in agent.protocol.perms:
@@ -264,6 +269,18 @@ def open_in_browser():
     else:
         url += '/info'
     webbrowser.open(url)
+
+
+@is_connected(True)
+def add_buf(path=None):
+    path = path or vim.current.buffer.name
+    agent.protocol.create_buf(path, force=True)
+
+
+@is_connected(True)
+def delete_buf():
+    name = vim.current.buffer.name
+    agent.protocol.delete_buf(name)
 
 
 def share_dir_private(dir_to_share):
@@ -368,18 +385,6 @@ def create_workspace(workspace_name, share_path, owner, perms=None):
         return
 
     join_workspace(workspace_url, share_path, sync_to_disk=False)
-
-
-@agent_and_protocol
-def add_buf(path=None):
-    path = path or vim.current.buffer.name
-    agent.protocol.create_buf(path, force=True)
-
-
-@agent_and_protocol
-def delete_buf():
-    name = vim.current.buffer.name
-    agent.protocol.delete_buf(name)
 
 
 def stop_everything():
