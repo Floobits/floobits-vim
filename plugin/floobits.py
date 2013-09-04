@@ -5,6 +5,7 @@ import re
 import traceback
 import atexit
 import subprocess
+import webbrowser
 from functools import wraps
 from urllib2 import HTTPError
 
@@ -253,6 +254,16 @@ def on_save():
     buf = agent.protocol.get_buf(vim_buf)
     if buf:
         agent.send_saved(buf['id'])
+
+
+@agent_and_protocol
+def open_in_browser():
+    url = agent.workspace_url
+    if 'kick' in agent.protocol.perms:
+        url += '/settings'
+    else:
+        url += '/info'
+    webbrowser.open(url)
 
 
 def share_dir_private(dir_to_share):

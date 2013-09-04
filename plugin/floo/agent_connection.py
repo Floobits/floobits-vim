@@ -193,6 +193,11 @@ class AgentConnection(BaseAgentConnection):
         self.workspace_info = {}
         super(AgentConnection, self).__init__(**kwargs)
 
+    @property
+    def workspace_url(self):
+        protocol = self.secure and 'https' or 'http'
+        return '{protocol}://{host}/r/{owner}/{name}'.format(protocol=protocol, host=self.host, owner=self.owner, name=self.workspace)
+
     def tick(self):
         self.protocol.push()
         self.select()
