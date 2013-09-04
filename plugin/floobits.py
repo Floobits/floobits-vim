@@ -417,7 +417,7 @@ def join_workspace(workspace_url, d='', sync_to_disk=True):
                     prompt = "Couldn't make dir: %s because %s " % (d, str(e))
                     continue
             break
-    d = os.path.abspath(os.path.realpath(d))
+    d = os.path.realpath(os.path.abspath(d))
     try:
         utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
     except Exception as e:
