@@ -89,6 +89,9 @@ def floo_info():
 def floo_pause():
     global call_feedkeys, ticker
 
+    if G.ASYNC:
+        return
+
     if using_feedkeys:
         call_feedkeys = False
         vim.command("set updatetime=4000")
@@ -104,6 +107,9 @@ def floo_pause():
 
 def floo_unpause():
     global call_feedkeys
+
+    if G.ASYNC:
+        return
 
     if using_feedkeys:
         call_feedkeys = True
