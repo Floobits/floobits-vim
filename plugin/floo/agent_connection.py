@@ -214,7 +214,8 @@ class AgentConnection(BaseAgentConnection):
             'room_owner': self.owner,
             'client': self.protocol.CLIENT,
             'platform': sys.platform,
-            'version': G.__VERSION__
+            'version': G.__VERSION__,
+            'supported_encodings': ['utf8', 'base64'],
         })
 
     def send_saved(self, buf_id):
