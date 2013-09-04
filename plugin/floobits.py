@@ -5,6 +5,7 @@ import re
 import traceback
 import atexit
 import subprocess
+import webbrowser
 from functools import wraps
 from urllib2 import HTTPError
 
@@ -13,7 +14,6 @@ import vim
 from floo.common import api, migrations, msg, shared as G, utils
 from floo import sublime
 from floo import AgentConnection
-from floo.vim_protocol import Protocol
 
 
 G.__VERSION__ = '0.03'
@@ -89,6 +89,9 @@ def floo_info():
 def floo_pause():
     global call_feedkeys, ticker
 
+    if G.ASYNC:
+        return
+
     if using_feedkeys:
         call_feedkeys = False
         vim.command("set updatetime=4000")
@@ -104,6 +107,9 @@ def floo_pause():
 
 def floo_unpause():
     global call_feedkeys
+
+    if G.ASYNC:
+        return
 
     if using_feedkeys:
         call_feedkeys = True
@@ -216,31 +222,36 @@ def cursor_holdi():
         vim.command("call feedkeys(\"\ei\",'n')")
 
 
-def agent_and_protocol(func):
-    @wraps(func)
-    def wrapped(*args, **kwargs):
-        if agent and agent.protocol:
-            return func(*args, **kwargs)
-        msg.debug('ignoring request becuase there is no agent: %s' % func.__name__)
-    return wrapped
+def is_connected(warn=False):
+    def outer(func):
+        @wraps(func)
+        def wrapped(*args, **kwargs):
+            if agent and agent.protocol:
+                return func(*args, **kwargs)
+            if warn:
+                msg.error('ignoring request (%s) because you aren\'t in a workspace.' % func.__name__)
+            else:
+                msg.debug('ignoring request (%s) because you aren\'t in a workspace.' % func.__name__)
+        return wrapped
+    return outer
 
 
-@agent_and_protocol
+@is_connected()
 def maybe_selection_changed(ping=False):
     agent.protocol.maybe_selection_changed(vim.current.buffer, ping)
 
 
-@agent_and_protocol
+@is_connected()
 def maybe_buffer_changed():
     agent.protocol.maybe_buffer_changed(vim.current.buffer)
 
 
-@agent_and_protocol
+@is_connected()
 def follow(follow_mode=None):
     agent.protocol.follow(follow_mode)
 
 
-@agent_and_protocol
+@is_connected()
 def maybe_new_file():
     vim_buf = vim.current.buffer
     buf = agent.protocol.get_buf(vim_buf)
@@ -248,12 +259,34 @@ def maybe_new_file():
         agent.protocol.create_buf(vim_buf.name)
 
 
-@agent_and_protocol
+@is_connected()
 def on_save():
     vim_buf = vim.current.buffer
     buf = agent.protocol.get_buf(vim_buf)
     if buf:
         agent.send_saved(buf['id'])
+
+
+@is_connected(True)
+def open_in_browser():
+    url = agent.workspace_url
+    if 'kick' in agent.protocol.perms:
+        url += '/settings'
+    else:
+        url += '/info'
+    webbrowser.open(url)
+
+
+@is_connected(True)
+def add_buf(path=None):
+    path = path or vim.current.buffer.name
+    agent.protocol.create_buf(path, force=True)
+
+
+@is_connected(True)
+def delete_buf():
+    name = vim.current.buffer.name
+    agent.protocol.delete_buf(name)
 
 
 def share_dir_private(dir_to_share):
@@ -264,10 +297,9 @@ def share_dir(dir_to_share, perms=None):
     dir_to_share = os.path.expanduser(dir_to_share)
     dir_to_share = utils.unfuck_path(dir_to_share)
     dir_to_share = os.path.abspath(dir_to_share)
+    dir_to_share = os.path.realpath(dir_to_share)
 
     workspace_name = os.path.basename(dir_to_share)
-    G.PROJECT_PATH = os.path.realpath(dir_to_share)
-    msg.debug('%s %s %s' % (G.USERNAME, workspace_name, G.PROJECT_PATH))
 
     if os.path.isfile(dir_to_share):
         return msg.error('give me a directory please')
@@ -311,7 +343,7 @@ def share_dir(dir_to_share, perms=None):
         except HTTPError:
             pass
         else:
-            return join_workspace(workspace_url, dir_to_share, lambda x: agent.protocol.create_buf(dir_to_share, force=True))
+            return join_workspace(workspace_url, dir_to_share, sync_to_disk=False)
 
     orgs = api.get_orgs_can_admin()
     orgs = json.loads(orgs.read().decode('utf-8'))
@@ -358,19 +390,7 @@ def create_workspace(workspace_name, share_path, owner, perms=None):
         sublime.error_message('Unable to create workspace: %s' % str(e))
         return
 
-    join_workspace(workspace_url, share_path, lambda x: agent.protocol.create_buf(share_path, force=True))
-
-
-@agent_and_protocol
-def add_buf(path=None):
-    path = path or vim.current.buffer.name
-    agent.protocol.create_buf(path, force=True)
-
-
-@agent_and_protocol
-def delete_buf():
-    name = vim.current.buffer.name
-    agent.protocol.delete_buf(name)
+    join_workspace(workspace_url, share_path, sync_to_disk=False)
 
 
 def stop_everything():
@@ -385,7 +405,7 @@ def stop_everything():
 atexit.register(stop_everything)
 
 
-def join_workspace(workspace_url, d='', on_auth=None):
+def join_workspace(workspace_url, d='', sync_to_disk=True):
     global agent
     msg.debug("workspace url is %s" % workspace_url)
 
@@ -395,25 +415,22 @@ def join_workspace(workspace_url, d='', on_auth=None):
         return msg.error(str(e))
 
     if d:
-        G.PROJECT_PATH = d
-        utils.mkdir(G.PROJECT_PATH)
+        utils.mkdir(d)
     else:
         try:
-            G.PROJECT_PATH = utils.get_persistent_data()['workspaces'][result['owner']][result['workspace']]['path']
+            d = utils.get_persistent_data()['workspaces'][result['owner']][result['workspace']]['path']
         except Exception:
-            G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
+            d = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
 
-    d = G.PROJECT_PATH
-    # TODO: really bad prompt here
     prompt = "Give me a directory to sync data to: "
-    if not os.path.isdir(G.PROJECT_PATH):
+    if not os.path.isdir(d):
         while True:
             d = vim_input(prompt, d, "dir")
             if d == '':
                 continue
             d = os.path.realpath(os.path.expanduser(d))
             if os.path.isfile(d):
-                prompt = '%s is not a directory. Enter an existing path (or press enter): ' % d
+                prompt = '%s is not a directory. Enter an existing path or a path I can create: ' % d
                 continue
             if not os.path.isdir(d):
                 try:
@@ -422,20 +439,28 @@ def join_workspace(workspace_url, d='', on_auth=None):
                     prompt = "Couldn't make dir: %s because %s " % (d, str(e))
                     continue
             break
+    d = os.path.realpath(os.path.abspath(d) + os.sep)
     try:
         utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
     except Exception as e:
         return msg.error("Error adding workspace to persistent.json: %s" % str(e))
 
-    G.PROJECT_PATH = os.path.realpath(G.PROJECT_PATH + os.sep)
+    G.PROJECT_PATH = d
     vim.command('cd %s' % G.PROJECT_PATH)
     msg.debug("Joining workspace %s" % workspace_url)
 
     stop_everything()
     try:
         start_event_loop()
-        agent = AgentConnection(on_auth=on_auth, Protocol=Protocol, **result)
+        if sync_to_disk:
+            result['on_room_info'] = lambda agent: agent
+        else:
+            result['on_room_info'] = lambda agent: agent.protocol.create_buf(d, force=True)
+
+        result['get_bufs'] = sync_to_disk
+
         # owner and workspace name are slugfields so this should be safe
+        agent = AgentConnection(**result)
         agent.connect()
     except Exception as e:
         msg.error(str(e))

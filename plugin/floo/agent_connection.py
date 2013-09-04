@@ -15,74 +15,32 @@ except ImportError:
 import vim
 
 from common import cert, msg, shared as G, utils
+from vim_protocol import Protocol as VimProtocol
 
 
-class AgentConnection(object):
+class BaseAgentConnection(object):
+    ''' Simple chat server using select '''
     MAX_RETRIES = 20
     INITIAL_RECONNECT_DELAY = 500
 
-    ''' Simple chat server using select '''
-    def __init__(self, owner, workspace, host=None, port=None, secure=True, on_auth=None, Protocol=None):
+    def __init__(self, host=None, port=None, secure=True):
         self.sock_q = Queue.Queue()
         self.sock = None
         self.net_buf = ''
         self.reconnect_delay = self.INITIAL_RECONNECT_DELAY
         self.reconnect_timeout = None
-        self.username = G.USERNAME
-        self.secret = G.SECRET
-        self.authed = False
         G.JOINED_WORKSPACE = False
+
         self.host = host or G.DEFAULT_HOST
         self.port = port or G.DEFAULT_PORT
         self.secure = secure
-        self.owner = owner
-        self.workspace = workspace
-        self.retries = self.MAX_RETRIES
-        self._on_auth = on_auth
+
         self.empty_selects = 0
-        self.workspace_info = {}
-        self.protocol = Protocol(self)
+        self.handshaken = False
         self.cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
-
-    def tick(self):
-        self.protocol.push()
-        self.select()
-
-    def send_get_buf(self, buf_id):
-        req = {
-            'name': 'get_buf',
-            'id': buf_id
-        }
-        self.put(req)
-
-    def send_auth(self):
-        # TODO: we shouldn't throw away all of this
-        self.sock_q = Queue.Queue()
-        self.put({
-            'username': self.username,
-            'secret': self.secret,
-            'room': self.workspace,
-            'room_owner': self.owner,
-            'client': self.protocol.CLIENT,
-            'platform': sys.platform,
-            'version': G.__VERSION__
-        })
-
-    def send_saved(self, buf_id):
-        self.put({'name': 'saved', 'id': buf_id})
-
-    def send_msg(self, msg):
-        self.put({'name': 'msg', 'data': msg})
-        self.protocol.chat(self.username, time.time(), msg, True)
-
-    def on_auth(self):
-        self.authed = True
-        G.JOINED_WORKSPACE = True
+        self.call_select = False
         self.retries = self.MAX_RETRIES
-        msg.log('Successfully joined workspace %s/%s' % (self.owner, self.workspace))
-        if self._on_auth:
-            self._on_auth(self)
-            self._on_auth = None
+        self.protocol = self.Protocol(self)
 
     def stop(self, log=True):
         if log:
@@ -98,9 +56,6 @@ class AgentConnection(object):
         if log:
             msg.log('Disconnected.')
         return True
-
-    def is_ready(self):
-        return self.authed
 
     def put(self, item):
         if not item:
@@ -174,26 +129,6 @@ class AgentConnection(object):
             except Queue.Empty:
                 break
 
-    def handle(self, req):
-        self.net_buf += req
-        new_data = False
-        while True:
-            before, sep, after = self.net_buf.partition('\n')
-            if not sep:
-                break
-            try:
-                data = json.loads(before)
-            except Exception as e:
-                msg.error('Unable to parse json:', e)
-                msg.error('Data:', before)
-                raise e
-            self.protocol.handle(data)
-            new_data = True
-            self.net_buf = after
-        #XXX move to protocol :(
-        if new_data:
-            vim.command('redraw')
-
     def select(self):
         if not self.sock:
             msg.debug('select(): No socket.')
@@ -239,3 +174,90 @@ class AgentConnection(object):
                 except Exception as e:
                     msg.error('Couldn\'t write to socket: %s' % str(e))
                     return self.reconnect()
+
+
+class AgentConnection(BaseAgentConnection):
+    MAX_RETRIES = 20
+    INITIAL_RECONNECT_DELAY = 500
+    Protocol = VimProtocol
+
+    ''' Simple chat server using select '''
+    def __init__(self, owner, workspace, on_room_info, get_bufs=True, **kwargs):
+        self.username = G.USERNAME
+        self.secret = G.SECRET
+        self.authed = False
+        self.owner = owner
+        self.workspace = workspace
+        self.on_room_info = on_room_info
+        self.get_bufs = get_bufs
+        self.workspace_info = {}
+        super(AgentConnection, self).__init__(**kwargs)
+
+    @property
+    def workspace_url(self):
+        protocol = self.secure and 'https' or 'http'
+        return '{protocol}://{host}/r/{owner}/{name}'.format(protocol=protocol, host=self.host, owner=self.owner, name=self.workspace)
+
+    def tick(self):
+        self.protocol.push()
+        self.select()
+
+    def send_get_buf(self, buf_id):
+        req = {
+            'name': 'get_buf',
+            'id': buf_id
+        }
+        self.put(req)
+
+    def send_auth(self):
+        # TODO: we shouldn't throw away all of this
+        self.sock_q = Queue.Queue()
+        self.put({
+            'username': self.username,
+            'secret': self.secret,
+            'room': self.workspace,
+            'room_owner': self.owner,
+            'client': self.protocol.CLIENT,
+            'platform': sys.platform,
+            'version': G.__VERSION__,
+            'supported_encodings': ['utf8', 'base64'],
+        })
+
+    def send_saved(self, buf_id):
+        self.put({'name': 'saved', 'id': buf_id})
+
+    def send_msg(self, msg):
+        self.put({'name': 'msg', 'data': msg})
+        self.protocol.chat(self.username, time.time(), msg, True)
+
+    def on_auth(self):
+        self.authed = True
+        G.JOINED_WORKSPACE = True
+        self.retries = self.MAX_RETRIES
+        msg.log('Successfully joined workspace %s/%s' % (self.owner, self.workspace))
+        if self.on_room_info:
+            self.on_room_info(self)
+            self.on_room_info = None
+
+    def is_ready(self):
+        return self.authed
+
+    def handle(self, req):
+        self.net_buf += req
+        new_data = False
+        while True:
+            before, sep, after = self.net_buf.partition('\n')
+            if not sep:
+                break
+            try:
+                data = json.loads(before)
+            except Exception as e:
+                msg.error('Unable to parse json:', e)
+                msg.error('Data:', before)
+                raise e
+            self.protocol.handle(data)
+            new_data = True
+            self.net_buf = after
+        #XXX move to protocol :(
+        if new_data:
+            vim.command('redraw')
