@@ -417,13 +417,13 @@ def join_workspace(workspace_url, d='', sync_to_disk=True):
                     prompt = "Couldn't make dir: %s because %s " % (d, str(e))
                     continue
             break
-    d = os.path.realpath(os.path.abspath(d))
+    d = os.path.realpath(os.path.abspath(d) + os.sep)
     try:
         utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
     except Exception as e:
         return msg.error("Error adding workspace to persistent.json: %s" % str(e))
 
-    G.PROJECT_PATH = d + os.sep
+    G.PROJECT_PATH = d
     vim.command('cd %s' % G.PROJECT_PATH)
     msg.debug("Joining workspace %s" % workspace_url)
 
@@ -431,13 +431,14 @@ def join_workspace(workspace_url, d='', sync_to_disk=True):
     try:
         start_event_loop()
         if sync_to_disk:
-            on_auth = lambda agent: agent
+            result['on_room_info'] = lambda agent: agent
         else:
-            on_auth = lambda agent: agent.protocol.create_buf(d, force=True)
+            result['on_room_info'] = lambda agent: agent.protocol.create_buf(d, force=True)
 
-        agent = AgentConnection(result['owner'], result['workspace'], on_auth, sync_to_disk,
-            secure=result['secure'], host=result['host'], port=result['port'])
+        result['get_bufs'] = sync_to_disk
+
         # owner and workspace name are slugfields so this should be safe
+        agent = AgentConnection(**result)
         agent.connect()
     except Exception as e:
         msg.error(str(e))
