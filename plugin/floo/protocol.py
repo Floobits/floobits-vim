@@ -1,7 +1,6 @@
 """Understands the floobits protocol"""
 
 import os
-import json
 import hashlib
 import collections
 import Queue
