@@ -314,17 +314,16 @@ class BaseProtocol(object):
             msg.log('We don\'t have patch permission. Buffers will be read-only')
 
         utils.mkdir(G.PROJECT_PATH)
-        with open(os.path.join(G.PROJECT_PATH, '.floo'), 'w') as floo_fd:
-            floo_json = {
-                'url': utils.to_workspace_url({
-                    'host': self.agent.host,
-                    'owner': self.agent.owner,
-                    'port': self.agent.port,
-                    'workspace': self.agent.workspace,
-                    'secure': self.agent.secure,
-                })
-            }
-            floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True))
+        floo_json = {
+            'url': utils.to_workspace_url({
+                'host': self.agent.host,
+                'owner': self.agent.owner,
+                'port': self.agent.port,
+                'workspace': self.agent.workspace,
+                'secure': self.agent.secure,
+            })
+        }
+        utils.update_floo_file(os.path.join(G.PROJECT_PATH, '.floo'), floo_json)
 
         for buf_id, buf in data['bufs'].iteritems():
             buf_id = int(buf_id)  # json keys must be strings
