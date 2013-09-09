@@ -12,6 +12,7 @@ from common import ignore, msg, shared as G, utils
 from common.lib import DMP
 
 import sublime
+import vim
 
 MAX_FILE_SIZE = 1024 * 1024 * 5
 
@@ -324,6 +325,7 @@ class BaseProtocol(object):
         }
         utils.update_floo_file(os.path.join(G.PROJECT_PATH, '.floo'), floo_json)
 
+        bufs_to_get = []
         for buf_id, buf in data['bufs'].iteritems():
             buf_id = int(buf_id)  # json keys must be strings
             buf_path = utils.get_full_path(buf['path'])
@@ -339,9 +341,41 @@ class BaseProtocol(object):
                         text = text.decode('utf-8')
                     buf['buf'] = text
                 elif self.agent.get_bufs:
+                    bufs_to_get.append(buf_id)
+            except Exception as e:
+                msg.debug('Error calculating md5:', e)
+                bufs_to_get.append(buf_id)
+
+        if bufs_to_get and self.agent.get_bufs:
+            if len(bufs_to_get) > 4:
+                prompt = '%s local files are different from the workspace. Overwrite your local files?' % len(bufs_to_get)
+            else:
+                prompt = 'Overwrite the following local files?\n'
+                for buf_id in bufs_to_get:
+                    prompt += '\n%s' % self.FLOO_BUFS[buf_id]['path']
+
+            default = 1
+            stomp_local = False
+            choices = ['Yes', 'No']
+            choices_str = '\n'.join(['&%s' % choice for choice in choices])
+            try:
+                choice = int(vim.eval('confirm("%s", "%s", %s)' % (prompt, choices_str, default)))
+            except KeyboardInterrupt:
+                choice = 0
+
+            if choice == 1:
+                stomp_local = True
+
+            for buf_id in bufs_to_get:
+                if stomp_local:
                     self.agent.send_get_buf(buf_id)
-            except Exception:
-                self.agent.send_get_buf(buf_id)
+                else:
+                    buf = self.FLOO_BUFS[buf_id]
+                    # TODO: this is inefficient. we just read the file 20 lines ago
+                    self.create_buf(utils.get_full_path(buf['path']))
+
+        success_msg = 'Successfully joined workspace %s/%s' % (self.agent.owner, self.agent.workspace)
+        msg.debug(success_msg)
 
         temp_data = data.get('temp_data', {})
         hangout = temp_data.get('hangout', {})
