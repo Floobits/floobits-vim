@@ -80,7 +80,7 @@ function! s:SetAutoCmd()
         autocmd BufWritePost * python on_save()
         " milliseconds
         if has('async')
-            call setinterval(100, 'g:floobits_global_tick')
+            call setinterval(100, 'python global_tick()')
         endif
     augroup END
 endfunction
