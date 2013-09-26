@@ -79,7 +79,7 @@ function! s:SetAutoCmd()
         autocmd BufEnter * python buf_enter()
         autocmd BufWritePost * python on_save()
         " milliseconds
-        if has('async')
+        if has('timers')
             call setinterval(100, 'python global_tick()')
         endif
     augroup END
