@@ -282,9 +282,10 @@ class BaseProtocol(object):
         self.on_get_buf(data)
 
     def on_get_buf(self, data):
-        buf_id = data['id']
-        self.FLOO_BUFS[buf_id] = data
-        view = self.get_view(buf_id)
+        if data['encoding'] == 'base64':
+            data['buf'] = base64.b64decode(data['buf'])
+        self.FLOO_BUFS[data['id']] = data
+        view = self.get_view(data['id'])
         if view:
             self.update_view(data, view)
         else:

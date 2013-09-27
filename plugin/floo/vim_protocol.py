@@ -218,7 +218,10 @@ class Protocol(protocol.BaseProtocol):
         path = utils.get_full_path(buf['path'])
         utils.mkdir(os.path.split(path)[0])
         with open(path, 'wb') as fd:
-            fd.write(buf['buf'].encode('utf-8'))
+            if buf['encoding'] == 'utf8':
+                fd.write(buf['buf'].encode('utf-8'))
+            else:
+                fd.write(buf['buf'])
         return path
 
     def chat(self, username, timestamp, message, self_msg=False):
