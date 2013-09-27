@@ -326,7 +326,8 @@ class BaseProtocol(object):
         }
         utils.update_floo_file(os.path.join(G.PROJECT_PATH, '.floo'), floo_json)
 
-        bufs_to_get = []
+        missing_bufs = []
+        bufs_to_stomp = []
         for buf_id, buf in data['bufs'].iteritems():
             buf_id = int(buf_id)  # json keys must be strings
             buf_path = utils.get_full_path(buf['path'])
@@ -337,22 +338,25 @@ class BaseProtocol(object):
                 text = open(buf_path, 'r').read()
                 md5 = hashlib.md5(text).hexdigest()
                 if md5 == buf['md5']:
-                    msg.debug('md5 sums match. not getting buffer')
+                    msg.debug('md5 sums match. not getting buffer %s' % buf_id)
                     if buf['encoding'] == 'utf8':
                         text = text.decode('utf-8')
                     buf['buf'] = text
                 elif self.agent.get_bufs:
-                    bufs_to_get.append(buf_id)
+                    bufs_to_stomp.append(buf_id)
             except Exception as e:
                 msg.debug('Error calculating md5:', e)
-                bufs_to_get.append(buf_id)
+                missing_bufs.append(buf_id)
 
-        if bufs_to_get and self.agent.get_bufs:
-            if len(bufs_to_get) > 4:
-                prompt = '%s local files are different from the workspace. Overwrite your local files?' % len(bufs_to_get)
+        for buf_id in missing_bufs:
+            self.agent.send_get_buf(buf_id)
+
+        if bufs_to_stomp and self.agent.get_bufs:
+            if len(bufs_to_stomp) > 4:
+                prompt = '%s local files are different from the workspace. Overwrite your local files?' % len(bufs_to_stomp)
             else:
                 prompt = 'Overwrite the following local files?\n'
-                for buf_id in bufs_to_get:
+                for buf_id in bufs_to_stomp:
                     prompt += '\n%s' % self.FLOO_BUFS[buf_id]['path']
 
             default = 1
@@ -367,7 +371,7 @@ class BaseProtocol(object):
             if choice == 1:
                 stomp_local = True
 
-            for buf_id in bufs_to_get:
+            for buf_id in bufs_to_stomp:
                 if stomp_local:
                     self.agent.send_get_buf(buf_id)
                 else:
