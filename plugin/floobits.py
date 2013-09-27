@@ -31,7 +31,7 @@ migrations.migrate_symlinks()
 G.DELETE_LOCAL_FILES = bool(int(vim.eval('floo_delete_local_files')))
 G.SHOW_HIGHLIGHTS = bool(int(vim.eval('floo_show_highlights')))
 G.SPARSE_MODE = bool(int(vim.eval('floo_sparse_mode')))
-G.ASYNC = bool(int(vim.eval('has("async")')))
+G.TIMERS = bool(int(vim.eval('has("timers")')))
 
 
 agent = None
@@ -89,7 +89,7 @@ def floo_info():
 def floo_pause():
     global call_feedkeys, ticker
 
-    if G.ASYNC:
+    if G.TIMERS:
         return
 
     if using_feedkeys:
@@ -108,7 +108,7 @@ def floo_pause():
 def floo_unpause():
     global call_feedkeys
 
-    if G.ASYNC:
+    if G.TIMERS:
         return
 
     if using_feedkeys:
@@ -145,8 +145,8 @@ def ticker_watcher(ticker):
 def start_event_loop():
     global ticker
 
-    if G.ASYNC:
-        msg.debug('Your Vim was compiled with async support. Awesome!')
+    if G.TIMERS:
+        msg.debug('Your Vim was compiled with +timer support. Awesome!')
         return
 
     if not bool(int(vim.eval('has("clientserver")'))):
