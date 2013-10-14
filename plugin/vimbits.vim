@@ -82,6 +82,9 @@ function! s:SetAutoCmd()
         if has('timers')
             call setinterval(100, 'python global_tick()')
         endif
+        if has('async')
+            call setinterval(100, 'python global_tick()')
+        endif
     augroup END
 endfunction
 

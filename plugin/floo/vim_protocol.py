@@ -145,7 +145,7 @@ class Protocol(protocol.BaseProtocol):
 
     def on_room_info(self, workspace_info):
         super(Protocol, self).on_room_info(workspace_info)
-        vim.command(':Explore %s' % G.PROJECT_PATH)
+        vim.command(':Explore %s | redraw' % G.PROJECT_PATH)
 
     def maybe_selection_changed(self, vim_buf, is_ping):
         buf = self.get_buf(vim_buf)
