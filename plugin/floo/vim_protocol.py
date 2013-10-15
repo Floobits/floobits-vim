@@ -159,7 +159,7 @@ class Protocol(protocol.BaseProtocol):
     def maybe_buffer_changed(self, vim_buf):
         text = vim_buf[:]
         buf = self.get_buf(vim_buf)
-        if not buf:
+        if not buf or 'buf' not in buf:
             return
         if buf['buf'] != text:
             self.BUFS_CHANGED.append(buf['id'])
