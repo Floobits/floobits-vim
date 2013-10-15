@@ -73,6 +73,7 @@ class BaseAgentConnection(object):
         except Exception:
             pass
         self.workspace_info = {}
+        self.bufs_to_stomp = set()
         self.net_buf = ''
         self.sock = None
         self.authed = False
@@ -191,6 +192,7 @@ class AgentConnection(BaseAgentConnection):
         self.on_room_info = on_room_info
         self.get_bufs = get_bufs
         self.workspace_info = {}
+        self.bufs_to_stomp = set()
         super(AgentConnection, self).__init__(**kwargs)
 
     @property
@@ -202,7 +204,8 @@ class AgentConnection(BaseAgentConnection):
         self.protocol.push()
         self.select()
 
-    def send_get_buf(self, buf_id):
+    def send_get_buf(self, buf_id, stomp=False):
+        self.bufs_to_stomp.add(buf_id)
         req = {
             'name': 'get_buf',
             'id': buf_id

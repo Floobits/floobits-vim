@@ -282,14 +282,19 @@ class BaseProtocol(object):
         self.on_get_buf(data)
 
     def on_get_buf(self, data):
+        buf_id = data['id']
         if data['encoding'] == 'base64':
             data['buf'] = base64.b64decode(data['buf'])
-        self.FLOO_BUFS[data['id']] = data
-        view = self.get_view(data['id'])
-        if view:
-            self.update_view(data, view)
-        else:
+        self.FLOO_BUFS[buf_id] = data
+        view = self.get_view(buf_id)
+        if not view:
             self.save_buf(data)
+            return
+
+        self.update_view(data, view)
+        if buf_id in self.bufs_to_stomp:
+            self.save_buf(data)
+            self.bufs_to_stomp.remove(buf_id)
 
     def on_rename_buf(self, data):
         new = utils.get_full_path(data['path'])
@@ -373,7 +378,7 @@ class BaseProtocol(object):
 
             for buf_id in bufs_to_stomp:
                 if stomp_local:
-                    self.agent.send_get_buf(buf_id)
+                    self.agent.send_get_buf(buf_id, True)
                 else:
                     buf = self.FLOO_BUFS[buf_id]
                     # TODO: this is inefficient. we just read the file 20 lines ago
