@@ -292,9 +292,9 @@ class BaseProtocol(object):
             return
 
         self.update_view(data, view)
-        if buf_id in self.bufs_to_stomp:
+        if buf_id in self.agent.bufs_to_stomp:
             self.save_buf(data)
-            self.bufs_to_stomp.remove(buf_id)
+            self.agent.bufs_to_stomp.remove(buf_id)
 
     def on_rename_buf(self, data):
         new = utils.get_full_path(data['path'])
