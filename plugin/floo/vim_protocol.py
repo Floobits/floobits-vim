@@ -10,6 +10,8 @@ import protocol
 
 class View(object):
     """editors representation of the buffer"""
+    highlight_regions = set()
+    highlight_matches = set()
 
     def __init__(self, vim_buf, buf):
         self.vim_buf = vim_buf
@@ -55,7 +57,6 @@ class View(object):
     def apply_patches(self, buf, patches):
         cursor_offset = self.get_cursor_offset()
         msg.debug('cursor offset is %s bytes' % cursor_offset)
-
         self.set_text(patches[0])
 
         for patch in patches[2]:
@@ -95,28 +96,29 @@ class View(object):
         msg.debug('clearing selections for view %s' % self.vim_buf.name)
 
     def highlight(self, ranges, user_id):
-        msg.debug('highlighting ranges %s' % (ranges))
-        return
-        # TODO: figure out how to highlight a region
-        region = "floobitsuser%s" % str(user_id)
-        for _range in ranges:
-            start_row, start_col = self._offset_to_vim(_range[0])
-            end_row, end_col = self._offset_to_vim(_range[1])
-            vim.command(":syntax clear %s" % region)
-            vim.command(":highlight %s guibg=#33ff33" % region)
-            if start_row == end_row and start_col == end_col:
-                end_col += 1
-            # vim_region = ":syntax region {region} start=/\%{start_col}v.\%{start_row}l/ end=/\%{end_col}v.\%{end_row}l/".\
-            #     format(region=region, start_col=start_col, start_row=start_row, end_col=end_col, end_row=end_row)
-            # msg.debug("highlight command: %s" % vim_region)
-            # vim.command(vim_region)
-            # matchadd({group}, {pattern}[, {priority}[, {id}]])
+        user_id += 3
 
-            vim.command(":call matchdelete({user_id})".format(user_id=user_id))
-            matchadd = ":call matchadd('{region}', '\%{start_col}v.\%{start_row}l', 10000, {user_id})" \
-                .format(region=region, start_col=start_col, start_row=start_row, user_id=user_id)
-            msg.debug("highlight command: %s" % matchadd)
-            vim.command(matchadd)
+        msg.debug('highlighting ranges %s' % (ranges))
+        if vim.current.buffer.number != self.vim_buf.number:
+            return
+        region = "floobitsuser%s" % str(user_id)
+        if region in self.highlight_regions:
+            vim.command(":syntax clear %s" % region)
+        vim.command(":highlight %s ctermbg=green guibg=#33ff33" % region)
+        # print('making region %s' % region)
+        self.highlight_regions.add(region)
+
+        for _range in ranges:
+            start, _ = self._offset_to_vim(_range[0])
+            end, _ = self._offset_to_vim(_range[1])
+            if start == end:
+                if start == 1:
+                    end += 1
+                else:
+                    start -= 1
+            vim_region = ":syntax region {region} start=/\%{start}l/ end=/\%{end}l/".\
+                format(region=region, start=start, end=end)
+            vim.command(vim_region)
 
     def rename(self, name):
         msg.debug('renaming %s to %s' % (self.vim_buf.name, name))

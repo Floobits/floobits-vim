@@ -69,10 +69,6 @@ ticker_errors: {ticker_errors}
 """
 
 
-def buf_enter():
-    pass
-
-
 def floo_info():
     kwargs = {
         'cs': bool(int(vim.eval('has("clientserver")'))),
@@ -287,6 +283,11 @@ def add_buf(path=None):
 def delete_buf():
     name = vim.current.buffer.name
     agent.protocol.delete_buf(name)
+
+
+@is_connected(True)
+def buf_enter():
+    print vim.current.buffer.name
 
 
 def share_dir_private(dir_to_share):
