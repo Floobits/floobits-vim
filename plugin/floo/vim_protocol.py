@@ -11,7 +11,6 @@ import protocol
 class View(object):
     """editors representation of the buffer"""
     highlight_regions = set()
-    highlight_matches = set()
 
     def __init__(self, vim_buf, buf):
         self.vim_buf = vim_buf
@@ -96,8 +95,6 @@ class View(object):
         msg.debug('clearing selections for view %s' % self.vim_buf.name)
 
     def highlight(self, ranges, user_id):
-        user_id += 3
-
         msg.debug('highlighting ranges %s' % (ranges))
         if vim.current.buffer.number != self.vim_buf.number:
             return
