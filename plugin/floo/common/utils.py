@@ -31,7 +31,11 @@ class FlooPatch(object):
         if buf['encoding'] == 'base64':
             self.md5_before = hashlib.md5(self.previous).hexdigest()
         else:
-            self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
+            try:
+                self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
+            except Exception:
+                # Horrible fallback if for some reason encoding doesn't agree with actual object
+                self.md5_before = hashlib.md5(self.previous).hexdigest()
 
     def __str__(self):
         return '%s - %s' % (self.buf['id'], self.buf['path'])
@@ -206,7 +210,10 @@ def is_shared(p):
     if not G.JOINED_WORKSPACE:
         return False
     p = unfuck_path(p)
-    if to_rel_path(p).find('../') == 0:
+    try:
+        if to_rel_path(p).find('../') == 0:
+            return False
+    except ValueError:
         return False
     return True
 
@@ -277,10 +284,8 @@ def rm(path):
     os.remove(path)
     try:
         os.removedirs(os.path.split(path)[0])
-    except OSError as e:
-        if e.errno != 66:
-            sublime.error_message('Cannot delete directory {0}.\n{1}'.format(path, e))
-            raise
+    except OSError:
+        pass
 
 
 def mkdir(path):
