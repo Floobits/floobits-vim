@@ -65,6 +65,9 @@ class BaseAgentConnection(object):
         if qsize > 0:
             msg.debug('%s items in q' % qsize)
 
+    def qsize(self):
+        return self.sock_q.qsize()
+
     def reconnect(self):
         if self.reconnect_timeout:
             return

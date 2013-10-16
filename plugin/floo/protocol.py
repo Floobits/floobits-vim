@@ -4,7 +4,6 @@ import os
 import hashlib
 import collections
 import Queue
-import stat
 import base64
 from functools import wraps
 
@@ -83,95 +82,31 @@ class BaseProtocol(object):
         self.follow_mode = follow_mode
         msg.log('follow mode is %s' % {True: 'enabled', False: 'disabled'}[self.follow_mode])
 
-    def create_buf(self, path, ig=None, force=False):
+    def create_buf(self, path, force=False):
         if G.SPARSE_MODE and not force:
             msg.debug("Skipping %s because user enabled sparse mode." % path)
             return
         if not utils.is_shared(path):
             msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
-        if not ig:
-            ig = ignore.Ignore(None, path)
-        ignores = collections.deque([ig])
-        files = collections.deque()
-        self._create_buf_worker(ignores, files, [])
+        ig = ignore.Ignore(None, path)
+        self._uploader(ig.list_paths())
 
-    def _create_buf_worker(self, ignores, files, too_big):
-        quota = 10
-
-        # scan until we find a minimum of 10 files
-        while quota > 0 and ignores:
-            ig = ignores.popleft()
-            for new_path in self._scan_dir(ig):
-                if not new_path:
-                    continue
-                try:
-                    s = os.lstat(new_path)
-                except Exception as e:
-                    msg.error('Error lstat()ing path %s: %s' % (new_path, unicode(e)))
-                    continue
-                if stat.S_ISDIR(s.st_mode):
-                    ignores.append(ignore.Ignore(ig, new_path))
-                elif stat.S_ISREG(s.st_mode):
-                    if s.st_size > (MAX_FILE_SIZE):
-                        too_big.append(new_path)
-                    else:
-                        files.append(new_path)
-                    quota -= 1
-
-        can_upload = False
-        for f in utils.iter_n_deque(files, 10):
-            self.upload(f)
-            can_upload = True
-
-        if can_upload:
-            self.agent.select()
-
-        if ignores or files:
-            return utils.set_timeout(self._create_buf_worker, 25, ignores, files, too_big)
-
-        if too_big:
-            sublime.error_message("%s file(s) were not added because they were larger than 10 megabytes: \n%s" % (len(too_big), "\t".join(too_big)))
-
-        msg.log('All done syncing')
-
-    def _scan_dir(self, ig):
-        path = ig.path
-
-        if not utils.is_shared(path):
-            msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
-            return
-        if os.path.islink(path):
-            msg.error('Skipping adding %s because it is a symlink.' % path)
-            return
-        ignored = ig.is_ignored(path)
-        if ignored:
-            msg.log('Not creating buf: %s' % (ignored))
+    def _uploader(self, paths_iter):
+        if not self.agent or not self.agent.sock:
+            msg.error('Can\'t upload! Not connected. :(')
             return
 
-        msg.debug('create_buf: path is %s' % path)
-
-        if not os.path.isdir(path):
-            yield path
-            return
-
+        self.agent.select()
+        if self.agent.qsize() > 0:
+            return utils.set_timeout(self._uploader, 10, paths_iter)
         try:
-            paths = os.listdir(path)
-        except Exception as e:
-            msg.error('Error listing path %s: %s' % (path, unicode(e)))
+            p = next(paths_iter)
+            self.upload(p)
+        except StopIteration:
+            msg.log('All done uploading')
             return
-        for p in paths:
-            p_path = os.path.join(path, p)
-            if p[0] == '.':
-                if p not in ignore.HIDDEN_WHITELIST:
-                    msg.log('Not creating buf for hidden path %s' % p_path)
-                    continue
-            ignored = ig.is_ignored(p_path)
-            if ignored:
-                msg.log('Not creating buf: %s' % (ignored))
-                continue
-
-            yield p_path
+        return utils.set_timeout(self._uploader, 50, paths_iter)
 
     def upload(self, path):
         try:
