@@ -11,7 +11,8 @@ import protocol
 COLORS = (
     ('white', 'red'),
     ('white', 'orange'),
-    ('white', 'yellow'),
+    ('black', 'yellow'),
+    ('black', 'green'),
     ('white', 'blue'),
 )
 HL_RULES = ['ctermfg=%s ctermbg=%s guifg=%s guibg=%s' % (fg, bg, fg, bg) for fg, bg in COLORS]
@@ -125,7 +126,11 @@ class View(object):
             start_row, start_col = self._offset_to_vim(_range[0])
             end_row, end_col = self._offset_to_vim(_range[1])
             if start_row == end_row and start_col == end_col:
-                end_col += 1
+                if end_col >= len(self.vim_buf[end_row - 1]):
+                    end_row += 1
+                    end_col = 1
+                else:
+                    end_col += 1
             vim_region = ":syntax region {region} start=/\%{start_col}v\%{start_row}l/ end=/\%{end_col}v\%{end_row}l/".\
                 format(region=region, start_col=start_col, start_row=start_row, end_col=end_col, end_row=end_row)
             # print("highlight command: %s" % vim_region)
