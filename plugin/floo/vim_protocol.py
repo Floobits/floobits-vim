@@ -7,9 +7,20 @@ import vim
 from common import msg, shared as G, utils
 import protocol
 
+# Foreground: background
+COLORS = (
+    ('white', 'red'),
+    ('white', 'orange'),
+    ('black', 'yellow'),
+    ('black', 'green'),
+    ('white', 'blue'),
+)
+HL_RULES = ['ctermfg=%s ctermbg=%s guifg=%s guibg=%s' % (fg, bg, fg, bg) for fg, bg in COLORS]
+
 
 class View(object):
     """editors representation of the buffer"""
+    highlight_regions = set()
 
     def __init__(self, vim_buf, buf):
         self.vim_buf = vim_buf
@@ -55,7 +66,6 @@ class View(object):
     def apply_patches(self, buf, patches):
         cursor_offset = self.get_cursor_offset()
         msg.debug('cursor offset is %s bytes' % cursor_offset)
-
         self.set_text(patches[0])
 
         for patch in patches[2]:
@@ -78,7 +88,7 @@ class View(object):
         msg.debug("setting pos: %s" % command)
         rv = int(vim.eval(command))
         if rv != 0:
-            msg.debug('SHIIIIIIIIT %s' % rv)
+            msg.debug('SHIIIIIIIIT %s %s' % (rv, command))
 
     def get_cursor_position(self):
         """ [bufnum, lnum, col, off] """
@@ -91,32 +101,40 @@ class View(object):
         cursor = self.get_cursor_offset()
         return [[cursor, cursor]]
 
-    def clear_selections(self):
+    def clear_highlight(self, user_id):
+        region = "floobitsuser%s" % str(user_id)
+        if region not in self.highlight_regions:
+            return
         msg.debug('clearing selections for view %s' % self.vim_buf.name)
+        self.highlight_regions.remove(region)
+        vim.command(":syntax clear %s" % region)
 
     def highlight(self, ranges, user_id):
         msg.debug('highlighting ranges %s' % (ranges))
-        return
-        # TODO: figure out how to highlight a region
+        if vim.current.buffer.number != self.vim_buf.number:
+            return
+
         region = "floobitsuser%s" % str(user_id)
+        if region in self.highlight_regions:
+            vim.command(":syntax clear %s" % region)
+
+        hl_rule = HL_RULES[user_id % len(HL_RULES)]
+        vim.command(":highlight %s %s" % (region, hl_rule))
+        self.highlight_regions.add(region)
+
         for _range in ranges:
             start_row, start_col = self._offset_to_vim(_range[0])
             end_row, end_col = self._offset_to_vim(_range[1])
-            vim.command(":syntax clear %s" % region)
-            vim.command(":highlight %s guibg=#33ff33" % region)
             if start_row == end_row and start_col == end_col:
-                end_col += 1
-            # vim_region = ":syntax region {region} start=/\%{start_col}v.\%{start_row}l/ end=/\%{end_col}v.\%{end_row}l/".\
-            #     format(region=region, start_col=start_col, start_row=start_row, end_col=end_col, end_row=end_row)
-            # msg.debug("highlight command: %s" % vim_region)
-            # vim.command(vim_region)
-            # matchadd({group}, {pattern}[, {priority}[, {id}]])
-
-            vim.command(":call matchdelete({user_id})".format(user_id=user_id))
-            matchadd = ":call matchadd('{region}', '\%{start_col}v.\%{start_row}l', 10000, {user_id})" \
-                .format(region=region, start_col=start_col, start_row=start_row, user_id=user_id)
-            msg.debug("highlight command: %s" % matchadd)
-            vim.command(matchadd)
+                if end_col >= len(self.vim_buf[end_row - 1]):
+                    end_row += 1
+                    end_col = 1
+                else:
+                    end_col += 1
+            vim_region = ":syntax region {region} start=/\%{start_col}v\%{start_row}l/ end=/\%{end_col}v\%{end_row}l/".\
+                format(region=region, start_col=start_col, start_row=start_row, end_col=end_col, end_row=end_row)
+            # print("highlight command: %s" % vim_region)
+            vim.command(vim_region)
 
     def rename(self, name):
         msg.debug('renaming %s to %s' % (self.vim_buf.name, name))
@@ -243,3 +261,17 @@ class Protocol(protocol.BaseProtocol):
             return
         self.MODIFIED_EVENTS.put(1)
         view.set_text(buf['buf'])
+
+    def on_part(self, data):
+        msg.log('%s left the workspace' % data['username'])
+        user_id = data['user_id']
+        highlight = self.user_highlights.get(user_id)
+        if not highlight:
+            return
+        view = self.get_view(highlight['id'])
+        if not view:
+            return
+        if vim.current.buffer.number != view.native_id:
+            return
+        view.clear_highlight(user_id)
+        del self.user_highlights[user_id]
