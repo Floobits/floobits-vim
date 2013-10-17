@@ -10,7 +10,6 @@ import protocol
 # Foreground: background
 COLORS = (
     ('white', 'red'),
-    ('white', 'orange'),
     ('black', 'yellow'),
     ('black', 'green'),
     ('white', 'blue'),
