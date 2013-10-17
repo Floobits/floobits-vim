@@ -7,6 +7,15 @@ import vim
 from common import msg, shared as G, utils
 import protocol
 
+# Foreground: background
+COLORS = (
+    ('white', 'red'),
+    ('white', 'orange'),
+    ('white', 'yellow'),
+    ('white', 'blue'),
+)
+HL_RULES = ['ctermfg=%s ctermbg=%s guifg=%s guibg=%s' % (fg, bg, fg, bg) for fg, bg in COLORS]
+
 
 class View(object):
     """editors representation of the buffer"""
@@ -78,7 +87,7 @@ class View(object):
         msg.debug("setting pos: %s" % command)
         rv = int(vim.eval(command))
         if rv != 0:
-            msg.debug('SHIIIIIIIIT %s' % rv)
+            msg.debug('SHIIIIIIIIT %s %s' % (rv, command))
 
     def get_cursor_position(self):
         """ [bufnum, lnum, col, off] """
@@ -102,10 +111,11 @@ class View(object):
         region = "floobitsuser%s" % str(user_id)
         if region in self.highlight_regions:
             vim.command(":syntax clear %s" % region)
-        vim.command(":highlight %s ctermbg=green guibg=#33ff33" % region)
+
+        hl_rule = HL_RULES[user_id % len(HL_RULES)]
+        vim.command(":highlight %s %s" % (region, hl_rule))
         self.highlight_regions.add(region)
 
-        region = "floobitsuser%s" % str(user_id)
         for _range in ranges:
             start_row, start_col = self._offset_to_vim(_range[0])
             end_row, end_col = self._offset_to_vim(_range[1])
