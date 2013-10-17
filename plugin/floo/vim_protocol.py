@@ -100,8 +100,13 @@ class View(object):
         cursor = self.get_cursor_offset()
         return [[cursor, cursor]]
 
-    def clear_selections(self):
+    def clear_highlight(self, user_id):
+        region = "floobitsuser%s" % str(user_id)
+        if region not in self.highlight_regions:
+            return
         msg.debug('clearing selections for view %s' % self.vim_buf.name)
+        self.highlight_regions.remove(region)
+        vim.command(":syntax clear %s" % region)
 
     def highlight(self, ranges, user_id):
         msg.debug('highlighting ranges %s' % (ranges))
@@ -251,3 +256,17 @@ class Protocol(protocol.BaseProtocol):
             return
         self.MODIFIED_EVENTS.put(1)
         view.set_text(buf['buf'])
+
+    def on_part(self, data):
+        msg.log('%s left the workspace' % data['username'])
+        user_id = data['user_id']
+        highlight = self.user_highlights.get(user_id)
+        if not highlight:
+            return
+        view = self.get_view(highlight['id'])
+        if not view:
+            return
+        if vim.current.buffer.number != view.native_id:
+            return
+        view.clear_highlight(user_id)
+        del self.user_highlights[user_id]

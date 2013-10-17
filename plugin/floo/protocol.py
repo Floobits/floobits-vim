@@ -10,7 +10,7 @@ from functools import wraps
 from common import ignore, msg, shared as G, utils
 from common.lib import DMP
 
-import sublime
+
 import vim
 
 MAX_FILE_SIZE = 1024 * 1024 * 5
@@ -36,6 +36,7 @@ class BaseProtocol(object):
     MODIFIED_EVENTS = Queue.Queue()
     SELECTED_EVENTS = Queue.Queue()
     FLOO_BUFS = {}
+    user_highlights = {}
 
     def __init__(self, agent):
         self.agent = agent
@@ -337,13 +338,6 @@ class BaseProtocol(object):
     def on_join(self, data):
         msg.log('%s joined the workspace' % data['username'])
 
-    def on_part(self, data):
-        msg.log('%s left the workspace' % data['username'])
-        region_key = 'floobits-highlight-%s' % (data['user_id'])
-        for window in sublime.windows():
-            for view in window.views():
-                view.erase_regions(region_key)
-
     @buf_populated
     def on_patch(self, data):
         added_newline = False
@@ -464,24 +458,28 @@ class BaseProtocol(object):
     def on_highlight(self, data):
         #     floobits.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False))
         #buf_id, region_key, username, ranges, ping=False):
+        buf_id = data['id']
+        user_id = data['user_id']
         ping = data.get('ping', False)
         if self.follow_mode:
             ping = True
-        buf = self.FLOO_BUFS[data['id']]
-        view = self.get_view(data['id'])
+        buf = self.FLOO_BUFS[buf_id]
+        view = self.get_view(buf_id)
         if not view:
             if not ping:
                 return
             view = self.create_view(buf)
             if not view:
                 return
+        self.user_highlights[user_id] = data
         if ping:
             try:
                 offset = data['ranges'][0][0]
             except IndexError as e:
                 msg.debug('could not get offset from range %s' % e)
             else:
-                msg.log('You have been summoned by %s' % (data.get('username', 'an unknown user')))
+                if data.get('ping'):
+                    msg.log('You have been summoned by %s' % (data.get('username', 'an unknown user')))
                 view.focus()
                 view.set_cursor_position(offset)
         if G.SHOW_HIGHLIGHTS:
