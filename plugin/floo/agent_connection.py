@@ -238,7 +238,6 @@ class AgentConnection(BaseAgentConnection):
 
     def on_auth(self):
         self.authed = True
-        G.JOINED_WORKSPACE = True
         self.retries = self.MAX_RETRIES
         msg.log('Successfully joined workspace %s/%s' % (self.owner, self.workspace))
         if self.on_room_info:

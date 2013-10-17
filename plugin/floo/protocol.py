@@ -291,6 +291,8 @@ class BaseProtocol(object):
         for buf_id in missing_bufs:
             self.agent.send_get_buf(buf_id)
 
+        G.JOINED_WORKSPACE = True
+
         if bufs_to_stomp and self.agent.get_bufs:
             if len(bufs_to_stomp) > 4:
                 prompt = '%s local files are different from the workspace. Overwrite your local files?' % len(bufs_to_stomp)

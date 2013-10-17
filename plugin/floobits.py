@@ -285,9 +285,10 @@ def delete_buf():
     agent.protocol.delete_buf(name)
 
 
-@is_connected(True)
+@is_connected()
 def buf_enter():
-    print vim.current.buffer.name
+    #print vim.current.buffer.name
+    pass
 
 
 def share_dir_private(dir_to_share):
