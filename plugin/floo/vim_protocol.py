@@ -17,9 +17,12 @@ COLORS = (
 HL_RULES = ['ctermfg=%s ctermbg=%s guifg=%s guibg=%s' % (fg, bg, fg, bg) for fg, bg in COLORS]
 
 
+def user_id_to_region(user_id):
+    return "floobitsuser%s" % user_id
+
+
 class View(object):
     """editors representation of the buffer"""
-    highlight_regions = set()
 
     def __init__(self, vim_buf, buf):
         self.vim_buf = vim_buf
@@ -101,25 +104,18 @@ class View(object):
         return [[cursor, cursor]]
 
     def clear_highlight(self, user_id):
-        region = "floobitsuser%s" % str(user_id)
-        if region not in self.highlight_regions:
-            return
+        region = user_id_to_region(user_id)
         msg.debug('clearing selections for view %s' % self.vim_buf.name)
-        self.highlight_regions.remove(region)
         vim.command(":syntax clear %s" % region)
 
     def highlight(self, ranges, user_id):
         msg.debug('highlighting ranges %s' % (ranges))
         if vim.current.buffer.number != self.vim_buf.number:
             return
-
-        region = "floobitsuser%s" % str(user_id)
-        if region in self.highlight_regions:
-            vim.command(":syntax clear %s" % region)
+        region = user_id_to_region(user_id)
 
         hl_rule = HL_RULES[user_id % len(HL_RULES)]
         vim.command(":highlight %s %s" % (region, hl_rule))
-        self.highlight_regions.add(region)
 
         for _range in ranges:
             start_row, start_col = self._offset_to_vim(_range[0])
@@ -132,7 +128,6 @@ class View(object):
                     end_col += 1
             vim_region = ":syntax region {region} start=/\%{start_col}v\%{start_row}l/ end=/\%{end_col}v\%{end_row}l/".\
                 format(region=region, start_col=start_col, start_row=start_row, end_col=end_col, end_row=end_row)
-            # print("highlight command: %s" % vim_region)
             vim.command(vim_region)
 
     def rename(self, name):
@@ -274,3 +269,17 @@ class Protocol(protocol.BaseProtocol):
             return
         view.clear_highlight(user_id)
         del self.user_highlights[user_id]
+
+    def clear_highlight(self, path):
+        """it is assumed path is the path of the current buffer"""
+        if not path:
+            return
+
+        if not utils.is_shared(path):
+            return
+
+        for user_id, highlight in self.user_highlights.items():
+            full_path = utils.get_full_path(highlight['path'])
+            if path == full_path:
+                region = user_id_to_region(user_id)
+                vim.command(":syntax clear %s" % region)

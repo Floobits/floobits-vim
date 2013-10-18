@@ -36,6 +36,7 @@ class BaseProtocol(object):
     MODIFIED_EVENTS = Queue.Queue()
     SELECTED_EVENTS = Queue.Queue()
     FLOO_BUFS = {}
+    PATHS_TO_BUFS = {}
     user_highlights = {}
 
     def __init__(self, agent):
@@ -57,10 +58,9 @@ class BaseProtocol(object):
 
     def get_buf_by_path(self, path):
         rel_path = utils.to_rel_path(path)
-        for buf_id, buf in self.FLOO_BUFS.iteritems():
-            if rel_path == buf['path']:
-                return buf
-        return None
+        buf_id = self.PATHS_TO_BUFS.get(rel_path)
+        if buf_id:
+            return self.FLOO_BUFS.get(buf_id)
 
     def save_buf(self, data):
         raise NotImplemented()
@@ -221,6 +221,7 @@ class BaseProtocol(object):
         buf_id = data['id']
         if data['encoding'] == 'base64':
             data['buf'] = base64.b64decode(data['buf'])
+        self.PATHS_TO_BUFS[data['path']] = buf_id
         self.FLOO_BUFS[buf_id] = data
         view = self.get_view(buf_id)
         if not view:
@@ -238,8 +239,12 @@ class BaseProtocol(object):
         new_dir = os.path.dirname(new)
         if new_dir:
             utils.mkdir(new_dir)
-        view = self.get_view(data['id'])
-        self.FLOO_BUFS[data['id']]['path'] = data['path']
+        buf_id = data['id']
+        del self.PATHS_TO_BUFS[data['old_path']]
+        buf = self.FLOO_BUFS[buf_id]
+        buf['path'] = data['path']
+        self.PATHS_TO_BUFS[data['path']] = buf_id
+        view = self.get_view(buf_id)
         if view:
             view.rename(new)
         else:
@@ -275,6 +280,7 @@ class BaseProtocol(object):
             new_dir = os.path.dirname(buf_path)
             utils.mkdir(new_dir)
             self.FLOO_BUFS[buf_id] = buf
+            self.PATHS_TO_BUFS[buf['path']] = buf_id
             try:
                 text = open(buf_path, 'r').read()
                 md5 = hashlib.md5(text).hexdigest()
@@ -456,11 +462,10 @@ class BaseProtocol(object):
 
     @buf_populated
     def on_highlight(self, data):
-        #     floobits.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False))
-        #buf_id, region_key, username, ranges, ping=False):
         buf_id = data['id']
         user_id = data['user_id']
         ping = data.get('ping', False)
+        previous_highlight = self.user_highlights.get(user_id)
         if self.follow_mode:
             ping = True
         buf = self.FLOO_BUFS[buf_id]
@@ -471,6 +476,7 @@ class BaseProtocol(object):
             view = self.create_view(buf)
             if not view:
                 return
+        data['path'] = buf['path']
         self.user_highlights[user_id] = data
         if ping:
             try:
@@ -483,7 +489,12 @@ class BaseProtocol(object):
                 view.focus()
                 view.set_cursor_position(offset)
         if G.SHOW_HIGHLIGHTS:
+            if previous_highlight and previous_highlight['id'] == data['id']:
+                view.clear_highlight(data['user_id'])
             view.highlight(data['ranges'], data['user_id'])
+
+    def clear_highlight(self, path):
+        raise NotImplemented()
 
     def on_error(self, data):
         message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
@@ -491,6 +502,5 @@ class BaseProtocol(object):
 
     def on_disconnect(self, data):
         message = 'Floobits: Disconnected! Reason: %s' % str(data.get('reason'))
-        msg.error(message)
         msg.error(message)
         self.agent.stop()
