@@ -287,8 +287,18 @@ def delete_buf():
 
 @is_connected()
 def buf_enter():
-    #print vim.current.buffer.name
-    pass
+    buf = agent.protocol.get_buf(vim.current.buffer)
+    if buf is None:
+        return
+    # NOTE: we call highlight twice in follow mode... thats stupid
+    for user_id, highlight in agent.protocol.user_highlights.items():
+        if highlight['id'] == buf['id']:
+            agent.protocol.on_highlight(highlight)
+
+
+@is_connected()
+def floo_clear():
+    agent.protocol.clear_highlight(vim.current.buffer.name)
 
 
 def share_dir_private(dir_to_share):
