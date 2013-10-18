@@ -106,7 +106,7 @@ class View(object):
     def clear_highlight(self, user_id):
         region = user_id_to_region(user_id)
         msg.debug('clearing selections for view %s' % self.vim_buf.name)
-        vim.command(":syntax clear %s" % region)
+        vim.command(":highlight clear %s" % region)
 
     def highlight(self, ranges, user_id):
         msg.debug('highlighting ranges %s' % (ranges))
@@ -282,4 +282,4 @@ class Protocol(protocol.BaseProtocol):
             full_path = utils.get_full_path(highlight['path'])
             if path == full_path:
                 region = user_id_to_region(user_id)
-                vim.command(":syntax clear %s" % region)
+                vim.command(":highlight clear %s" % region)
