@@ -123,16 +123,15 @@ class BaseProtocol(object):
                     return
                 msg.log('setting buffer ', rel_path)
 
-                existing_buf['buf'] = buf
-                existing_buf['md5'] = buf_md5
-
                 try:
                     buf = buf.decode('utf-8')
                 except Exception:
                     buf = base64.b64encode(buf).decode('utf-8')
                     encoding = 'base64'
 
+                existing_buf['buf'] = buf
                 existing_buf['encoding'] = encoding
+                existing_buf['md5'] = buf_md5
 
                 self.agent.put({
                     'name': 'set_buf',
