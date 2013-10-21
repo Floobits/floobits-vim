@@ -87,10 +87,13 @@ class View(object):
     def set_cursor_position(self, offset):
         line_num, col = self._offset_to_vim(offset)
         command = 'setpos(".", [%s, %s, %s, %s])' % (self.native_id, line_num, col, 0)
-        msg.debug("setting pos: %s" % command)
-        rv = int(vim.eval(command))
-        if rv != 0:
-            msg.debug('SHIIIIIIIIT %s %s' % (rv, command))
+        msg.debug('setting pos: %s' % command)
+        try:
+            rv = int(vim.eval(command))
+            if rv != 0:
+                msg.debug('SHIIIIIIIIT %s %s' % (rv, command))
+        except Exception as e:
+            msg.log('set_cursor_position error: %s. command: %s' % (str(e), command))
 
     def get_cursor_position(self):
         """ [bufnum, lnum, col, off] """
@@ -105,8 +108,12 @@ class View(object):
 
     def clear_highlight(self, user_id):
         region = user_id_to_region(user_id)
-        msg.debug('clearing selections for view %s' % self.vim_buf.name)
-        vim.command(":highlight clear %s" % region)
+        msg.debug('clearing selections for user %s in view %s' % (user_id, self.vim_buf.name))
+        vim.command(':highlight clear %s' % region)
+        try:
+            vim.command(':syntax clear %s' % region)
+        except Exception as e:
+            msg.debug('Error clearing syntax for region %s: %s' % (region, str(e)))
 
     def highlight(self, ranges, user_id):
         msg.debug('highlighting ranges %s' % (ranges))
