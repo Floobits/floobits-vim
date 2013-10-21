@@ -301,6 +301,17 @@ def floo_clear():
     agent.protocol.clear_highlight(vim.current.buffer.name)
 
 
+@is_connected()
+def floo_toggle_highlights():
+    G.SHOW_HIGHLIGHTS = not G.SHOW_HIGHLIGHTS
+    if G.SHOW_HIGHLIGHTS:
+        buf_enter()
+        msg.log('Highlights enabled')
+        return
+    agent.protocol.clear_highlight(vim.current.buffer.name)
+    msg.log('Highlights disabled')
+
+
 def share_dir_private(dir_to_share):
     return share_dir(dir_to_share, perms={'AnonymousUser': []})
 

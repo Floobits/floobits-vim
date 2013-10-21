@@ -105,6 +105,7 @@ command! FlooPause :python floo_pause()
 command! FlooUnPause :python floo_unpause()
 command! FlooOpenInBrowser :python open_in_browser()
 command! FlooClearHighlights :python floo_clear()
+command! FlooToggleHighlights :python floo_toggle_highlights()
 
 command! -nargs=1 -complete=dir FlooShareDir :python share_dir(<f-args>)
 command! -nargs=1 -complete=dir FlooShareDirPrivate :python share_dir_private(<f-args>)
