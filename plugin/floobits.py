@@ -288,7 +288,7 @@ def delete_buf():
 @is_connected()
 def buf_enter():
     buf = agent.protocol.get_buf(vim.current.buffer)
-    if buf is None:
+    if not buf:
         return
     # NOTE: we call highlight twice in follow mode... thats stupid
     for user_id, highlight in agent.protocol.user_highlights.items():
