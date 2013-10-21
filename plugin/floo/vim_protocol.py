@@ -64,7 +64,6 @@ class View(object):
         except Exception as e:
             msg.error("couldn't apply patches because: %s!\nThe unencoded text was: %s" % (str(e), text))
             raise
-        vim.command('redraw')
 
     def apply_patches(self, buf, patches):
         cursor_offset = self.get_cursor_offset()
@@ -80,7 +79,6 @@ class View(object):
                 cursor_offset += new_offset
 
         self.set_cursor_position(cursor_offset)
-        vim.command('redraw')
 
     def focus(self):
         vim.command(':edit! %s' % self.vim_buf.name)
@@ -138,7 +136,6 @@ class View(object):
             vim_region = ":syntax region {region} start=/\%{start_col}v\%{start_row}l/ end=/\%{end_col}v\%{end_row}l/".\
                 format(region=region, start_col=start_col, start_row=start_row, end_col=end_col, end_row=end_row)
             vim.command(vim_region)
-        vim.command('redraw')
 
     def rename(self, name):
         msg.debug('renaming %s to %s' % (self.vim_buf.name, name))
