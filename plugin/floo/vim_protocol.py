@@ -81,19 +81,13 @@ class View(object):
         self.set_cursor_position(cursor_offset)
 
     def focus(self):
-        vim.command(':edit! %s' % self.vim_buf.name)
-        vim.command(':filetype detect')
+        vim.command(':silent! edit! %s | :silent! :filetype detect' % self.vim_buf.name)
 
     def set_cursor_position(self, offset):
         line_num, col = self._offset_to_vim(offset)
-        command = 'setpos(".", [%s, %s, %s, %s])' % (self.native_id, line_num, col, 0)
+        command = ':silent! setpos(".", [%s, %s, %s, %s])' % (self.native_id, line_num, col, 0)
         msg.debug('setting pos: %s' % command)
-        try:
-            rv = int(vim.eval(command))
-            if rv != 0:
-                msg.debug('SHIIIIIIIIT %s %s' % (rv, command))
-        except Exception as e:
-            msg.log('set_cursor_position error: %s. command: %s' % (str(e), command))
+        vim.command(command)
 
     def get_cursor_position(self):
         """ [bufnum, lnum, col, off] """
@@ -109,11 +103,7 @@ class View(object):
     def clear_highlight(self, user_id):
         region = user_id_to_region(user_id)
         msg.debug('clearing selections for user %s in view %s' % (user_id, self.vim_buf.name))
-        vim.command(':highlight clear %s' % region)
-        try:
-            vim.command(':syntax clear %s' % region)
-        except Exception as e:
-            msg.debug('Error clearing syntax for region %s: %s' % (region, str(e)))
+        vim.command(':silent highlight clear %s | :silent! syntax clear %s' % (region, region))
 
     def highlight(self, ranges, user_id):
         msg.debug('highlighting ranges %s' % (ranges))
@@ -122,7 +112,7 @@ class View(object):
         region = user_id_to_region(user_id)
 
         hl_rule = HL_RULES[user_id % len(HL_RULES)]
-        vim.command(":highlight %s %s" % (region, hl_rule))
+        vim.command(":silent highlight %s %s" % (region, hl_rule))
 
         for _range in ranges:
             start_row, start_col = self._offset_to_vim(_range[0])
