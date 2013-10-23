@@ -101,11 +101,13 @@ class View(object):
         return [[cursor, cursor]]
 
     def clear_highlight(self, user_id):
+        return
         region = user_id_to_region(user_id)
         msg.debug('clearing selections for user %s in view %s' % (user_id, self.vim_buf.name))
         vim.command(':silent highlight clear %s | :silent! syntax clear %s' % (region, region))
 
     def highlight(self, ranges, user_id):
+        return
         msg.debug('highlighting ranges %s' % (ranges))
         if vim.current.buffer.number != self.vim_buf.number:
             return
