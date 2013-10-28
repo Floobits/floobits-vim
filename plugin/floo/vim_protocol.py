@@ -85,7 +85,7 @@ class View(object):
 
     def set_cursor_position(self, offset):
         line_num, col = self._offset_to_vim(offset)
-        command = ':silent! setpos(".", [%s, %s, %s, %s])' % (self.native_id, line_num, col, 0)
+        command = ':silent! call setpos(".", [%s, %s, %s, %s])' % (self.native_id, line_num, col, 0)
         msg.debug('setting pos: %s' % command)
         vim.command(command)
 
