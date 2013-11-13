@@ -391,7 +391,7 @@ def create_workspace(workspace_name, share_path, owner, perms=None):
         if perms:
             api_args['perms'] = perms
         api.create_workspace(api_args)
-        workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
+        workspace_url = 'https://%s/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
         msg.debug('Created workspace %s' % workspace_url)
     except HTTPError as e:
         err_body = e.read()

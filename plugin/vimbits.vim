@@ -88,7 +88,7 @@ function! s:SetAutoCmd()
     augroup END
 endfunction
 
-"TODO: populate with a default url of https://floobits.com/r/
+"TODO: populate with a default url of https://floobits.com/
 command! -nargs=1 FlooJoinWorkspace :python join_workspace(<f-args>)
 
 command! FlooLeaveWorkspace :python part_workspace()

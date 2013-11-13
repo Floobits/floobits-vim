@@ -11,7 +11,7 @@ COMMANDS
 
                                                 *FlooJoinWorkspace*
 :FlooJoinWorkspace [url]    Joins a Floobits workspace. URLs look like
-                            https://floobits.com/r/owner/workspace_name/
+                            https://floobits.com/owner/workspace_name/
                             workspace urls are the same as what you see in the 
                             web editor.
 
