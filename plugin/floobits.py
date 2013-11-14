@@ -32,7 +32,7 @@ migrations.migrate_symlinks()
 on_room_info_waterfall = utils.Waterfall()
 
 G.DELETE_LOCAL_FILES = bool(int(vim.eval('floo_delete_local_files')))
-G.SHOW_viewTS = bool(int(vim.eval('floo_show_highlights')))
+G.SHOW_HIGHLIGHTS = bool(int(vim.eval('floo_show_highlights')))
 G.SPARSE_MODE = bool(int(vim.eval('floo_sparse_mode')))
 G.TIMERS = bool(int(vim.eval('has("timers")')))
 
@@ -241,7 +241,7 @@ def maybe_buffer_changed():
 
 @is_connected()
 def follow(follow_mode=None):
-    G.AGENT.follow(follow_mode)
+    G.STALKER_MODE = follow_mode
 
 
 @is_connected()

@@ -265,9 +265,6 @@ class VimHandler(floo_handler.FlooHandler):
         }
         G.AGENT.send(event)
 
-    def highlight(self, buf_id, region_key, username, ranges, summon, clone):
-        return
-
     def clear_highlights(self, view):
         if not G.AGENT:
             return
@@ -346,5 +343,31 @@ class VimHandler(floo_handler.FlooHandler):
         del self.user_highlights[user_id]
 
     def _on_highlight(self, data):
-        region_key = 'floobits-highlight-%s' % (data['user_id'])
-        self.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False), True)
+        buf_id = data['id']
+        user_id = data['user_id']
+        ping = G.STALKER_MODE or data.get('ping', False)
+        previous_highlight = self.user_highlights.get(user_id)
+        buf = self.bufs[buf_id]
+        view = self.get_view(buf_id)
+        if not view:
+            if not ping:
+                return
+            view = self.create_view(buf)
+            if not view:
+                return
+        data['path'] = buf['path']
+        self.user_highlights[user_id] = data
+        if ping:
+            try:
+                offset = data['ranges'][0][0]
+            except IndexError as e:
+                msg.debug('could not get offset from range %s' % e)
+            else:
+                if data.get('ping'):
+                    msg.log('You have been summoned by %s' % (data.get('username', 'an unknown user')))
+                view.focus()
+                view.set_cursor_position(offset)
+        if G.SHOW_HIGHLIGHTS:
+            if previous_highlight and previous_highlight['id'] == data['id']:
+                view.clear_highlight(data['user_id'])
+            view.highlight(data['ranges'], data['user_id'])
