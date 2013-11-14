@@ -48,6 +48,9 @@ def send_summon(buf_id, sel):
 
 
 class VimHandler(floo_handler.FlooHandler):
+    def __init__(self, *args, **kwargs):
+        super(VimHandler, self).__init__(*args, **kwargs)
+        self.user_highlights = {}
 
     def tick(self):
         reported = set()
@@ -101,14 +104,54 @@ class VimHandler(floo_handler.FlooHandler):
             self.send(highlight_json)
 
     def maybe_selection_changed(self, vim_buf, is_ping):
-        # TODO: wrong get_buf
-        buf = self.get_buf(vim_buf)
+        buf = self.get_buf_by_path(vim_buf.name)
         if not buf:
             msg.debug('no buffer found for view %s' % vim_buf.number)
             return
         view = self.get_view(buf['id'])
         msg.debug("selection changed: %s %s %s" % (vim_buf.number, buf['id'], view))
-        self.SELECTION_CHANGED.append([view, is_ping])
+        self.selection_changed.append([vim_buf, buf, is_ping])
+
+    def maybe_buffer_changed(self, vim_buf):
+        text = vim_buf[:]
+        buf = self.get_buf_by_path(vim_buf.name)
+        if not buf or 'buf' not in buf:
+            return
+
+        if buf['buf'] != text:
+            self.views_changed.append([vim_buf, buf])
+
+    def create_view(self, buf):
+        path = utils.save_buf(buf)
+        vb = self.get_vim_buf_by_path(buf['path'])
+        if vb:
+            return View(vb, buf)
+
+        vim.command(':edit! %s' % path)
+        vb = self.get_vim_buf_by_path(buf['path'])
+        if vb is None:
+            msg.debug('vim buffer is none even though we tried to open it: %s' % path)
+            return
+        return View(vb, buf)
+
+    def save_buf(self, buf):
+        path = utils.get_full_path(buf['path'])
+        utils.mkdir(os.path.split(path)[0])
+        with open(path, 'wb') as fd:
+            if buf['encoding'] == 'utf8':
+                fd.write(buf['buf'].encode('utf-8'))
+            else:
+                fd.write(buf['buf'])
+        return path
+
+    def update_view(self, buf, view=None):
+        msg.debug('updating view for buf %s' % buf['id'])
+        view = view or self.get_view(buf['id'])
+        if not view:
+            msg.log('view for buf %s not found. not updating' % buf['id'])
+            return
+        self.MODIFIED_EVENTS.put(1)
+        view.set_text(buf['buf'])
 
     def ok_cancel_dialog(self, msg, cb=None):
         res = editor.ok_cancel_dialog(msg)
@@ -133,19 +176,6 @@ class VimHandler(floo_handler.FlooHandler):
             return None
 
         return View(vb, buf)
-
-        buf = self.bufs.get(buf_id)
-        if not buf:
-            return
-        for v in G.WORKSPACE_WINDOW.views():
-            if not v.file_name():
-                continue
-            try:
-                rel_path = utils.to_rel_path(v.file_name())
-            except ValueError:
-                continue
-            if buf['path'] == rel_path:
-                return View(v, buf)
 
     def save_view(self, view):
         self.ignored_saves[view.native_id] += 1
@@ -318,93 +348,3 @@ class VimHandler(floo_handler.FlooHandler):
     def _on_highlight(self, data):
         region_key = 'floobits-highlight-%s' % (data['user_id'])
         self.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False), True)
-
-
-'''Vim specific logic
-import os
-
-import vim
-
-from common import msg, shared as G, utils
-
-
-def user_id_to_region(user_id):
-    return "floobitsuser%s" % user_id
-
-
-class Protocol(protocol.BaseProtocol):
-    CLIENT = 'VIM'
-
-    def maybe_selection_changed(self, vim_buf, is_ping):
-        buf = self.get_buf(vim_buf)
-        if not buf:
-            msg.debug('no buffer found for view %s' % vim_buf.number)
-            return
-        view = self.get_view(buf['id'])
-        msg.debug("selection changed: %s %s %s" % (vim_buf.number, buf['id'], view))
-        self.SELECTION_CHANGED.append([view, is_ping])
-
-    def maybe_buffer_changed(self, vim_buf):
-        text = vim_buf[:]
-        buf = self.get_buf(vim_buf)
-        if not buf or 'buf' not in buf:
-            return
-        if buf['buf'] != text:
-            self.BUFS_CHANGED.append(buf['id'])
-
-    def create_view(self, buf):
-        path = self.save_buf(buf)
-        vb = self.get_vim_buf_by_path(buf['path'])
-        if vb:
-            return View(vb, buf)
-
-        vim.command(':edit! %s' % path)
-        vb = self.get_vim_buf_by_path(buf['path'])
-        if vb is None:
-            msg.debug('vim buffer is none even though we tried to open it: %s' % path)
-            return
-        return View(vb, buf)
-
-    def get_buf(self, vim_buf):
-        """None- no sharing, False- should be but isn't """
-        if vim_buf.name is None or vim_buf.name == "":
-            msg.debug('get:buf buffer has no filename')
-            return None
-
-        if not utils.is_shared(vim_buf.name):
-            msg.debug('get_buf: %s is not shared' % vim_buf.name)
-            return None
-
-        buf = self.get_buf_by_path(vim_buf.name)
-        if buf:
-            return buf
-
-        msg.debug('get_buf: no buf has path %s' % vim_buf.name)
-        return False
-
-    def save_buf(self, buf):
-        path = utils.get_full_path(buf['path'])
-        utils.mkdir(os.path.split(path)[0])
-        with open(path, 'wb') as fd:
-            if buf['encoding'] == 'utf8':
-                fd.write(buf['buf'].encode('utf-8'))
-            else:
-                fd.write(buf['buf'])
-        return path
-
-    def chat(self, username, timestamp, message, self_msg=False):
-        pass
-        # envelope = msg.MSG(message, timestamp, username)
-        # if not self_msg:
-        #     self.chat_deck.appendleft(envelope)
-        # envelope.display()
-
-    def update_view(self, buf, view=None):
-        msg.debug('updating view for buf %s' % buf['id'])
-        view = view or self.get_view(buf['id'])
-        if not view:
-            msg.log('view for buf %s not found. not updating' % buf['id'])
-            return
-        self.MODIFIED_EVENTS.put(1)
-        view.set_text(buf['buf'])
-'''

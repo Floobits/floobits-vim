@@ -191,7 +191,6 @@ def vim_input(prompt, default, completion=None):
 def global_tick():
     """a hack to make vim evented like"""
     reactor.tick()
-    editor.call_timeouts()
     utils.set_timeout(global_tick, G.TICK_TIME)
 
 
@@ -247,18 +246,23 @@ def follow(follow_mode=None):
 
 @is_connected()
 def maybe_new_file():
-    vim_buf = vim.current.buffer
-    # TODO: wrong get_buf
-    buf = G.AGENT.get_buf(vim_buf)
-    if buf is False:
-        G.AGENT.upload(vim_buf.name)
+    path = vim.current.buffer.name
+    if path is None or path == "":
+        msg.debug('get:buf buffer has no filename')
+        return None
+
+    if not utils.is_shared(path):
+        msg.debug('get_buf: %s is not shared' % path)
+        return None
+
+    buf = G.AGENT.get_buf_by_path(path)
+    if not buf:
+        G.AGENT.upload(path)
 
 
 @is_connected()
 def on_save():
-    vim_buf = vim.current.buffer
-    # TODO: wrong get_buf
-    buf = G.AGENT.get_buf(vim_buf)
+    buf = G.AGENT.get_buf_by_path(vim.current.buffer.name)
     if buf:
         G.AGENT.send({
             'name': 'saved',
@@ -290,8 +294,7 @@ def delete_buf():
 
 @is_connected()
 def buf_enter():
-    # TODO: wrong get_buf
-    buf = G.AGENT.get_buf(vim.current.buffer)
+    buf = G.AGENT.get_buf_by_path(vim.current.buffer.name)
     if not buf:
         return
     # NOTE: we call highlight twice in follow mode... thats stupid
