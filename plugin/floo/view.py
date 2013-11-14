@@ -61,6 +61,9 @@ class View(object):
             msg.error("couldn't apply patches because: %s!\nThe unencoded text was: %s" % (str(e), text))
             raise
 
+    def set_status(self, *args):
+        pass
+
     def apply_patches(self, buf, patches, username):
         cursor_offset = self.get_cursor_offset()
         msg.debug('cursor offset is %s bytes' % cursor_offset)

@@ -89,7 +89,8 @@ def vim_choice(prompt, default, choices):
 
 
 def ok_cancel_dialog(prompt):
-    return vim_choice(prompt, 'ok', ['ok', 'cancel'])
+    choice = vim_choice(prompt, 'ok', ['ok', 'cancel'])
+    return choice == 'ok'
 
 
 def open_file(file):

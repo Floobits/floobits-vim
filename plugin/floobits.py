@@ -6,14 +6,43 @@ import traceback
 import atexit
 import subprocess
 import webbrowser
+import imp
 from functools import wraps
-from urllib2 import HTTPError
+
+try:
+    unicode()
+except NameError:
+    unicode = str
+
+try:
+    import urllib
+    urllib = imp.reload(urllib)
+    from urllib import request
+    request = imp.reload(request)
+    Request = request.Request
+    urlopen = request.urlopen
+    HTTPError = urllib.error.HTTPError
+    URLError = urllib.error.URLError
+    assert Request and urlopen and HTTPError and URLError
+except ImportError:
+    import urllib2
+    urllib2 = imp.reload(urllib2)
+    Request = urllib2.Request
+    urlopen = urllib2.urlopen
+    HTTPError = urllib2.HTTPError
+    URLError = urllib2.URLError
 
 import vim
 
-from floo.common import api, migrations, msg, reactor, shared as G, utils
-from floo.vim_handler import VimHandler
-from floo import editor
+try:
+    from floo.common import api, migrations, msg, reactor, shared as G, utils
+    from floo.vim_handler import VimHandler
+    from floo import editor
+except (ImportError, ValueError):
+    from floo.common import api, migrations, msg, reactor, shared as G, utils
+    from floo.vim_handler import VimHandler
+    from floo import editor
+
 
 reactor = reactor.reactor
 
@@ -28,8 +57,6 @@ msg.LOG_LEVEL = msg.LOG_LEVELS.get(floo_log_level.upper(), msg.LOG_LEVELS['MSG']
 
 migrations.rename_floobits_dir()
 migrations.migrate_symlinks()
-
-on_room_info_waterfall = utils.Waterfall()
 
 G.DELETE_LOCAL_FILES = bool(int(vim.eval('floo_delete_local_files')))
 G.SHOW_HIGHLIGHTS = bool(int(vim.eval('floo_show_highlights')))
@@ -419,7 +446,6 @@ def create_workspace(workspace_name, share_path, owner, perms=None):
             return editor.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
         elif e.code == 409:
             workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + "1")
-
         return create_workspace(workspace_name, share_path, perms)
     except Exception as e:
         editor.error_message('Unable to create workspace: %s' % str(e))
@@ -441,8 +467,6 @@ atexit.register(stop_everything)
 
 
 def join_workspace(workspace_url, d='', sync_to_disk=True):
-    global agent
-    global on_room_info_waterfall
     msg.debug("workspace url is %s" % workspace_url)
 
     try:
@@ -487,10 +511,10 @@ def join_workspace(workspace_url, d='', sync_to_disk=True):
 
     stop_everything()
     try:
-        conn = VimHandler(result['owner'], result['workspace'], sync_to_disk)
+        conn = VimHandler(result['owner'], result['workspace'])
         reactor.connect(conn, result['host'], result['port'], result['secure'])
-        conn.once('room_info', on_room_info_waterfall.call)
-        on_room_info_waterfall = utils.Waterfall()
+        if not sync_to_disk:
+            conn.once('room_info', lambda agent: agent.upload(G.PROJECT_PATH))
     except Exception as e:
         msg.error(str(e))
         tb = traceback.format_exc()
