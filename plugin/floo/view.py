@@ -27,9 +27,8 @@ class View(object):
     def __repr__(self):
         return '%s %s %s' % (self.native_id, self.buf['id'], self.buf['path'].encode('utf-8'))
 
-    # def __str__(self):
-    #     return repr(self)
-    __str__ = __repr__
+    def __str__(self):
+        return repr(self)
 
     def _offset_to_vim(self, offset):
         current_offset = 0
@@ -142,4 +141,4 @@ class View(object):
             msg.debug("couldn't delete %s... maybe thats OK?" % str(e))
 
     def save(self):
-        vim.command(':s!')
+        vim.command(':w!')
