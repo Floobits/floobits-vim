@@ -11,10 +11,11 @@ from urllib2 import HTTPError
 
 import vim
 
-from floo.common import api, migrations, msg, shared as G, utils
-from floo import sublime
-from floo import AgentConnection
+from floo.common import api, migrations, msg, reactor, shared as G, utils
+from floo.vim_connection import VimConnection
+from floo import editor
 
+reactor = reactor.reactor
 
 G.__VERSION__ = '0.03'
 G.__PLUGIN_VERSION__ = '0.3'
@@ -29,7 +30,7 @@ migrations.rename_floobits_dir()
 migrations.migrate_symlinks()
 
 G.DELETE_LOCAL_FILES = bool(int(vim.eval('floo_delete_local_files')))
-G.SHOW_HIGHLIGHTS = bool(int(vim.eval('floo_show_highlights')))
+G.SHOW_viewTS = bool(int(vim.eval('floo_show_highlights')))
 G.SPARSE_MODE = bool(int(vim.eval('floo_sparse_mode')))
 G.TIMERS = bool(int(vim.eval('has("timers")')))
 
@@ -189,12 +190,8 @@ def vim_input(prompt, default, completion=None):
 
 def global_tick():
     """a hack to make vim evented like"""
-    global agent
-    if agent:
-        agent.tick()
-        if agent.retries < 0:
-            agent = None
-    sublime.call_timeouts()
+    reactor.tick()
+    utils.set_timeout(global_tick, G.TICK_TIME)
 
 
 def cursor_hold():
@@ -397,20 +394,20 @@ def create_workspace(workspace_name, share_path, owner, perms=None):
         err_body = e.read()
         msg.error('Unable to create workspace: %s %s' % (unicode(e), err_body))
         if e.code not in [400, 402, 409]:
-            return sublime.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
+            return editor.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
 
         if e.code == 400:
             workspace_name = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
             workspace_name = vim_input('Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:' % workspace_name, workspace_name)
         elif e.code == 402:
             # TODO: better behavior. ask to create a public workspace instead
-            return sublime.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
+            return editor.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
         elif e.code == 409:
             workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + "1")
 
         return create_workspace(workspace_name, share_path, perms)
     except Exception as e:
-        sublime.error_message('Unable to create workspace: %s' % str(e))
+        editor.error_message('Unable to create workspace: %s' % str(e))
         return
 
     join_workspace(workspace_url, share_path, sync_to_disk=False)
@@ -419,17 +416,19 @@ def create_workspace(workspace_name, share_path, owner, perms=None):
 def stop_everything():
     global agent
     if agent:
-        agent.stop()
+        reactor.stop()
         agent = None
     floo_pause()
     #TODO: get this value from vim and reset it
     vim.command("set updatetime=4000")
+
 #NOTE: not strictly necessary
 atexit.register(stop_everything)
 
 
 def join_workspace(workspace_url, d='', sync_to_disk=True):
     global agent
+    on_room_info_waterfall = utils.Waterfall()
     msg.debug("workspace url is %s" % workspace_url)
 
     try:
@@ -474,22 +473,14 @@ def join_workspace(workspace_url, d='', sync_to_disk=True):
 
     stop_everything()
     try:
-        start_event_loop()
-        if sync_to_disk:
-            result['on_room_info'] = lambda agent: agent
-        else:
-            result['on_room_info'] = lambda agent: agent.protocol.create_buf(d, force=True)
-
-        result['get_bufs'] = sync_to_disk
-
-        # owner and workspace name are slugfields so this should be safe
-        agent = AgentConnection(**result)
-        agent.connect()
+        conn = VimConnection(result['owner'], result['workspace'], sync_to_disk)
+        reactor.connect(conn, result['host'], result['port'], result['secure'])
+        conn.once('room_info', on_room_info_waterfall.call)
+        on_room_info_waterfall = utils.Waterfall()
     except Exception as e:
         msg.error(str(e))
         tb = traceback.format_exc()
         msg.debug(tb)
-        stop_everything()
 
 
 def part_workspace():
