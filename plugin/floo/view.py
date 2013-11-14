@@ -12,6 +12,7 @@ COLORS = (
 )
 HL_RULES = ['ctermfg=%s ctermbg=%s guifg=%s guibg=%s' % (fg, bg, fg, bg) for fg, bg in COLORS]
 
+
 def user_id_to_region(user_id):
     return "floobitsuser%s" % user_id
 

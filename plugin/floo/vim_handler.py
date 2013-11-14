@@ -21,17 +21,33 @@ try:
     from .common import msg, shared as G, utils
     from .view import View
     from .common.handlers import floo_handler
-    from .vim_utils import get_buf, send_summon
     assert G and msg and utils
 except ImportError:
     from floo import editor
     from common import msg, shared as G, utils
     from common.handlers import floo_handler
-    from .vim_utils import get_buf, send_summon
     from view import View
 
 
-class VimConnection(floo_handler.FlooHandler):
+def get_buf(view):
+    if not (G.AGENT and G.AGENT.is_ready()):
+        return
+    return G.AGENT.get_buf_by_path(view.file_name())
+
+
+def send_summon(buf_id, sel):
+    highlight_json = {
+        'id': buf_id,
+        'name': 'highlight',
+        'ranges': sel,
+        'ping': True,
+        'summon': True,
+    }
+    if G.AGENT and G.AGENT.is_ready():
+        G.AGENT.send(highlight_json)
+
+
+class VimHandler(floo_handler.FlooHandler):
 
     def tick(self):
         reported = set()
@@ -84,20 +100,19 @@ class VimConnection(floo_handler.FlooHandler):
             }
             self.send(highlight_json)
 
-        self._status_timeout += 1
-        if self._status_timeout > (2000 / G.TICK_TIME):
-            editor.status_message('Connected to %s\'s %s' % (self.owner, self.workspace))
-            self._status_timeout = 0
+    def maybe_selection_changed(self, vim_buf, is_ping):
+        # TODO: wrong get_buf
+        buf = self.get_buf(vim_buf)
+        if not buf:
+            msg.debug('no buffer found for view %s' % vim_buf.number)
+            return
+        view = self.get_view(buf['id'])
+        msg.debug("selection changed: %s %s %s" % (vim_buf.number, buf['id'], view))
+        self.SELECTION_CHANGED.append([view, is_ping])
 
     def ok_cancel_dialog(self, msg, cb=None):
         res = editor.ok_cancel_dialog(msg)
         return (cb and cb(res) or res)
-
-    def error_message(self, msg):
-        print(msg)
-
-    def status_message(self, msg):
-        print(msg)
 
     def get_vim_buf_by_path(self, p):
         for vim_buf in vim.buffers:
@@ -106,7 +121,7 @@ class VimConnection(floo_handler.FlooHandler):
         return None
 
     def get_view(self, buf_id):
-        buf = self.FLOO_BUFS.get(buf_id)
+        buf = self.bufs.get(buf_id)
         if not buf:
             return None
 
@@ -148,7 +163,6 @@ class VimConnection(floo_handler.FlooHandler):
         self.selection_changed = []
         self.ignored_saves = collections.defaultdict(int)
         self.chat_deck = collections.deque(maxlen=10)
-        self._status_timeout = 0
 
     def send_msg(self, msg):
         self.send({'name': 'msg', 'data': msg})
@@ -251,7 +265,7 @@ class VimConnection(floo_handler.FlooHandler):
                 self.upload(path)
 
     def _on_room_info(self, data):
-        super(Protocol, self).on_room_info(data)
+        super(VimHandler, self)._on_room_info(data)
         vim.command(':Explore %s | redraw' % G.PROJECT_PATH)
 
     def _on_delete_buf(self, data):
@@ -304,7 +318,6 @@ class VimConnection(floo_handler.FlooHandler):
     def _on_highlight(self, data):
         region_key = 'floobits-highlight-%s' % (data['user_id'])
         self.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False), True)
-
 
 
 '''Vim specific logic

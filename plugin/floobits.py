@@ -12,7 +12,7 @@ from urllib2 import HTTPError
 import vim
 
 from floo.common import api, migrations, msg, reactor, shared as G, utils
-from floo.vim_connection import VimConnection
+from floo.vim_handler import VimHandler
 from floo import editor
 
 reactor = reactor.reactor
@@ -29,13 +29,14 @@ msg.LOG_LEVEL = msg.LOG_LEVELS.get(floo_log_level.upper(), msg.LOG_LEVELS['MSG']
 migrations.rename_floobits_dir()
 migrations.migrate_symlinks()
 
+on_room_info_waterfall = utils.Waterfall()
+
 G.DELETE_LOCAL_FILES = bool(int(vim.eval('floo_delete_local_files')))
 G.SHOW_viewTS = bool(int(vim.eval('floo_show_highlights')))
 G.SPARSE_MODE = bool(int(vim.eval('floo_sparse_mode')))
 G.TIMERS = bool(int(vim.eval('has("timers")')))
 
 
-agent = None
 call_feedkeys = False
 ticker = None
 ticker_errors = 0
@@ -125,8 +126,7 @@ def fallback_to_feedkeys(warning):
 
 def ticker_watcher(ticker):
     global ticker_errors
-
-    if not agent:
+    if not G.AGENT:
         return
     ticker.poll()
     if ticker.returncode is None:
@@ -191,6 +191,7 @@ def vim_input(prompt, default, completion=None):
 def global_tick():
     """a hack to make vim evented like"""
     reactor.tick()
+    editor.call_timeouts()
     utils.set_timeout(global_tick, G.TICK_TIME)
 
 
@@ -219,7 +220,7 @@ def is_connected(warn=False):
     def outer(func):
         @wraps(func)
         def wrapped(*args, **kwargs):
-            if agent and agent.protocol:
+            if reactor.is_ready():
                 return func(*args, **kwargs)
             if warn:
                 msg.error('ignoring request (%s) because you aren\'t in a workspace.' % func.__name__)
@@ -231,39 +232,44 @@ def is_connected(warn=False):
 
 @is_connected()
 def maybe_selection_changed(ping=False):
-    agent.protocol.maybe_selection_changed(vim.current.buffer, ping)
+    G.AGENT.maybe_selection_changed(vim.current.buffer, ping)
 
 
 @is_connected()
 def maybe_buffer_changed():
-    agent.protocol.maybe_buffer_changed(vim.current.buffer)
+    G.AGENT.maybe_buffer_changed(vim.current.buffer)
 
 
 @is_connected()
 def follow(follow_mode=None):
-    agent.protocol.follow(follow_mode)
+    G.AGENT.follow(follow_mode)
 
 
 @is_connected()
 def maybe_new_file():
     vim_buf = vim.current.buffer
-    buf = agent.protocol.get_buf(vim_buf)
+    # TODO: wrong get_buf
+    buf = G.AGENT.get_buf(vim_buf)
     if buf is False:
-        agent.protocol.create_buf(vim_buf.name)
+        G.AGENT.upload(vim_buf.name)
 
 
 @is_connected()
 def on_save():
     vim_buf = vim.current.buffer
-    buf = agent.protocol.get_buf(vim_buf)
+    # TODO: wrong get_buf
+    buf = G.AGENT.get_buf(vim_buf)
     if buf:
-        agent.send_saved(buf['id'])
+        G.AGENT.send({
+            'name': 'saved',
+            'id': buf['id'],
+        })
 
 
 @is_connected(True)
 def open_in_browser():
-    url = agent.workspace_url
-    if 'kick' in agent.protocol.perms:
+    url = G.AGENT.workspace_url
+    if 'kick' in G.PERMS:
         url += '/settings'
     else:
         url += '/info'
@@ -273,29 +279,35 @@ def open_in_browser():
 @is_connected(True)
 def add_buf(path=None):
     path = path or vim.current.buffer.name
-    agent.protocol.create_buf(path, force=True)
+    G.AGENT._upload(path, force=True)
 
 
 @is_connected(True)
 def delete_buf():
     name = vim.current.buffer.name
-    agent.protocol.delete_buf(name)
+    G.AGENT.delete_buf(name)
 
 
 @is_connected()
 def buf_enter():
-    buf = agent.protocol.get_buf(vim.current.buffer)
+    # TODO: wrong get_buf
+    buf = G.AGENT.get_buf(vim.current.buffer)
     if not buf:
         return
     # NOTE: we call highlight twice in follow mode... thats stupid
-    for user_id, highlight in agent.protocol.user_highlights.items():
+    for user_id, highlight in G.AGENT.user_highlights.items():
         if highlight['id'] == buf['id']:
-            agent.protocol.on_highlight(highlight)
+            G.AGENT._on_highlight(highlight)
 
 
 @is_connected()
 def floo_clear():
-    agent.protocol.clear_highlight(vim.current.buffer.name)
+    buf = G.AGENT.get_buf_by_path(vim.current.buffer.name)
+    if not buf:
+        return
+    view = G.AGENT.get_view(buf['id'])
+    if view:
+        G.AGENT.clear_highlights(view)
 
 
 @is_connected()
@@ -305,7 +317,7 @@ def floo_toggle_highlights():
         buf_enter()
         msg.log('Highlights enabled')
         return
-    agent.protocol.clear_highlight(vim.current.buffer.name)
+    floo_clear()
     msg.log('Highlights disabled')
 
 
@@ -414,10 +426,9 @@ def create_workspace(workspace_name, share_path, owner, perms=None):
 
 
 def stop_everything():
-    global agent
-    if agent:
+    if G.AGENT:
         reactor.stop()
-        agent = None
+        G.AGENT = None
     floo_pause()
     #TODO: get this value from vim and reset it
     vim.command("set updatetime=4000")
@@ -428,7 +439,7 @@ atexit.register(stop_everything)
 
 def join_workspace(workspace_url, d='', sync_to_disk=True):
     global agent
-    on_room_info_waterfall = utils.Waterfall()
+    global on_room_info_waterfall
     msg.debug("workspace url is %s" % workspace_url)
 
     try:
@@ -473,7 +484,7 @@ def join_workspace(workspace_url, d='', sync_to_disk=True):
 
     stop_everything()
     try:
-        conn = VimConnection(result['owner'], result['workspace'], sync_to_disk)
+        conn = VimHandler(result['owner'], result['workspace'], sync_to_disk)
         reactor.connect(conn, result['host'], result['port'], result['secure'])
         conn.once('room_info', on_room_info_waterfall.call)
         on_room_info_waterfall = utils.Waterfall()
@@ -484,7 +495,7 @@ def join_workspace(workspace_url, d='', sync_to_disk=True):
 
 
 def part_workspace():
-    if not agent:
+    if not G.AGENT:
         return msg.warn('Unable to leave workspace: You are not joined to a workspace.')
     stop_everything()
     msg.log('You left the workspace.')
