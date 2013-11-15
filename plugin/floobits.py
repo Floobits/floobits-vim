@@ -46,8 +46,8 @@ except (ImportError, ValueError):
 
 reactor = reactor.reactor
 
-G.__VERSION__ = '0.03'
-G.__PLUGIN_VERSION__ = '0.3'
+G.__VERSION__ = '0.10'
+G.__PLUGIN_VERSION__ = '1.0.0'
 
 utils.reload_settings()
 
