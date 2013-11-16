@@ -268,6 +268,8 @@ def maybe_buffer_changed():
 
 @is_connected()
 def follow(follow_mode=None):
+    if follow_mode is None:
+        follow_mode = not G.STALKER_MODE
     G.STALKER_MODE = follow_mode
 
 

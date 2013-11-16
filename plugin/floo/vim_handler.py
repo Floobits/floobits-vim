@@ -346,6 +346,7 @@ class VimHandler(floo_handler.FlooHandler):
     def _on_highlight(self, data):
         buf_id = data['id']
         user_id = data['user_id']
+        username = data.get('username', 'an unknown user')
         ping = G.STALKER_MODE or data.get('ping', False)
         previous_highlight = self.user_highlights.get(user_id)
         buf = self.bufs[buf_id]
@@ -365,10 +366,10 @@ class VimHandler(floo_handler.FlooHandler):
                 msg.debug('could not get offset from range %s' % e)
             else:
                 if data.get('ping'):
-                    msg.log('You have been summoned by %s' % (data.get('username', 'an unknown user')))
+                    msg.log('You have been summoned by %s' % (username))
                 view.focus()
                 view.set_cursor_position(offset)
         if G.SHOW_HIGHLIGHTS:
             if previous_highlight and previous_highlight['id'] == data['id']:
-                view.clear_highlight(data['user_id'])
-            view.highlight(data['ranges'], data['user_id'])
+                view.clear_highlight(user_id)
+            view.highlight(data['ranges'], user_id)
