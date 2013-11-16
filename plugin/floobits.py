@@ -6,18 +6,48 @@ import traceback
 import atexit
 import subprocess
 import webbrowser
+import imp
 from functools import wraps
-from urllib2 import HTTPError
+
+try:
+    unicode()
+except NameError:
+    unicode = str
+
+try:
+    import urllib
+    urllib = imp.reload(urllib)
+    from urllib import request
+    request = imp.reload(request)
+    Request = request.Request
+    urlopen = request.urlopen
+    HTTPError = urllib.error.HTTPError
+    URLError = urllib.error.URLError
+    assert Request and urlopen and HTTPError and URLError
+except ImportError:
+    import urllib2
+    urllib2 = imp.reload(urllib2)
+    Request = urllib2.Request
+    urlopen = urllib2.urlopen
+    HTTPError = urllib2.HTTPError
+    URLError = urllib2.URLError
 
 import vim
 
-from floo.common import api, migrations, msg, shared as G, utils
-from floo import sublime
-from floo import AgentConnection
+try:
+    from floo.common import api, migrations, msg, reactor, shared as G, utils
+    from floo.vim_handler import VimHandler
+    from floo import editor
+except (ImportError, ValueError):
+    from floo.common import api, migrations, msg, reactor, shared as G, utils
+    from floo.vim_handler import VimHandler
+    from floo import editor
 
 
-G.__VERSION__ = '0.03'
-G.__PLUGIN_VERSION__ = '0.3'
+reactor = reactor.reactor
+
+G.__VERSION__ = '0.10'
+G.__PLUGIN_VERSION__ = '1.0.0'
 
 utils.reload_settings()
 
@@ -34,7 +64,6 @@ G.SPARSE_MODE = bool(int(vim.eval('floo_sparse_mode')))
 G.TIMERS = bool(int(vim.eval('has("timers")')))
 
 
-agent = None
 call_feedkeys = False
 ticker = None
 ticker_errors = 0
@@ -124,8 +153,7 @@ def fallback_to_feedkeys(warning):
 
 def ticker_watcher(ticker):
     global ticker_errors
-
-    if not agent:
+    if not G.AGENT:
         return
     ticker.poll()
     if ticker.returncode is None:
@@ -189,12 +217,8 @@ def vim_input(prompt, default, completion=None):
 
 def global_tick():
     """a hack to make vim evented like"""
-    global agent
-    if agent:
-        agent.tick()
-        if agent.retries < 0:
-            agent = None
-    sublime.call_timeouts()
+    reactor.tick()
+    utils.set_timeout(global_tick, G.TICK_TIME)
 
 
 def cursor_hold():
@@ -222,7 +246,7 @@ def is_connected(warn=False):
     def outer(func):
         @wraps(func)
         def wrapped(*args, **kwargs):
-            if agent and agent.protocol:
+            if reactor.is_ready():
                 return func(*args, **kwargs)
             if warn:
                 msg.error('ignoring request (%s) because you aren\'t in a workspace.' % func.__name__)
@@ -234,39 +258,51 @@ def is_connected(warn=False):
 
 @is_connected()
 def maybe_selection_changed(ping=False):
-    agent.protocol.maybe_selection_changed(vim.current.buffer, ping)
+    G.AGENT.maybe_selection_changed(vim.current.buffer, ping)
 
 
 @is_connected()
 def maybe_buffer_changed():
-    agent.protocol.maybe_buffer_changed(vim.current.buffer)
+    G.AGENT.maybe_buffer_changed(vim.current.buffer)
 
 
 @is_connected()
 def follow(follow_mode=None):
-    agent.protocol.follow(follow_mode)
+    if follow_mode is None:
+        follow_mode = not G.STALKER_MODE
+    G.STALKER_MODE = follow_mode
 
 
 @is_connected()
 def maybe_new_file():
-    vim_buf = vim.current.buffer
-    buf = agent.protocol.get_buf(vim_buf)
-    if buf is False:
-        agent.protocol.create_buf(vim_buf.name)
+    path = vim.current.buffer.name
+    if path is None or path == "":
+        msg.debug('get:buf buffer has no filename')
+        return None
+
+    if not utils.is_shared(path):
+        msg.debug('get_buf: %s is not shared' % path)
+        return None
+
+    buf = G.AGENT.get_buf_by_path(path)
+    if not buf:
+        G.AGENT.upload(path)
 
 
 @is_connected()
 def on_save():
-    vim_buf = vim.current.buffer
-    buf = agent.protocol.get_buf(vim_buf)
+    buf = G.AGENT.get_buf_by_path(vim.current.buffer.name)
     if buf:
-        agent.send_saved(buf['id'])
+        G.AGENT.send({
+            'name': 'saved',
+            'id': buf['id'],
+        })
 
 
 @is_connected(True)
 def open_in_browser():
-    url = agent.workspace_url
-    if 'kick' in agent.protocol.perms:
+    url = G.AGENT.workspace_url
+    if 'kick' in G.PERMS:
         url += '/settings'
     else:
         url += '/info'
@@ -276,29 +312,34 @@ def open_in_browser():
 @is_connected(True)
 def add_buf(path=None):
     path = path or vim.current.buffer.name
-    agent.protocol.create_buf(path, force=True)
+    G.AGENT._upload(path, force=True)
 
 
 @is_connected(True)
 def delete_buf():
     name = vim.current.buffer.name
-    agent.protocol.delete_buf(name)
+    G.AGENT.delete_buf(name)
 
 
 @is_connected()
 def buf_enter():
-    buf = agent.protocol.get_buf(vim.current.buffer)
+    buf = G.AGENT.get_buf_by_path(vim.current.buffer.name)
     if not buf:
         return
     # NOTE: we call highlight twice in follow mode... thats stupid
-    for user_id, highlight in agent.protocol.user_highlights.items():
+    for user_id, highlight in G.AGENT.user_highlights.items():
         if highlight['id'] == buf['id']:
-            agent.protocol.on_highlight(highlight)
+            G.AGENT._on_highlight(highlight)
 
 
 @is_connected()
 def floo_clear():
-    agent.protocol.clear_highlight(vim.current.buffer.name)
+    buf = G.AGENT.get_buf_by_path(vim.current.buffer.name)
+    if not buf:
+        return
+    view = G.AGENT.get_view(buf['id'])
+    if view:
+        G.AGENT.clear_highlights(view)
 
 
 @is_connected()
@@ -308,7 +349,7 @@ def floo_toggle_highlights():
         buf_enter()
         msg.log('Highlights enabled')
         return
-    agent.protocol.clear_highlight(vim.current.buffer.name)
+    floo_clear()
     msg.log('Highlights disabled')
 
 
@@ -397,39 +438,37 @@ def create_workspace(workspace_name, share_path, owner, perms=None):
         err_body = e.read()
         msg.error('Unable to create workspace: %s %s' % (unicode(e), err_body))
         if e.code not in [400, 402, 409]:
-            return sublime.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
+            return editor.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
 
         if e.code == 400:
             workspace_name = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
             workspace_name = vim_input('Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:' % workspace_name, workspace_name)
         elif e.code == 402:
             # TODO: better behavior. ask to create a public workspace instead
-            return sublime.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
+            return editor.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
         elif e.code == 409:
             workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + "1")
-
         return create_workspace(workspace_name, share_path, perms)
     except Exception as e:
-        sublime.error_message('Unable to create workspace: %s' % str(e))
+        editor.error_message('Unable to create workspace: %s' % str(e))
         return
 
     join_workspace(workspace_url, share_path, sync_to_disk=False)
 
 
 def stop_everything():
-    global agent
-    if agent:
-        agent.stop()
-        agent = None
+    if G.AGENT:
+        reactor.stop()
+        G.AGENT = None
     floo_pause()
     #TODO: get this value from vim and reset it
     vim.command("set updatetime=4000")
+
 #NOTE: not strictly necessary
 atexit.register(stop_everything)
 
 
 def join_workspace(workspace_url, d='', sync_to_disk=True):
-    global agent
     msg.debug("workspace url is %s" % workspace_url)
 
     try:
@@ -474,26 +513,18 @@ def join_workspace(workspace_url, d='', sync_to_disk=True):
 
     stop_everything()
     try:
-        start_event_loop()
-        if sync_to_disk:
-            result['on_room_info'] = lambda agent: agent
-        else:
-            result['on_room_info'] = lambda agent: agent.protocol.create_buf(d, force=True)
-
-        result['get_bufs'] = sync_to_disk
-
-        # owner and workspace name are slugfields so this should be safe
-        agent = AgentConnection(**result)
-        agent.connect()
+        conn = VimHandler(result['owner'], result['workspace'])
+        reactor.connect(conn, result['host'], result['port'], result['secure'])
+        if not sync_to_disk:
+            conn.once('room_info', lambda agent: agent.upload(G.PROJECT_PATH))
     except Exception as e:
         msg.error(str(e))
         tb = traceback.format_exc()
         msg.debug(tb)
-        stop_everything()
 
 
 def part_workspace():
-    if not agent:
+    if not G.AGENT:
         return msg.warn('Unable to leave workspace: You are not joined to a workspace.')
     stop_everything()
     msg.log('You left the workspace.')
