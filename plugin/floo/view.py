@@ -61,6 +61,10 @@ class View(object):
             msg.error("couldn't apply patches because: %s!\nThe unencoded text was: %s" % (str(e), text))
             raise
 
+    def set_read_only(self, read_only=True):
+        # TODO
+        pass
+
     def set_status(self, *args):
         pass
 
