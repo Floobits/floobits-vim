@@ -122,13 +122,14 @@ class VimHandler(floo_handler.FlooHandler):
             self.views_changed.append([vim_buf, buf])
 
     def create_view(self, buf):
-        path = utils.save_buf(buf)
-        vb = self.get_vim_buf_by_path(buf['path'])
+        path = buf['path']
+        utils.save_buf(buf)
+        vb = self.get_vim_buf_by_path(path)
         if vb:
             return View(vb, buf)
 
         vim.command(':edit! %s' % path)
-        vb = self.get_vim_buf_by_path(buf['path'])
+        vb = self.get_vim_buf_by_path(path)
         if vb is None:
             msg.debug('vim buffer is none even though we tried to open it: %s' % path)
             return
