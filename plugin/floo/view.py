@@ -109,7 +109,7 @@ class View(object):
     def clear_highlight(self, user_id):
         region = user_id_to_region(user_id)
         msg.debug('clearing selections for user %s in view %s' % (user_id, self.vim_buf.name))
-        vim.command(':silent! syntax clear %s' % (region, region))
+        vim.command(':silent! syntax clear %s' % (region,))
 
     def highlight(self, ranges, user_id):
         msg.debug('highlighting ranges %s' % (ranges))
@@ -130,7 +130,7 @@ class View(object):
                 else:
                     end_col += 1
             vim_region = ":syntax region {region} start=/\%{start_row}l/ end=/\%{end_row}l$/ display contains=ALL containedin=ALL keepend".\
-                format(region=region, start_col=start_col, end_col=end_col)
+                format(region=region, start_row=start_row, end_row=end_row)
             vim.command(vim_region)
 
     def rename(self, name):
