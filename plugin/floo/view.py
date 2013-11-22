@@ -17,8 +17,11 @@ def user_id_to_region(user_id):
     return "floobitsuser%s" % user_id
 
 
+
 class View(object):
     """editors representation of the buffer"""
+
+    current_highlights = {};
 
     def __init__(self, vim_buf, buf):
         self.vim_buf = vim_buf
@@ -118,7 +121,15 @@ class View(object):
         region = user_id_to_region(user_id)
 
         hl_rule = HL_RULES[user_id % len(HL_RULES)]
-        vim.command(":silent highlight %s %s" % (region, hl_rule))
+        vim.command(":silent! highlight %s %s" % (region, hl_rule))
+        try:
+            highlights_to_remove = self.current_highlights[user_id]
+        except KeyError:
+            highlights_to_remove = []
+        finally:
+            self.current_highlights[user_id] = []
+        for hl in highlights_to_remove:
+            vim.eval("matchdelete(%s)" % (hl,))
 
         for _range in ranges:
             start_row, start_col = self._offset_to_vim(_range[0])
@@ -129,9 +140,9 @@ class View(object):
                     end_col = 1
                 else:
                     end_col += 1
-            vim_region = ":syntax region {region} start=/\%{start_row}l/ end=/\%{end_row}l$/ display contains=ALL containedin=ALL keepend".\
-                format(region=region, start_row=start_row, end_row=end_row)
-            vim.command(vim_region)
+            vim_region = "matchadd('{region}', '\%{start_row}l\%{start_col}v\_.*\%{end_row}l\%{end_col}v')".\
+                format(region=region, start_row=start_row, start_col=start_col, end_row=end_row, end_col=end_col)
+            self.current_highlights[user_id].append(vim.eval(vim_region))
 
     def rename(self, name):
         msg.debug('renaming %s to %s' % (self.vim_buf.name, name))
