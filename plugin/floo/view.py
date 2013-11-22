@@ -52,6 +52,9 @@ class View(object):
         text = '\n'.join(self.vim_buf[:])
         return text.decode('utf-8')
 
+    def update(self, data):
+        self.set_text(data["buf"])
+
     def set_text(self, text):
         msg.debug('\n\nabout to patch %s %s' % (str(self), self.vim_buf.name))
         try:
@@ -106,7 +109,7 @@ class View(object):
     def clear_highlight(self, user_id):
         region = user_id_to_region(user_id)
         msg.debug('clearing selections for user %s in view %s' % (user_id, self.vim_buf.name))
-        vim.command(':silent highlight clear %s | :silent! syntax clear %s' % (region, region))
+        vim.command(':silent! syntax clear %s' % (region, region))
 
     def highlight(self, ranges, user_id):
         msg.debug('highlighting ranges %s' % (ranges))
@@ -126,8 +129,8 @@ class View(object):
                     end_col = 1
                 else:
                     end_col += 1
-            vim_region = ":syntax region {region} start=/\%{start_col}v\%{start_row}l/ end=/\%{end_col}v\%{end_row}l/".\
-                format(region=region, start_col=start_col, start_row=start_row, end_col=end_col, end_row=end_row)
+            vim_region = ":syntax region {region} start=/\%{start_row}l/ end=/\%{end_row}l$/ display contains=ALL containedin=ALL keepend".\
+                format(region=region, start_col=start_col, end_col=end_col)
             vim.command(vim_region)
 
     def rename(self, name):
