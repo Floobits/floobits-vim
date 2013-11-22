@@ -216,9 +216,7 @@ def vim_input(prompt, default, completion=None):
 
 
 def global_tick():
-    """a hack to make vim evented like"""
     reactor.tick()
-    utils.set_timeout(global_tick, G.TICK_TIME)
 
 
 def cursor_hold():
@@ -521,6 +519,8 @@ def join_workspace(workspace_url, d='', sync_to_disk=True):
         msg.error(str(e))
         tb = traceback.format_exc()
         msg.debug(tb)
+    if not G.TIMERS:
+        start_event_loop()
 
 
 def part_workspace():
