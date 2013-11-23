@@ -17,11 +17,10 @@ def user_id_to_region(user_id):
     return "floobitsuser%s" % user_id
 
 
-
 class View(object):
     """editors representation of the buffer"""
 
-    current_highlights = {};
+    current_highlights = {}
 
     def __init__(self, vim_buf, buf):
         self.vim_buf = vim_buf
@@ -142,6 +141,7 @@ class View(object):
                     end_col += 1
             vim_region = "matchadd('{region}', '\%{start_row}l\%{start_col}v\_.*\%{end_row}l\%{end_col}v')".\
                 format(region=region, start_row=start_row, start_col=start_col, end_row=end_row, end_col=end_col)
+            msg.debug("vim_region: %s" % (vim_region,))
             self.current_highlights[user_id].append(vim.eval(vim_region))
 
     def rename(self, name):
