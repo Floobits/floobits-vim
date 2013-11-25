@@ -266,16 +266,6 @@ class VimHandler(floo_handler.FlooHandler):
         }
         G.AGENT.send(event)
 
-    def clear_highlights(self, view):
-        if not G.AGENT:
-            return
-        buf = get_buf(view)
-        if not buf:
-            return
-        msg.debug('clearing highlights in %s, buf id %s' % (buf['path'], buf['id']))
-        for user_id, username in G.AGENT.workspace_info['users'].items():
-            view.clear_highlight(user_id)
-
     def summon(self, view):
         buf = get_buf(view)
         if buf:

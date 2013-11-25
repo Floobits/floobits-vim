@@ -1,7 +1,7 @@
 import vim
 
 from common import msg, utils
-
+from collections import defaultdict
 
 # Foreground: background
 COLORS = (
@@ -20,7 +20,7 @@ def user_id_to_region(user_id):
 class View(object):
     """editors representation of the buffer"""
 
-    current_highlights = {}
+    current_highlights = defaultdict(list)
     pending_highlights = {}
 
     def __init__(self, vim_buf, buf):
@@ -110,23 +110,25 @@ class View(object):
         return [[cursor, cursor]]
 
     def clear_highlight(self, user_id):
-        region = user_id_to_region(user_id)
         msg.debug('clearing selections for user %s in view %s' % (user_id, self.vim_buf.name))
-        vim.command(':silent! syntax clear %s' % (region,))
+        for hl in self.current_highlights[user_id]:
+            vim.command(":silent! :call matchdelete(%s)" % (hl,))
+        del self.current_highlights[user_id]
 
     def highlight(self, ranges, user_id):
         msg.debug("got a highlight %s" % ranges)
+
         def doit():
             msg.debug("doing timed highlights")
             stored_ranges = self.pending_highlights[user_id]
             del self.pending_highlights[user_id]
-            self.set_highlight(stored_ranges, user_id)
+            self._set_highlight(stored_ranges, user_id)
 
         if user_id not in self.pending_highlights:
             utils.set_timeout(doit, 150)
         self.pending_highlights[user_id] = ranges
 
-    def set_highlight(self, ranges, user_id):
+    def _set_highlight(self, ranges, user_id):
         msg.debug('highlighting ranges %s' % (ranges))
         if vim.current.buffer.number != self.vim_buf.number:
             return
@@ -134,14 +136,8 @@ class View(object):
 
         hl_rule = HL_RULES[user_id % len(HL_RULES)]
         vim.command(":silent! highlight %s %s" % (region, hl_rule))
-        try:
-            highlights_to_remove = self.current_highlights[user_id]
-        except KeyError:
-            highlights_to_remove = []
-        finally:
-            self.current_highlights[user_id] = []
-        for hl in highlights_to_remove:
-            vim.eval("matchdelete(%s)" % (hl,))
+
+        self.clear_highlight(user_id)
 
         for _range in ranges:
             start_row, start_col = self._offset_to_vim(_range[0])
@@ -157,7 +153,6 @@ class View(object):
             msg.debug("vim_region: %s" % (vim_region,))
             self.current_highlights[user_id].append(vim.eval(vim_region))
         utils.redraw()
-
 
     def rename(self, name):
         msg.debug('renaming %s to %s' % (self.vim_buf.name, name))
@@ -178,3 +173,6 @@ class View(object):
 
     def save(self):
         vim.command(':w!')
+
+    def file_name(self):
+        return self.vim_buf.name

@@ -337,7 +337,8 @@ def floo_clear():
         return
     view = G.AGENT.get_view(buf['id'])
     if view:
-        G.AGENT.clear_highlights(view)
+        for user_id, username in G.AGENT.workspace_info['users'].items():
+            view.clear_highlight(int(user_id))
 
 
 @is_connected()
