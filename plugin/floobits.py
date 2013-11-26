@@ -35,11 +35,11 @@ except ImportError:
 import vim
 
 try:
-    from floo.common import api, migrations, msg, reactor, shared as G, utils
+    from floo.common import api, ignore, migrations, msg, reactor, shared as G, utils
     from floo.vim_handler import VimHandler
     from floo import editor
 except (ImportError, ValueError):
-    from floo.common import api, migrations, msg, reactor, shared as G, utils
+    from floo.common import api, ignore, migrations, msg, reactor, shared as G, utils
     from floo.vim_handler import VimHandler
     from floo import editor
 
@@ -284,7 +284,8 @@ def maybe_new_file():
 
     buf = G.AGENT.get_buf_by_path(path)
     if not buf:
-        G.AGENT.upload(path)
+        if not ignore.is_ignored(path):
+            G.AGENT.upload(path)
 
 
 @is_connected()
