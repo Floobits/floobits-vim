@@ -58,6 +58,28 @@ function! g:floobits_global_tick()
     python global_tick()
 endfunction
 
+function! g:floobits_get_selection()
+    let m = tolower(mode())
+    try
+        if 'v' == m
+            let pos = getpos("v")
+            let line = pos[1]
+            let col = pos[2]
+            let start = line2byte(line) + col - 2
+            let pos = getpos(".")
+            let line = pos[1]
+            let col = pos[2]
+            let end = line2byte(line) + col - 2
+            return [[start, end]]
+        else    
+            let pos = line2byte(line(".")) + col(".") - 2
+            return [[pos, pos]]
+        endif
+    catch a:exception
+        return [[0, 0]]
+    endtry
+endfunction
+
 function! s:SetAutoCmd()
     let s:vim_events = ['InsertEnter', 'InsertChange', 'InsertLeave', 'QuickFixCmdPost', 'FileChangedShellPost', 'CursorMoved', 'CursorMovedI']
     let s:new_buf_events = ['BufWritePost', 'BufReadPost', 'BufWinEnter']

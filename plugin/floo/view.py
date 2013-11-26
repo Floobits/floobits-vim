@@ -98,16 +98,12 @@ class View(object):
         msg.debug('setting pos: %s' % command)
         vim.command(command)
 
-    def get_cursor_position(self):
-        """ [bufnum, lnum, col, off] """
-        return vim.eval('getpos(".")')
-
     def get_cursor_offset(self):
         return int(vim.eval('line2byte(line("."))+col(".")')) - 2
 
     def get_selections(self):
-        cursor = self.get_cursor_offset()
-        return [[cursor, cursor]]
+        # Vim likes to return strings for numbers even if you use str2nr:
+        return [[int(pos) for pos in range_] for range_ in vim.eval("g:floobits_get_selection()")]
 
     def clear_highlight(self, user_id):
         msg.debug('clearing selections for user %s in view %s' % (user_id, self.vim_buf.name))
