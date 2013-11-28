@@ -311,7 +311,7 @@ def open_in_browser():
 @is_connected(True)
 def add_buf(path=None):
     path = path or vim.current.buffer.name
-    G.AGENT._upload(path, force=True)
+    G.AGENT._upload(path)
 
 
 @is_connected(True)

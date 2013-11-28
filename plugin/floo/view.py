@@ -23,12 +23,11 @@ class View(object):
     current_highlights = defaultdict(list)
     pending_highlights = {}
 
-    def __init__(self, vim_buf, buf):
+    def __init__(self, vim_buf):
         self.vim_buf = vim_buf
-        self.buf = buf
 
     def __repr__(self):
-        return '%s %s %s' % (self.native_id, self.buf['id'], self.buf['path'].encode('utf-8'))
+        return '%s %s' % (self.native_id, self.vim_buf.name)
 
     def __str__(self):
         return repr(self)
@@ -61,7 +60,6 @@ class View(object):
     def set_text(self, text):
         msg.debug('\n\nabout to patch %s %s' % (str(self), self.vim_buf.name))
         try:
-            msg.debug("now buf is loadedish? %s" % vim.eval('bufloaded(%s)' % self.native_id))
             self.vim_buf[:] = text.encode('utf-8').split('\n')
         except Exception as e:
             msg.error("couldn't apply patches because: %s!\nThe unencoded text was: %s" % (str(e), text))

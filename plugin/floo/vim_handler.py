@@ -64,7 +64,7 @@ class VimHandler(floo_handler.FlooHandler):
             if 'buf' not in buf:
                 msg.debug('No data for buf %s %s yet. Skipping sending patch' % (buf['id'], buf['path']))
                 continue
-            view = View(v, buf)
+            view = View(v)
             if view.is_loading():
                 msg.debug('View for buf %s is not ready. Ignoring change event' % buf['id'])
                 continue
@@ -88,7 +88,7 @@ class VimHandler(floo_handler.FlooHandler):
             if 'highlight' not in G.PERMS:
                 continue
 
-            view = View(v, buf)
+            view = View(v)
             vb_id = view.native_id
             if vb_id in reported:
                 continue
@@ -113,12 +113,11 @@ class VimHandler(floo_handler.FlooHandler):
         self.selection_changed.append([vim_buf, buf, is_ping])
 
     def maybe_buffer_changed(self, vim_buf):
-        text = vim_buf[:]
         buf = self.get_buf_by_path(vim_buf.name)
         if not buf or 'buf' not in buf:
             return
 
-        if buf['buf'] != text:
+        if buf['buf'] != vim_buf[:]:
             self.views_changed.append([vim_buf, buf])
 
     def create_view(self, buf):
@@ -126,14 +125,14 @@ class VimHandler(floo_handler.FlooHandler):
         utils.save_buf(buf)
         vb = self.get_vim_buf_by_path(path)
         if vb:
-            return View(vb, buf)
+            return View(vb)
 
         vim.command(':edit! %s' % path)
         vb = self.get_vim_buf_by_path(path)
         if vb is None:
             msg.debug('vim buffer is none even though we tried to open it: %s' % path)
             return
-        return View(vb, buf)
+        return View(vb)
 
     def save_buf(self, buf):
         path = utils.get_full_path(buf['path'])
@@ -144,15 +143,6 @@ class VimHandler(floo_handler.FlooHandler):
             else:
                 fd.write(buf['buf'])
         return path
-
-    def update_view(self, buf, view=None):
-        msg.debug('updating view for buf %s' % buf['id'])
-        view = view or self.get_view(buf['id'])
-        if not view:
-            msg.log('view for buf %s not found. not updating' % buf['id'])
-            return
-        self.MODIFIED_EVENTS.put(1)
-        view.set_text(buf['buf'])
 
     def ok_cancel_dialog(self, msg, cb=None):
         res = editor.ok_cancel_dialog(msg)
@@ -176,7 +166,7 @@ class VimHandler(floo_handler.FlooHandler):
         if vim.eval('bufloaded(%s)' % vb.number) == '0':
             return None
 
-        return View(vb, buf)
+        return View(vb)
 
     def save_view(self, view):
         self.ignored_saves[view.native_id] += 1
