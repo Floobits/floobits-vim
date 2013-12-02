@@ -17,6 +17,13 @@ def user_id_to_region(user_id):
     return "floobitsuser%s" % user_id
 
 
+
+def redraw():
+    def doit():
+        msg.debug("redrawing!")
+        vim.command(":redraw!")
+    utils.set_timeout(doit, 100)
+
 class View(object):
     """editors representation of the buffer"""
 
@@ -146,7 +153,7 @@ class View(object):
                 format(region=region, start_row=start_row, start_col=start_col, end_row=end_row, end_col=end_col)
             msg.debug("vim_region: %s" % (vim_region,))
             self.current_highlights[user_id].append(vim.eval(vim_region))
-        utils.redraw()
+        redraw()
 
     def rename(self, name):
         msg.debug('renaming %s to %s' % (self.vim_buf.name, name))
