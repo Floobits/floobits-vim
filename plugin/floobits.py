@@ -1,5 +1,6 @@
 # coding: utf-8
 import os
+import os.path
 import json
 import re
 import traceback
@@ -278,6 +279,8 @@ def maybe_new_file():
         msg.debug('get:buf buffer has no filename')
         return None
 
+    if not os.path.exists(path):
+        return None
     if not utils.is_shared(path):
         msg.debug('get_buf: %s is not shared' % path)
         return None
