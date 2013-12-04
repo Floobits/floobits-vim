@@ -477,27 +477,10 @@ def stop_everything():
 atexit.register(stop_everything)
 
 
-def has_browser():
-    valid_browsers = [
-        "MacOSX", #Default mac browser.
-        "Chrome",
-        "Chromium",
-        "Firefox",
-        "Safari",
-        "Opera"
-    ]
-    for browser in valid_browsers:
-        try:
-            webbrowser.get(browser)
-            return True
-        except Exception as e:
-            continue
-    return False
-
 
 def complete_signup():
     msg.debug("Completing signup.")
-    if not has_browser():
+    if not utils.has_browser():
         msg.log("You need a modern browser to complete the sign up. Go to https://floobits.com to sign up.")
         return
     floorc = utils.load_floorc()
@@ -510,11 +493,11 @@ def complete_signup():
 
 
 def check_credentials():
-    if not has_browser():
-        msg.log("You need a Floobits account to use the Floobits plugin. Go to https://floobits.com to sign up.")
-        return
     msg.debug("Print checking credentials.")
     if not (G.USERNAME and G.SECRET):
+        if not utils.has_browser():
+            msg.log("You need a Floobits account to use the Floobits plugin. Go to https://floobits.com to sign up.")
+            return
         setup_credentials()
 
 
