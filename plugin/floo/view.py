@@ -1,4 +1,5 @@
 import vim
+import editor
 
 from common import msg, utils
 from collections import defaultdict
@@ -95,10 +96,7 @@ class View(object):
         self.set_cursor_position(cursor_offset)
 
     def focus(self):
-        current_buffer = vim.eval('expand("%:p")')
-        if current_buffer != self.vim_buf.name:
-            msg.log("visible buffer changed.")
-            vim.command(':silent! edit! %s | :silent! :filetype detect' % self.vim_buf.name)
+        editor.open_file(self.vim_buf.name)
 
     def set_cursor_position(self, offset):
         line_num, col = self._offset_to_vim(offset)
