@@ -494,7 +494,17 @@ def has_browser():
 
 
 def complete_signup():
-    msg.log("Complete signup.")
+    msg.debug("Completing signup.")
+    if not has_browser():
+        msg.log("You need a modern browser to complete the sign up. Go to https://floobits.com to sign up.")
+        return
+    floorc = utils.load_floorc()
+    username = floorc.get('USERNAME')
+    secret = floorc.get('SECRET')
+    msg.debug("Completing sign up with %s %s" % (username, secret))
+    if not (username and secret):
+        return msg.error('You don\'t seem to have a Floobits account of any sort.')
+    webbrowser.open('https://%s/%s/pinocchio/%s/' % (G.DEFAULT_HOST, username, secret))
 
 
 def check_credentials():
