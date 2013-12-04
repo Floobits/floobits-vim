@@ -88,8 +88,8 @@ def status_message(msg):
         print(msg)
 
 
-def message_dialog(msg):
-    msg.log(msg)
+def message_dialog(message):
+    msg.log(message)
 
 
 def vim_choice(prompt, default, choices):
