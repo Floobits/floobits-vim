@@ -475,19 +475,44 @@ def stop_everything():
 atexit.register(stop_everything)
 
 
-def checkCredentials():
-    msg.log("Print checking credentials.")
-    if not (G.USERNAME and G.SECRET):
-        setupCredentials()
+def has_browser():
+    valid_browsers = [
+        "MacOSX", #Default mac browser.
+        "Chrome",
+        "Chromium",
+        "Firefox",
+        "Safari",
+        "Opera"
+    ]
+    for browser in valid_browsers:
+        try:
+            webbrowser.get(browser)
+            return True
+        except Exception as e:
+            continue
+    return False
 
-def setupCredentials():
+
+def complete_signup():
+    msg.log("Complete signup.")
+
+
+def check_credentials():
+    if not has_browser():
+        msg.log("You need a Floobits account to use the Floobits plugin. Go to https://floobits.com to sign up.")
+        return
+    msg.debug("Print checking credentials.")
+    if not (G.USERNAME and G.SECRET):
+        setup_credentials()
+
+def setup_credentials():
     prompt = "You need a Floobits account! Do you have one? If no we will create one for you [y/n]. "
     d = vim_input(prompt, "")
     if d and (d != "y" and d != "n"):
-        return setupCredentials()
+        return setup_credentials()
     agent = None
     if d == "y":
-        msg.log("You have an account.")
+        msg.debug("You have an account.")
     elif not utils.get_persistent_data().get('disable_account_creation'):
         agent = CreateAccountHandler()
     if not agent:

@@ -128,6 +128,7 @@ command! FlooUnPause :python floo_unpause()
 command! FlooOpenInBrowser :python open_in_browser()
 command! FlooClearHighlights :python floo_clear()
 command! FlooToggleHighlights :python floo_toggle_highlights()
+command! FlooCompleteSignup :python complete_signup()
 
 command! -nargs=1 -complete=dir FlooShareDir :python share_dir(<f-args>)
 command! -nargs=1 -complete=dir FlooShareDirPrivate :python share_dir_private(<f-args>)
@@ -135,6 +136,6 @@ command! -nargs=? -complete=file FlooAddBuf :python add_buf(<f-args>)
 
 command! FlooInfo :python floo_info()
 
-python checkCredentials()
+python check_credentials()
 call s:SetAutoCmd()
 let g:floobits_plugin_loaded = 1
