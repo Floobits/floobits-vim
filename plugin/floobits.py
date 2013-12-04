@@ -536,8 +536,8 @@ def setup_credentials():
     try:
         reactor.connect(agent, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
     except Exception as e:
-        msg(str(e))
-        msg.log(traceback.format_exc())
+        msg.error(str(e))
+        msg.debug(traceback.format_exc())
 
 
 def join_workspace(workspace_url, d='', sync_to_disk=True):
