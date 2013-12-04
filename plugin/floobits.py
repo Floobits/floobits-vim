@@ -37,10 +37,14 @@ import vim
 
 try:
     from floo.common import api, ignore, migrations, msg, reactor, shared as G, utils
+    from floo.common.handlers.account import CreateAccountHandler
+    from floo.common.handlers.credentials import RequestCredentialsHandler
     from floo.vim_handler import VimHandler
     from floo import editor
 except (ImportError, ValueError):
     from floo.common import api, ignore, migrations, msg, reactor, shared as G, utils
+    from floo.common.handlers.account import CreateAccountHandler
+    from floo.common.handlers.credentials import RequestCredentialsHandler
     from floo.vim_handler import VimHandler
     from floo import editor
 
@@ -469,6 +473,31 @@ def stop_everything():
 
 #NOTE: not strictly necessary
 atexit.register(stop_everything)
+
+
+def checkCredentials():
+    msg.log("Print checking credentials.")
+    if not (G.USERNAME and G.SECRET):
+        setupCredentials()
+
+def setupCredentials():
+    prompt = "You need a Floobits account! Do you have one? If no we will create one for you [y/n]. "
+    d = vim_input(prompt, "")
+    if d and (d != "y" and d != "n"):
+        return setupCredentials()
+    agent = None
+    if d == "y":
+        msg.log("You have an account.")
+    elif not utils.get_persistent_data().get('disable_account_creation'):
+        agent = CreateAccountHandler()
+    if not agent:
+        msg.error("A configuration error occured earlier. Please go to floobits.com and sign up to use this plugin.\n\nWe\'re really sorry. This should never happen.")
+        return
+    try:
+        reactor.connect(agent, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
+    except Exception as e:
+        msg(str(e))
+        msg.log(traceback.format_exc())
 
 
 def join_workspace(workspace_url, d='', sync_to_disk=True):

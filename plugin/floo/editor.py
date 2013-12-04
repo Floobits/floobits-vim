@@ -6,14 +6,18 @@ import vim
 
 try:
     from .common import shared as G
+    from .common import msg
 except (ImportError, ValueError):
     import common.shared as G
+    from common import msg
 
 
 timeouts = defaultdict(list)
 top_timeout_id = 0
 cancelled_timeouts = set()
 calling_timeouts = False
+welcome_text = 'Welcome %s!\n\nYou are all set to collaborate. You should check out our docs at https://%s/help/plugins/#sublime-usage. \
+You must run \':FlooCompleteSignup\' before you can login to floobits.com.'
 
 
 def name():
@@ -84,6 +88,10 @@ def status_message(msg):
         print(msg)
 
 
+def message_dialog(msg):
+    msg.log(msg)
+
+
 def vim_choice(prompt, default, choices):
     default = choices.index(default) + 1
     choices_str = '\n'.join(['&%s' % choice for choice in choices])
@@ -101,9 +109,10 @@ def ok_cancel_dialog(prompt):
     return choice == 'ok'
 
 
-def open_file(file):
-    raise NotImplementedError('open_file')
-
+def open_file(filename):
+    current_buffer = vim.eval('expand("%:p")')
+    if current_buffer != filename:
+        vim.command(':silent! edit! %s | :silent! :filetype detect' % filename)
 
 def platform():
     return sys.platform
