@@ -7,6 +7,8 @@ import traceback
 import atexit
 import subprocess
 import webbrowser
+import uuid
+import binascii
 import imp
 from functools import wraps
 
@@ -37,10 +39,14 @@ import vim
 
 try:
     from floo.common import api, ignore, migrations, msg, reactor, shared as G, utils
+    from floo.common.handlers.account import CreateAccountHandler
+    from floo.common.handlers.credentials import RequestCredentialsHandler
     from floo.vim_handler import VimHandler
     from floo import editor
 except (ImportError, ValueError):
     from floo.common import api, ignore, migrations, msg, reactor, shared as G, utils
+    from floo.common.handlers.account import CreateAccountHandler
+    from floo.common.handlers.credentials import RequestCredentialsHandler
     from floo.vim_handler import VimHandler
     from floo import editor
 
@@ -469,6 +475,52 @@ def stop_everything():
 
 #NOTE: not strictly necessary
 atexit.register(stop_everything)
+
+
+
+def complete_signup():
+    msg.debug("Completing signup.")
+    if not utils.has_browser():
+        msg.log("You need a modern browser to complete the sign up. Go to https://floobits.com to sign up.")
+        return
+    floorc = utils.load_floorc()
+    username = floorc.get('USERNAME')
+    secret = floorc.get('SECRET')
+    msg.debug("Completing sign up with %s %s" % (username, secret))
+    if not (username and secret):
+        return msg.error('You don\'t seem to have a Floobits account of any sort.')
+    webbrowser.open('https://%s/%s/pinocchio/%s/' % (G.DEFAULT_HOST, username, secret))
+
+
+def check_credentials():
+    msg.debug("Print checking credentials.")
+    if not (G.USERNAME and G.SECRET):
+        if not utils.has_browser():
+            msg.log("You need a Floobits account to use the Floobits plugin. Go to https://floobits.com to sign up.")
+            return
+        setup_credentials()
+
+
+def setup_credentials():
+    prompt = "You need a Floobits account! Do you have one? If no we will create one for you [y/n]. "
+    d = vim_input(prompt, "")
+    if d and (d != "y" and d != "n"):
+        return setup_credentials()
+    agent = None
+    if d == "y":
+        msg.debug("You have an account.")
+        token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
+        agent = RequestCredentialsHandler(token)
+    elif not utils.get_persistent_data().get('disable_account_creation'):
+        agent = CreateAccountHandler()
+    if not agent:
+        msg.error("A configuration error occured earlier. Please go to floobits.com and sign up to use this plugin.\n\nWe\'re really sorry. This should never happen.")
+        return
+    try:
+        reactor.connect(agent, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
+    except Exception as e:
+        msg.error(str(e))
+        msg.debug(traceback.format_exc())
 
 
 def join_workspace(workspace_url, d='', sync_to_disk=True):
