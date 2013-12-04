@@ -7,6 +7,8 @@ import traceback
 import atexit
 import subprocess
 import webbrowser
+import uuid
+import binascii
 import imp
 from functools import wraps
 
@@ -515,6 +517,7 @@ def check_credentials():
     if not (G.USERNAME and G.SECRET):
         setup_credentials()
 
+
 def setup_credentials():
     prompt = "You need a Floobits account! Do you have one? If no we will create one for you [y/n]. "
     d = vim_input(prompt, "")
@@ -523,6 +526,8 @@ def setup_credentials():
     agent = None
     if d == "y":
         msg.debug("You have an account.")
+        token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
+        agent = RequestCredentialsHandler(token)
     elif not utils.get_persistent_data().get('disable_account_creation'):
         agent = CreateAccountHandler()
     if not agent:
