@@ -571,7 +571,7 @@ def join_workspace(workspace_url, d='', sync_to_disk=True):
         conn = VimHandler(result['owner'], result['workspace'])
         reactor.connect(conn, result['host'], result['port'], result['secure'])
         if not sync_to_disk:
-            conn.once('room_info', lambda agent: agent.upload(G.PROJECT_PATH))
+            conn.once('room_info', lambda: G.AGENT.upload(G.PROJECT_PATH))
     except Exception as e:
         msg.error(str(e))
         tb = traceback.format_exc()
