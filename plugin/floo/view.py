@@ -18,12 +18,12 @@ def user_id_to_region(user_id):
     return "floobitsuser%s" % user_id
 
 
-
 def redraw():
     def doit():
         msg.debug("redrawing!")
         vim.command(":redraw!")
     utils.set_timeout(doit, 100)
+
 
 class View(object):
     """editors representation of the buffer"""

@@ -114,5 +114,6 @@ def open_file(filename):
     if current_buffer != filename:
         vim.command(':silent! edit! %s | :silent! :filetype detect' % filename)
 
+
 def platform():
     return sys.platform

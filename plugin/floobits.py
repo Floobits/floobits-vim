@@ -477,7 +477,6 @@ def stop_everything():
 atexit.register(stop_everything)
 
 
-
 def complete_signup():
     msg.debug("Completing signup.")
     if not utils.has_browser():
