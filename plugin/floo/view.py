@@ -59,7 +59,11 @@ class View(object):
         return False
 
     def get_text(self):
-        text = '\n'.join(self.vim_buf[:])
+        # Work around stupidity in Vim. Vim always puts a newline at the end of a file, but never exposes that newline in the view text.
+        tail = '\n'
+        if self.vim_buf[-1] == '':
+            tail = ''
+        text = '\n'.join(self.vim_buf[:]) + tail
         return text.decode('utf-8')
 
     def update(self, data):
