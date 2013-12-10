@@ -178,7 +178,8 @@ class View(object):
             msg.debug("couldn't delete %s... maybe thats OK?" % str(e))
 
     def save(self):
-        vim.command(':w!')
+        # TODO: switch to the correct buffer, then save, then switch back
+        vim.command(':silent! w!')
 
     def file_name(self):
         return self.vim_buf.name
