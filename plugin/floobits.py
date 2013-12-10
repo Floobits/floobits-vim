@@ -310,10 +310,6 @@ def on_save():
 @is_connected(True)
 def open_in_browser():
     url = G.AGENT.workspace_url
-    if 'kick' in G.PERMS:
-        url += '/settings'
-    else:
-        url += '/info'
     webbrowser.open(url)
 
 
