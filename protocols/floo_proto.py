@@ -76,8 +76,8 @@ class FlooProtocol(base.BaseProtocol):
                 continue
             name = data.get('name')
             try:
-                self.emit("data", name, data)
                 msg.debug("got data " + name)
+                self.emit("data", name, data)
             except Exception as e:
                 print(traceback.format_exc())
                 msg.error('Error handling %s event (%s).' % (name, str(e)))
@@ -232,7 +232,7 @@ class FlooProtocol(base.BaseProtocol):
             return self.reconnect()
 
     def error(self):
-        raise NotImplementedError()
+        raise NotImplementedError("error not implemented.")
 
     def stop(self):
         self.retries = -1
