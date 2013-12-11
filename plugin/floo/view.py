@@ -59,7 +59,11 @@ class View(object):
         return False
 
     def get_text(self):
-        text = '\n'.join(self.vim_buf[:])
+        # Work around stupidity in Vim. Vim always puts a newline at the end of a file, but never exposes that newline in the view text.
+        tail = '\n'
+        if self.vim_buf[-1] == '':
+            tail = ''
+        text = '\n'.join(self.vim_buf[:]) + tail
         return text.decode('utf-8')
 
     def update(self, data):
@@ -174,7 +178,8 @@ class View(object):
             msg.debug("couldn't delete %s... maybe thats OK?" % str(e))
 
     def save(self):
-        vim.command(':w!')
+        # TODO: switch to the correct buffer, then save, then switch back
+        vim.command(':silent! w!')
 
     def file_name(self):
         return self.vim_buf.name
