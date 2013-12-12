@@ -44,9 +44,7 @@ else
 endif
 
 function! s:MaybeChanged()
-    if &modified
-        python maybe_buffer_changed()
-    endif
+    python maybe_buffer_changed()
 endfunction
 
 function! g:FlooSetReadOnly()
@@ -71,7 +69,7 @@ function! g:floobits_get_selection()
             let col = pos[2]
             let end = line2byte(line) + col - 2
             return [[start, end]]
-        else    
+        else
             let pos = line2byte(line(".")) + col(".") - 2
             return [[pos, pos]]
         endif
