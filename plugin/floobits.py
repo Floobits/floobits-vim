@@ -37,18 +37,11 @@ except ImportError:
 
 import vim
 
-try:
-    from floo.common import api, ignore, migrations, msg, reactor, shared as G, utils
-    from floo.common.handlers.account import CreateAccountHandler
-    from floo.common.handlers.credentials import RequestCredentialsHandler
-    from floo.vim_handler import VimHandler
-    from floo import editor
-except (ImportError, ValueError):
-    from floo.common import api, ignore, migrations, msg, reactor, shared as G, utils
-    from floo.common.handlers.account import CreateAccountHandler
-    from floo.common.handlers.credentials import RequestCredentialsHandler
-    from floo.vim_handler import VimHandler
-    from floo import editor
+from floo.common import api, ignore, migrations, msg, reactor, shared as G, utils
+from floo.common.handlers.account import CreateAccountHandler
+from floo.common.handlers.credentials import RequestCredentialsHandler
+from floo.vim_handler import VimHandler
+from floo import editor
 
 
 reactor = reactor.reactor
