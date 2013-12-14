@@ -34,8 +34,8 @@ sys.path.append(vim.eval("g:floobits_plugin_dir"))
 
 END_PYTHON
 
-if filereadable(expand("<sfile>:p:h")."/floobits.py")
-    pyfile <sfile>:p:h/floobits.py
+if filereadable(expand("<sfile>:p:h")."/floobits_wrapper.py")
+    pyfile <sfile>:p:h/floobits_wrapper.py
 else
     echohl WarningMsg |
     \ echomsg "Floobits plugin error: Can't find floobits.py in ".g:floobits_plugin_dir |
@@ -44,7 +44,7 @@ else
 endif
 
 function! s:MaybeChanged()
-    python maybe_buffer_changed()
+    python floobits_maybe_buffer_changed()
 endfunction
 
 function! g:FlooSetReadOnly()
@@ -53,7 +53,7 @@ function! g:FlooSetReadOnly()
 endfunction
 
 function! g:floobits_global_tick()
-    python global_tick()
+    python floobits_global_tick()
 endfunction
 
 function! g:floobits_get_selection()
@@ -88,52 +88,52 @@ function! s:SetAutoCmd()
             exec 'autocmd '. cmd .' * call s:MaybeChanged()'
         endfor
 
-        autocmd CursorHold * python cursor_hold()
-        autocmd CursorHoldI * python cursor_holdi()
-        autocmd CursorMoved * python maybe_selection_changed()
-        autocmd CursorMovedI * python maybe_selection_changed()
+        autocmd CursorHold * python floobits_cursor_hold()
+        autocmd CursorHoldI * python floobits_cursor_holdi()
+        autocmd CursorMoved * python floobits_maybe_selection_changed()
+        autocmd CursorMovedI * python floobits_maybe_selection_changed()
         for cmd in s:new_buf_events
-            exec 'autocmd '. cmd .' * python maybe_new_file()'
+            exec 'autocmd '. cmd .' * python floobits_maybe_new_file()'
         endfor
 
-        autocmd BufEnter * python buf_enter()
-        autocmd BufWritePost * python on_save()
+        autocmd BufEnter * python floobits_buf_enter()
+        autocmd BufWritePost * python floobits_on_save()
         " milliseconds
         if has('timers')
-            call setinterval(100, 'python global_tick()')
+            call setinterval(100, 'python floobits_global_tick()')
         endif
         if has('async')
-            call setinterval(100, 'python global_tick()')
+            call setinterval(100, 'python floobits_global_tick()')
         endif
     augroup END
 endfunction
 
 "TODO: populate with a default url of https://floobits.com/
-command! -nargs=1 FlooJoinWorkspace :python join_workspace(<f-args>)
+command! -nargs=1 FlooJoinWorkspace :python floobits_join_workspace(<f-args>)
 
-command! FlooLeaveWorkspace :python part_workspace()
-command! FlooPartworkspace :python part_workspace()
+command! FlooLeaveWorkspace :python floobits_part_workspace()
+command! FlooPartworkspace :python floobits_part_workspace()
 
-command! FlooToggleFollowMode :python follow()
+command! FlooToggleFollowMode :python floobits_follow()
 
-command! FlooSummon :python maybe_selection_changed(True)
-command! FlooPing :python maybe_selection_changed(True)
+command! FlooSummon :python floobits_maybe_selection_changed(True)
+command! FlooPing :python floobits_maybe_selection_changed(True)
 
-command! FlooDeleteBuf :python delete_buf()
+command! FlooDeleteBuf :python floobits_delete_buf()
 
-command! FlooPause :python floo_pause()
-command! FlooUnPause :python floo_unpause()
-command! FlooOpenInBrowser :python open_in_browser()
-command! FlooClearHighlights :python floo_clear()
-command! FlooToggleHighlights :python floo_toggle_highlights()
-command! FlooCompleteSignup :python complete_signup()
+command! FlooPause :python floobits_pause()
+command! FlooUnPause :python floobits_unpause()
+command! FlooOpenInBrowser :python floobits_open_in_browser()
+command! FlooClearHighlights :python floobits_clear()
+command! FlooToggleHighlights :python floobits_toggle_highlights()
+command! FlooCompleteSignup :python floobits_complete_signup()
 
-command! -nargs=1 -complete=dir FlooShareDir :python share_dir(<f-args>)
-command! -nargs=1 -complete=dir FlooShareDirPrivate :python share_dir_private(<f-args>)
-command! -nargs=? -complete=file FlooAddBuf :python add_buf(<f-args>)
+command! -nargs=1 -complete=dir FlooShareDir :python floobits_share_dir(<f-args>)
+command! -nargs=1 -complete=dir FlooShareDirPrivate :python floobits_share_dir_private(<f-args>)
+command! -nargs=? -complete=file FlooAddBuf :python floobits_add_buf(<f-args>)
 
-command! FlooInfo :python floo_info()
+command! FlooInfo :python floobits_info()
 
-python check_credentials()
+python floobits_check_credentials()
 call s:SetAutoCmd()
 let g:floobits_plugin_loaded = 1
