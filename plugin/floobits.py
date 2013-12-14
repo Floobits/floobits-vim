@@ -37,7 +37,7 @@ except ImportError:
 
 import vim
 
-from floo.common import api, ignore, migrations, msg, reactor, shared as G, utils
+from floo.common import api, ignore, migrations, msg, reactor, utils, shared as G
 from floo.common.handlers.account import CreateAccountHandler
 from floo.common.handlers.credentials import RequestCredentialsHandler
 from floo.vim_handler import VimHandler
@@ -98,7 +98,7 @@ ticker_errors: {ticker_errors}
 """
 
 
-def floo_info():
+def floobits_info():
     kwargs = {
         'cs': bool(int(vim.eval('has("clientserver")'))),
         'mode': (using_feedkeys and 'feedkeys') or 'client-server',
@@ -111,7 +111,7 @@ def floo_info():
     msg.log(FLOOBITS_INFO.format(**kwargs))
 
 
-def floo_pause():
+def floobits_pause():
     global call_feedkeys, ticker
 
     if G.TIMERS:
@@ -130,7 +130,7 @@ def floo_pause():
         ticker = None
 
 
-def floo_unpause():
+def floobits_unpause():
     global call_feedkeys
 
     if G.TIMERS:
@@ -148,7 +148,7 @@ def fallback_to_feedkeys(warning):
     using_feedkeys = True
     warning += " Falling back to f//e hack which will break some key commands. You may need to call FlooPause/FlooUnPause before some commands."
     msg.warn(warning)
-    floo_unpause()
+    floobits_unpause()
 
 
 def ticker_watcher(ticker):
@@ -215,19 +215,19 @@ def vim_input(prompt, default, completion=None):
     return vim.eval('user_input')
 
 
-def global_tick():
+def floobits_global_tick():
     reactor.tick()
 
 
-def cursor_hold():
-    global_tick()
+def floobits_cursor_hold():
+    floobits_global_tick()
     if not call_feedkeys:
         return
     return vim.command("call feedkeys(\"f\\e\", 'n')")
 
 
-def cursor_holdi():
-    global_tick()
+def floobits_cursor_holdi():
+    floobits_global_tick()
     if not call_feedkeys:
         return
     linelen = int(vim.eval("col('$')-1"))
@@ -255,24 +255,24 @@ def is_connected(warn=False):
 
 
 @is_connected()
-def maybe_selection_changed(ping=False):
+def floobits_maybe_selection_changed(ping=False):
     G.AGENT.maybe_selection_changed(vim.current.buffer, ping)
 
 
 @is_connected()
-def maybe_buffer_changed():
+def floobits_maybe_buffer_changed():
     G.AGENT.maybe_buffer_changed(vim.current.buffer)
 
 
 @is_connected()
-def follow(follow_mode=None):
+def floobits_follow(follow_mode=None):
     if follow_mode is None:
         follow_mode = not G.STALKER_MODE
     G.STALKER_MODE = follow_mode
 
 
 @is_connected()
-def maybe_new_file():
+def floobits_maybe_new_file():
     path = vim.current.buffer.name
     if path is None or path == "":
         msg.debug('get:buf buffer has no filename')
@@ -291,7 +291,7 @@ def maybe_new_file():
 
 
 @is_connected()
-def on_save():
+def floobits_on_save():
     buf = G.AGENT.get_buf_by_path(vim.current.buffer.name)
     if buf:
         G.AGENT.send({
@@ -301,25 +301,25 @@ def on_save():
 
 
 @is_connected(True)
-def open_in_browser():
+def floobits_open_in_browser():
     url = G.AGENT.workspace_url
     webbrowser.open(url)
 
 
 @is_connected(True)
-def add_buf(path=None):
+def floobits_add_buf(path=None):
     path = path or vim.current.buffer.name
     G.AGENT._upload(path)
 
 
 @is_connected(True)
-def delete_buf():
+def floobits_delete_buf():
     name = vim.current.buffer.name
     G.AGENT.delete_buf(name)
 
 
 @is_connected()
-def buf_enter():
+def floobits_buf_enter():
     buf = G.AGENT.get_buf_by_path(vim.current.buffer.name)
     if not buf:
         return
@@ -330,7 +330,7 @@ def buf_enter():
 
 
 @is_connected()
-def floo_clear():
+def floobits_clear():
     buf = G.AGENT.get_buf_by_path(vim.current.buffer.name)
     if not buf:
         return
@@ -341,21 +341,21 @@ def floo_clear():
 
 
 @is_connected()
-def floo_toggle_highlights():
+def floobits_toggle_highlights():
     G.SHOW_HIGHLIGHTS = not G.SHOW_HIGHLIGHTS
     if G.SHOW_HIGHLIGHTS:
-        buf_enter()
+        floobits_buf_enter()
         msg.log('Highlights enabled')
         return
-    floo_clear()
+    floobits_clear()
     msg.log('Highlights disabled')
 
 
-def share_dir_private(dir_to_share):
-    return share_dir(dir_to_share, perms={'AnonymousUser': []})
+def floobits_share_dir_private(dir_to_share):
+    return floobits_share_dir(dir_to_share, perms={'AnonymousUser': []})
 
 
-def share_dir(dir_to_share, perms=None):
+def floobits_share_dir(dir_to_share, perms=None):
     dir_to_share = os.path.expanduser(dir_to_share)
     dir_to_share = utils.unfuck_path(dir_to_share)
     dir_to_share = os.path.abspath(dir_to_share)
@@ -405,7 +405,7 @@ def share_dir(dir_to_share, perms=None):
         except HTTPError:
             pass
         else:
-            return join_workspace(workspace_url, dir_to_share, sync_to_disk=False)
+            return floobits_join_workspace(workspace_url, dir_to_share, sync_to_disk=False)
 
     orgs = api.get_orgs_can_admin()
     orgs = json.loads(orgs.read().decode('utf-8'))
@@ -451,22 +451,22 @@ def create_workspace(workspace_name, share_path, owner, perms=None):
         editor.error_message('Unable to create workspace: %s' % str(e))
         return
 
-    join_workspace(workspace_url, share_path, sync_to_disk=False)
+    floobits_join_workspace(workspace_url, share_path, sync_to_disk=False)
 
 
-def stop_everything():
+def floobits_stop_everything():
     if G.AGENT:
         reactor.stop()
         G.AGENT = None
-    floo_pause()
+    floobits_pause()
     #TODO: get this value from vim and reset it
     vim.command("set updatetime=4000")
 
 #NOTE: not strictly necessary
-atexit.register(stop_everything)
+atexit.register(floobits_stop_everything)
 
 
-def complete_signup():
+def floobits_complete_signup():
     msg.debug("Completing signup.")
     if not utils.has_browser():
         msg.log("You need a modern browser to complete the sign up. Go to https://floobits.com to sign up.")
@@ -480,20 +480,20 @@ def complete_signup():
     webbrowser.open('https://%s/%s/pinocchio/%s/' % (G.DEFAULT_HOST, username, secret))
 
 
-def check_credentials():
+def floobits_check_credentials():
     msg.debug("Print checking credentials.")
     if not (G.USERNAME and G.SECRET):
         if not utils.has_browser():
             msg.log("You need a Floobits account to use the Floobits plugin. Go to https://floobits.com to sign up.")
             return
-        setup_credentials()
+        floobits_setup_credentials()
 
 
-def setup_credentials():
+def floobits_setup_credentials():
     prompt = "You need a Floobits account! Do you have one? If no we will create one for you [y/n]. "
     d = vim_input(prompt, "")
     if d and (d != "y" and d != "n"):
-        return setup_credentials()
+        return floobits_setup_credentials()
     agent = None
     if d == "y":
         msg.debug("You have an account.")
@@ -511,9 +511,8 @@ def setup_credentials():
         msg.debug(traceback.format_exc())
 
 
-def join_workspace(workspace_url, d='', sync_to_disk=True):
+def floobits_join_workspace(workspace_url, d='', sync_to_disk=True):
     msg.debug("workspace url is %s" % workspace_url)
-
     try:
         result = utils.parse_url(workspace_url)
     except Exception as e:
@@ -554,7 +553,7 @@ def join_workspace(workspace_url, d='', sync_to_disk=True):
     vim.command('cd %s' % G.PROJECT_PATH)
     msg.debug("Joining workspace %s" % workspace_url)
 
-    stop_everything()
+    floobits_stop_everything()
     try:
         conn = VimHandler(result['owner'], result['workspace'])
         reactor.connect(conn, result['host'], result['port'], result['secure'])
@@ -568,8 +567,18 @@ def join_workspace(workspace_url, d='', sync_to_disk=True):
         start_event_loop()
 
 
-def part_workspace():
+def floobits_part_workspace():
     if not G.AGENT:
         return msg.warn('Unable to leave workspace: You are not joined to a workspace.')
-    stop_everything()
+    floobits_stop_everything()
     msg.log('You left the workspace.')
+
+
+# def test_import():
+#     import sys
+#     def later():
+#         print(sys.platform)
+#     utils.set_timeout(later, 100)
+
+# (<module 'floo.common.utils' from '/floobits/vim/plugin/floo/common/utils.pyc'>, 4369926864)
+# (<module 'ycm.utils' from '/Users/kans/.vim/bundle/YouCompleteMe/autoload/../python/ycm/utils.pyc'>, 4372778520)
