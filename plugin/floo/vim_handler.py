@@ -51,6 +51,7 @@ class VimHandler(floo_handler.FlooHandler):
     def __init__(self, *args, **kwargs):
         super(VimHandler, self).__init__(*args, **kwargs)
         self.user_highlights = {}
+        self._messages = []
 
     def tick(self):
         reported = set()
@@ -207,7 +208,12 @@ class VimHandler(floo_handler.FlooHandler):
 
     def on_msg(self, data):
         timestamp = data.get('time') or time.time()
-        msg.log('[%s] <%s> %s' % (time.ctime(timestamp), data.get('username', ''), data.get('data', '')))
+        msgText = '[%s] <%s> %s' % (time.ctime(timestamp), data.get('username', ''), data.get('data', ''))
+        msg.log(msgText)
+        self._messages.append(msgText)
+
+    def get_messages(self):
+        return self._messages
 
     def get_username_by_id(self, user_id):
         try:

@@ -576,5 +576,13 @@ def floobits_part_workspace():
 def floobits_users_in_workspace():
     if not G.AGENT:
         return msg.warn("Not connected to a workspace.")
+    vim.command('echom "Users connected to %s"' % (G.AGENT.workspace,))
     for user in G.AGENT.workspace_info['users'].values():
-        vim.command(':echom "%s connected with %s on %s"' % (user['username'], user['client'], user['platform']))
+        vim.command('echom "  %s connected with %s on %s"' % (user['username'], user['client'], user['platform']))
+
+def floobits_list_messages():
+    if not G.AGENT:
+        return msg.warn("Not connected to a workspace.")
+    vim.command('echom "Recent messages for %s"' % (G.AGENT.workspace,))
+    for message in G.AGENT.get_messages():
+        vim.command('echom "  %s"' % (message,))
