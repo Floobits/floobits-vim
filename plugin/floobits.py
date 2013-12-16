@@ -586,3 +586,10 @@ def floobits_list_messages():
     vim.command('echom "Recent messages for %s"' % (G.AGENT.workspace,))
     for message in G.AGENT.get_messages():
         vim.command('echom "  %s"' % (message,))
+
+def floobits_say_something():
+    if not G.AGENT:
+        return msg.warn("Not connected to a workspace.")
+    something = vim_input('Say something in %s: ' % (G.AGENT.workspace,), '')
+    if something:
+        G.AGENT.send_msg(something)

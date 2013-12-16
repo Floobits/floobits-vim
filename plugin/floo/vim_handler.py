@@ -51,7 +51,6 @@ class VimHandler(floo_handler.FlooHandler):
     def __init__(self, *args, **kwargs):
         super(VimHandler, self).__init__(*args, **kwargs)
         self.user_highlights = {}
-        self._messages = []
 
     def tick(self):
         reported = set()
@@ -184,17 +183,17 @@ class VimHandler(floo_handler.FlooHandler):
         self.views_changed = []
         self.selection_changed = []
         self.ignored_saves = collections.defaultdict(int)
-        self.chat_deck = collections.deque(maxlen=10)
+        self.chat_deck = collections.deque(maxlen=50)
 
-    def send_msg(self, msg):
-        self.send({'name': 'msg', 'data': msg})
-        self.chat(self.username, time.time(), msg, True)
+    def send_msg(self, text):
+        self.send({'name': 'msg', 'data': text})
+        timestamp = time.time()
+        msgText = self.format_msg(text, self.username, timestamp)
+        msg.log(msgText)
+        self.chat_deck.appendleft(msgText)
 
     def chat(self, username, timestamp, message, self_msg=False):
-        envelope = msg.MSG(message, timestamp, username)
-        if not self_msg:
-            self.chat_deck.appendleft(envelope)
-        envelope.display()
+        raise NotImplementedError("reconnect not implemented.")
 
     def prompt_join_hangout(self, hangout_url):
         hangout_client = None
@@ -206,14 +205,18 @@ class VimHandler(floo_handler.FlooHandler):
         if not hangout_client:
             G.WORKSPACE_WINDOW.run_command('floobits_prompt_hangout', {'hangout_url': hangout_url})
 
+    def format_msg(self, msg, username, timestamp):
+        return '[%s] <%s> %s' % (time.ctime(timestamp), username, msg)
+
     def on_msg(self, data):
         timestamp = data.get('time') or time.time()
-        msgText = '[%s] <%s> %s' % (time.ctime(timestamp), data.get('username', ''), data.get('data', ''))
+        msgText = self.format_msg(data.get('data', ''), data.get('username', ''),
+                             timestamp)
         msg.log(msgText)
-        self._messages.append(msgText)
+        self.chat_deck.appendleft(msgText)
 
     def get_messages(self):
-        return self._messages
+        return list(self.chat_deck)
 
     def get_username_by_id(self, user_id):
         try:
