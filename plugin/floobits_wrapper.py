@@ -1,9 +1,9 @@
 import floobits
 
 # code run after our own by other plugins can not pollute the floobits namespace
-__locals = locals()
+__globals = globals()
 for k, v in floobits.__dict__.items():
-    __locals[k] = v
+    __globals[k] = v
 
 # Vim essentially runs python by concating the python string into a single python file and running it.
 # Before we did this, the following would happen:
