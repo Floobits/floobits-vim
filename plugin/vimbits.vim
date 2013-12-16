@@ -127,6 +127,7 @@ command! FlooOpenInBrowser :python floobits_open_in_browser()
 command! FlooClearHighlights :python floobits_clear()
 command! FlooToggleHighlights :python floobits_toggle_highlights()
 command! FlooCompleteSignup :python floobits_complete_signup()
+command! FlooUsersInWorkspace :python floobits_users_in_workspace()
 
 command! -nargs=1 -complete=dir FlooShareDir :python floobits_share_dir(<f-args>)
 command! -nargs=1 -complete=dir FlooShareDirPrivate :python floobits_share_dir_private(<f-args>)

@@ -573,12 +573,8 @@ def floobits_part_workspace():
     floobits_stop_everything()
     msg.log('You left the workspace.')
 
-
-# def test_import():
-#     import sys
-#     def later():
-#         print(sys.platform)
-#     utils.set_timeout(later, 100)
-
-# (<module 'floo.common.utils' from '/floobits/vim/plugin/floo/common/utils.pyc'>, 4369926864)
-# (<module 'ycm.utils' from '/Users/kans/.vim/bundle/YouCompleteMe/autoload/../python/ycm/utils.pyc'>, 4372778520)
+def floobits_users_in_workspace():
+    if not G.AGENT:
+        return msg.warn("Not connected to a workspace.")
+    for user in G.AGENT.workspace_info['users'].values():
+        vim.command(':echom "%s connected with %s on %s"' % (user['username'], user['client'], user['platform']))
