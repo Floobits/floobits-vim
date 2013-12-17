@@ -2,6 +2,7 @@ import os
 import time
 import hashlib
 import collections
+import webbrowser
 
 try:
     import ssl
@@ -196,22 +197,26 @@ class VimHandler(floo_handler.FlooHandler):
         raise NotImplementedError("reconnect not implemented.")
 
     def prompt_join_hangout(self, hangout_url):
+        if not utils.has_browser():
+            return
         hangout_client = None
         users = self.workspace_info.get('users')
         for user_id, user in users.items():
             if user['username'] == G.USERNAME and 'hangout' in user['client']:
                 hangout_client = user
                 break
-        if not hangout_client:
-            G.WORKSPACE_WINDOW.run_command('floobits_prompt_hangout', {'hangout_url': hangout_url})
+        if hangout_client:
+            return
+        choice = editor.vim_choice('This workspace is being edited in a hangout. Join the hangout?', 'yes', ['yes', 'no'])
+        if choice == 'yes':
+            webbrowser.open(hangout_url, new=2, autoraise=True)
 
     def format_msg(self, msg, username, timestamp):
         return '[%s] <%s> %s' % (time.ctime(timestamp), username, msg)
 
     def on_msg(self, data):
         timestamp = data.get('time') or time.time()
-        msgText = self.format_msg(data.get('data', ''), data.get('username', ''),
-                             timestamp)
+        msgText = self.format_msg(data.get('data', ''), data.get('username', ''), timestamp)
         msg.log(msgText)
         self.chat_deck.appendleft(msgText)
 
