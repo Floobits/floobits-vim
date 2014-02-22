@@ -2,7 +2,7 @@
 
 Real-time collaborative editing. Think Etherpad, but with native editors. This is the plugin for Vim. We also have plugins for [Emacs](https://github.com/Floobits/floobits-emacs) and [Sublime Text](https://github.com/Floobits/floobits-sublime), as well as a web-based editor.
 
-### Development status: fairly stable, but conflicts with some Vim features such as keymaps.
+### Development status: fairly stable, but conflicts with some Vim features such as keymaps and leader key.
 
 Unfortunately, Vim's plugin API has few options for running event-driven code. We've figured out two ways, which are described below. Floobits will fall back to the second method if something goes wrong with the first.
 
