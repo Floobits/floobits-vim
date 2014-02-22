@@ -69,7 +69,7 @@ ticker = None
 ticker_errors = 0
 using_feedkeys = False
 
-ticker_python = """import sys; import subprocess; import time
+ticker_python = '''import sys; import subprocess; import time
 args = ['{binary}', '--servername', '{servername}', '--remote-expr', 'g:floobits_global_tick()']
 while True:
     time.sleep({sleep})
@@ -85,9 +85,9 @@ while True:
         continue
     sys.stderr.write(stderrdata)
     sys.exit(1)
-"""
+'''
 
-FLOOBITS_INFO = """
+FLOOBITS_INFO = '''
 floobits_version: {version}
 # not updated until FlooJoinWorkspace is called
 mode: {mode}
@@ -95,14 +95,14 @@ updatetime: {updatetime}
 clientserver_support: {cs}
 servername: {servername}
 ticker_errors: {ticker_errors}
-"""
+'''
 
 
 def floobits_info():
     kwargs = {
         'cs': bool(int(vim.eval('has("clientserver")'))),
         'mode': (using_feedkeys and 'feedkeys') or 'client-server',
-        'servername': vim.eval("v:servername"),
+        'servername': vim.eval('v:servername'),
         'ticker_errors': ticker_errors,
         'updatetime': vim.eval('&l:updatetime'),
         'version': G.__PLUGIN_VERSION__,
@@ -119,7 +119,7 @@ def floobits_pause():
 
     if using_feedkeys:
         call_feedkeys = False
-        vim.command("set updatetime=4000")
+        vim.command('set updatetime=4000')
     else:
         if ticker is None:
             return
@@ -138,7 +138,7 @@ def floobits_unpause():
 
     if using_feedkeys:
         call_feedkeys = True
-        vim.command("set updatetime=250")
+        vim.command('set updatetime=250')
     else:
         start_event_loop()
 
@@ -146,7 +146,7 @@ def floobits_unpause():
 def fallback_to_feedkeys(warning):
     global using_feedkeys
     using_feedkeys = True
-    warning += " Falling back to f//e hack which will break some key commands. You may need to call FlooPause/FlooUnPause before some commands."
+    warning += ' Falling back to f//e hack which will break some key commands. You may need to call FlooPause/FlooUnPause before some commands.'
     msg.warn(warning)
     floobits_unpause()
 
@@ -174,13 +174,14 @@ def start_event_loop():
         return
 
     if not bool(int(vim.eval('has("clientserver")'))):
-        return fallback_to_feedkeys("This VIM was not compiled with clientserver support. You should consider using a different vim!")
+        return fallback_to_feedkeys('This VIM was not compiled with clientserver support. You should consider using a different vim!')
 
     exe = getattr(G, 'VIM_EXECUTABLE', None)
     if not exe:
-        return fallback_to_feedkeys("Your vim was compiled with clientserver, but I don't know the name of the vim executable.  Please define it in your ~/.floorc using the vim_executable directive. e.g. 'vim_executable mvim'.")
+        return fallback_to_feedkeys('Your vim was compiled with clientserver, but I don\'t know the name of the vim executable.'
+                                    'Please define it in your ~/.floorc using the vim_executable directive. e.g. \'vim_executable mvim\'.')
 
-    servername = vim.eval("v:servername")
+    servername = vim.eval('v:servername')
     if not servername:
         return fallback_to_feedkeys('I can not identify the servername of this vim. You may need to pass --servername to vim at startup.')
 
@@ -274,7 +275,7 @@ def floobits_follow(follow_mode=None):
 @is_connected()
 def floobits_maybe_new_file():
     path = vim.current.buffer.name
-    if path is None or path == "":
+    if path is None or path == '':
         msg.debug('get:buf buffer has no filename')
         return None
 
@@ -378,7 +379,7 @@ def floobits_share_dir(dir_to_share, perms=None):
     except (IOError, OSError):
         pass
     except Exception:
-        msg.warn("couldn't read the floo_info file: %s" % floo_file)
+        msg.warn('couldn\'t read the floo_info file: %s' % floo_file)
 
     workspace_url = info.get('url')
     if workspace_url:
@@ -389,7 +390,7 @@ def floobits_share_dir(dir_to_share, perms=None):
         else:
             workspace_name = result['workspace']
             try:
-                # TODO: blocking. beachballs sublime 2 if API is super slow
+                # TODO: blocking. hangs UI if API is super slow
                 api.get_workspace_by_url(workspace_url)
             except HTTPError:
                 workspace_url = None
@@ -440,12 +441,15 @@ def create_workspace(workspace_name, share_path, owner, perms=None):
 
         if e.code == 400:
             workspace_name = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
-            workspace_name = vim_input('Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:' % workspace_name, workspace_name)
+            workspace_name = vim_input(
+                'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:' %
+                workspace_name,
+                workspace_name)
         elif e.code == 402:
             # TODO: better behavior. ask to create a public workspace instead
             return editor.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
         elif e.code == 409:
-            workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + "1")
+            workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + '1')
         return create_workspace(workspace_name, share_path, perms)
     except Exception as e:
         editor.error_message('Unable to create workspace: %s' % str(e))
@@ -460,49 +464,50 @@ def floobits_stop_everything():
         G.AGENT = None
     floobits_pause()
     #TODO: get this value from vim and reset it
-    vim.command("set updatetime=4000")
+    vim.command('set updatetime=4000')
 
 #NOTE: not strictly necessary
 atexit.register(floobits_stop_everything)
 
 
 def floobits_complete_signup():
-    msg.debug("Completing signup.")
+    msg.debug('Completing signup.')
     if not utils.has_browser():
-        msg.log("You need a modern browser to complete the sign up. Go to https://floobits.com to sign up.")
+        msg.log('You need a modern browser to complete the sign up. Go to https://floobits.com to sign up.')
         return
     floorc = utils.load_floorc()
     username = floorc.get('USERNAME')
     secret = floorc.get('SECRET')
-    msg.debug("Completing sign up with %s %s" % (username, secret))
+    msg.debug('Completing sign up with %s %s' % (username, secret))
     if not (username and secret):
         return msg.error('You don\'t seem to have a Floobits account of any sort.')
     webbrowser.open('https://%s/%s/pinocchio/%s/' % (G.DEFAULT_HOST, username, secret))
 
 
 def floobits_check_credentials():
-    msg.debug("Print checking credentials.")
+    msg.debug('Print checking credentials.')
     if not (G.USERNAME and G.SECRET):
         if not utils.has_browser():
-            msg.log("You need a Floobits account to use the Floobits plugin. Go to https://floobits.com to sign up.")
+            msg.log('You need a Floobits account to use the Floobits plugin. Go to https://floobits.com to sign up.')
             return
         floobits_setup_credentials()
 
 
 def floobits_setup_credentials():
-    prompt = "You need a Floobits account! Do you have one? If no we will create one for you [y/n]. "
-    d = vim_input(prompt, "")
-    if d and (d != "y" and d != "n"):
+    prompt = 'You need a Floobits account! Do you have one? If no we will create one for you [y/n]. '
+    d = vim_input(prompt, '')
+    if d and (d != 'y' and d != 'n'):
         return floobits_setup_credentials()
     agent = None
-    if d == "y":
-        msg.debug("You have an account.")
+    if d == 'y':
+        msg.debug('You have an account.')
         token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
         agent = RequestCredentialsHandler(token)
     elif not utils.get_persistent_data().get('disable_account_creation'):
         agent = CreateAccountHandler()
     if not agent:
-        msg.error("A configuration error occured earlier. Please go to floobits.com and sign up to use this plugin.\n\nWe\'re really sorry. This should never happen.")
+        msg.error('A configuration error occured earlier. Please go to floobits.com and sign up to use this plugin.\n\n'
+                  'We\'re really sorry. This should never happen.')
         return
     try:
         reactor.connect(agent, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
@@ -512,7 +517,7 @@ def floobits_setup_credentials():
 
 
 def floobits_join_workspace(workspace_url, d='', sync_to_disk=True):
-    msg.debug("workspace url is %s" % workspace_url)
+    msg.debug('workspace url is %s' % workspace_url)
     try:
         result = utils.parse_url(workspace_url)
     except Exception as e:
@@ -526,10 +531,10 @@ def floobits_join_workspace(workspace_url, d='', sync_to_disk=True):
         except Exception:
             d = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
 
-    prompt = "Give me a directory to sync data to: "
+    prompt = 'Give me a directory to sync data to: '
     if not os.path.isdir(d):
         while True:
-            d = vim_input(prompt, d, "dir")
+            d = vim_input(prompt, d, 'dir')
             if d == '':
                 continue
             d = os.path.realpath(os.path.expanduser(d))
@@ -540,18 +545,18 @@ def floobits_join_workspace(workspace_url, d='', sync_to_disk=True):
                 try:
                     utils.mkdir(d)
                 except Exception as e:
-                    prompt = "Couldn't make dir: %s because %s " % (d, str(e))
+                    prompt = 'Couldn\'t make dir %s: %s ' % (d, str(e))
                     continue
             break
     d = os.path.realpath(os.path.abspath(d) + os.sep)
     try:
         utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
     except Exception as e:
-        return msg.error("Error adding workspace to persistent.json: %s" % str(e))
+        return msg.error('Error adding workspace to persistent.json: %s' % str(e))
 
     G.PROJECT_PATH = d
     vim.command('cd %s' % G.PROJECT_PATH)
-    msg.debug("Joining workspace %s" % workspace_url)
+    msg.debug('Joining workspace %s' % workspace_url)
 
     floobits_stop_everything()
     try:
@@ -576,7 +581,7 @@ def floobits_part_workspace():
 
 def floobits_users_in_workspace():
     if not G.AGENT:
-        return msg.warn("Not connected to a workspace.")
+        return msg.warn('Not connected to a workspace.')
     vim.command('echom "Users connected to %s"' % (G.AGENT.workspace,))
     for user in G.AGENT.workspace_info['users'].values():
         vim.command('echom "  %s connected with %s on %s"' % (user['username'], user['client'], user['platform']))
@@ -584,7 +589,7 @@ def floobits_users_in_workspace():
 
 def floobits_list_messages():
     if not G.AGENT:
-        return msg.warn("Not connected to a workspace.")
+        return msg.warn('Not connected to a workspace.')
     vim.command('echom "Recent messages for %s"' % (G.AGENT.workspace,))
     for message in G.AGENT.get_messages():
         vim.command('echom "  %s"' % (message,))
@@ -592,7 +597,7 @@ def floobits_list_messages():
 
 def floobits_say_something():
     if not G.AGENT:
-        return msg.warn("Not connected to a workspace.")
+        return msg.warn('Not connected to a workspace.')
     something = vim_input('Say something in %s: ' % (G.AGENT.workspace,), '')
     if something:
         G.AGENT.send_msg(something)
