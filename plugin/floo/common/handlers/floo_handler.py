@@ -187,6 +187,7 @@ class FlooHandler(base.BaseHandler):
         buf['md5'] = cur_hash
 
         if not view:
+            msg.debug('No view. Saving buffer %s' % buf_id)
             utils.save_buf(buf)
             return
 
@@ -213,6 +214,7 @@ class FlooHandler(base.BaseHandler):
 
         view = self.get_view(buf_id)
         if not view:
+            msg.debug('No view for buf %s. Saving to disk.' % buf_id)
             return utils.save_buf(data)
 
         view.update(data)
@@ -242,14 +244,26 @@ class FlooHandler(base.BaseHandler):
         self.bufs[data['id']]['path'] = data['path']
 
     def _on_delete_buf(self, data):
-        path = utils.get_full_path(data['path'])
+        buf_id = data['id']
         try:
-            utils.rm(path)
-        except Exception:
-            pass
+            buf = self.bufs.get(buf_id)
+            if buf:
+                del self.paths_to_ids[buf['path']]
+                del self.bufs[buf_id]
+        except KeyError:
+            msg.debug('KeyError deleting buf id %s' % buf_id)
+        # TODO: if data['unlink'] == True, add to ignore?
+        action = 'removed'
+        path = utils.get_full_path(data['path'])
+        if data.get('unlink', False):
+            action = 'deleted'
+            try:
+                utils.rm(path)
+            except Exception as e:
+                msg.debug('Error deleting %s: %s' % (path, str(e)))
         user_id = data.get('user_id')
         username = self.get_username_by_id(user_id)
-        msg.log('%s deleted %s' % (username, path))
+        msg.log('%s %s %s' % (username, action, path))
 
     @utils.inlined_callbacks
     def _on_room_info(self, data):
@@ -260,7 +274,8 @@ class FlooHandler(base.BaseHandler):
 
         if 'patch' not in data['perms']:
             msg.log('No patch permission. Setting buffers to read-only')
-            should_send = yield self.ok_cancel_dialog, 'You don\'t have permission to edit this workspace. All files will be read-only.\n\nDo you want to request edit permission?'
+            should_send = yield self.ok_cancel_dialog, '''You don't have permission to edit this workspace. All files will be read-only.
+Do you want to request edit permission?'''
             if should_send:
                 self.send({'name': 'request_perms', 'perms': ['edit_room']})
 
@@ -449,9 +464,12 @@ class FlooHandler(base.BaseHandler):
                 ignored_cds.append(cd)
                 size -= cd.size
             if size > MAX_WORKSPACE_SIZE:
-                editor.error_message("Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload. Consider adding stuff to the .flooignore file." % (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0))
+                editor.error_message(
+                    'Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload. Consider adding stuff to the .flooignore file.' %
+                    (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0))
                 return
-            upload = yield self.ok_cancel_dialog, "Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload.\n\nWould you like to ignore the following and continue?\n\n%s" % \
+            upload = yield self.ok_cancel_dialog, '''Maximum workspace size is %.2fMB.\n
+%s is too big (%.2fMB) to upload.\n\nWould you like to ignore the following and continue?\n\n%s''' % \
                 (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0, "\n".join([x.path for x in ignored_cds]))
             if not upload:
                 return
