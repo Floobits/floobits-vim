@@ -46,8 +46,9 @@ from floo import editor
 
 reactor = reactor.reactor
 
+# Protocol version
 G.__VERSION__ = '0.10'
-G.__PLUGIN_VERSION__ = '1.0.0'
+G.__PLUGIN_VERSION__ = '1.1.0'
 
 utils.reload_settings()
 
@@ -423,6 +424,7 @@ def floobits_share_dir(dir_to_share, perms=None):
 
 
 def create_workspace(workspace_name, share_path, owner, perms=None):
+    workspace_url = 'https://%s/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
     try:
         api_args = {
             'name': workspace_name,
@@ -430,32 +432,28 @@ def create_workspace(workspace_name, share_path, owner, perms=None):
         }
         if perms:
             api_args['perms'] = perms
-        api.create_workspace(api_args)
-        workspace_url = 'https://%s/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
-        msg.debug('Created workspace %s' % workspace_url)
-    except HTTPError as e:
-        err_body = e.read()
-        msg.error('Unable to create workspace: %s %s' % (unicode(e), err_body))
-        if e.code not in [400, 402, 409]:
-            return editor.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
-
-        if e.code == 400:
-            workspace_name = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
-            workspace_name = vim_input(
-                'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:' %
-                workspace_name,
-                workspace_name)
-        elif e.code == 402:
-            # TODO: better behavior. ask to create a public workspace instead
-            return editor.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
-        elif e.code == 409:
-            workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + '1')
-        return create_workspace(workspace_name, share_path, perms)
+        r = api.create_workspace(api_args)
     except Exception as e:
-        editor.error_message('Unable to create workspace: %s' % str(e))
-        return
+        return editor.error_message('Unable to create workspace %s: %s' % (workspace_url, unicode(e)))
 
-    floobits_join_workspace(workspace_url, share_path, sync_to_disk=False)
+    if r.code < 400:
+        msg.debug('Created workspace %s' % workspace_url)
+        return floobits_join_workspace(workspace_url, share_path, sync_to_disk=False)
+
+    if r.code == 402:
+        # TODO: Better behavior. Ask to create a public workspace instead?
+        return editor.error_message('Unable to create workspace: %s %s' % (workspace_url, unicode(e)))
+
+    if r.code == 400:
+        workspace_name = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
+        workspace_name = vim_input(
+            'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:' % workspace_name,
+            workspace_name)
+    elif r.code == 409:
+        workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + '1')
+    else:
+        return editor.error_message('Unable to create workspace: %s %s' % (workspace_url, unicode(e)))
+    return create_workspace(workspace_name, share_path, perms)
 
 
 def floobits_stop_everything():
@@ -481,7 +479,7 @@ def floobits_complete_signup():
     msg.debug('Completing sign up with %s %s' % (username, secret))
     if not (username and secret):
         return msg.error('You don\'t seem to have a Floobits account of any sort.')
-    webbrowser.open('https://%s/%s/pinocchio/%s/' % (G.DEFAULT_HOST, username, secret))
+    webbrowser.open('https://%s/%s/pinocchio/%s' % (G.DEFAULT_HOST, username, secret))
 
 
 def floobits_check_credentials():

@@ -30,8 +30,8 @@ This will unfortuantely escape any key sequence, like ctrl-w j, unless you finis
 
 ## Installation
 
-* [Create a Floobits account](https://floobits.com/signup/) or [sign in with GitHub](https://floobits.com/login/github/?next=/dash/).
-* Add your Floobits username and API secret to `~/.floorc`. You can find your API secret on [your settings page](https://floobits.com/dash/settings/). A typical `~/.floorc` looks like this:
+* [Create a Floobits account](https://floobits.com/signup) or [sign in with GitHub](https://floobits.com/login/github?next=/dash).
+* Add your Floobits username and API secret to `~/.floorc`. You can find your API secret on [your settings page](https://floobits.com/dash/settings). A typical `~/.floorc` looks like this:
 
 ```
 username myuser
@@ -46,7 +46,7 @@ vim_executable mvim
 ## Usage
 
 * `:FlooShareDir /path/to/files`. Share a directory with others. This will create a new workspace, populate it with the files in that directory, and open the workspace's settings in your browser.
-* `:FlooJoinWorkspace https://floobits.com/r/owner/workspace_name/`. Join a Floobits workspace. Workspace URLs are the same as what you see in the web editor.
+* `:FlooJoinWorkspace https://floobits.com/owner/workspace_name`. Join a Floobits workspace. Workspace URLs are the same as what you see in the web editor.
 * `:FlooPartWorkspace`. Leave the workspace.
 * `:FlooToggleFollowMode`. Toggle follow mode. Follow mode will follow the most recent changes to buffers.
 * `:FlooSummon`. Make everyone in the workspace jump to your cursor.
