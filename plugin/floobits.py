@@ -331,9 +331,17 @@ def floobits_buf_enter():
     buf = G.AGENT.get_buf_by_path(vim.current.buffer.name)
     if not buf:
         return
+    buf_id = buf['id']
+    d = G.AGENT.on_load.get(buf_id)
+    if d:
+        del G.AGENT.on_load[buf_id]
+        try:
+            d['patch']()
+        except Exception as e:
+            msg.debug('Error running on_load patch handler for buf %s: %s' % (buf_id, str(e)))
     # NOTE: we call highlight twice in follow mode... thats stupid
     for user_id, highlight in G.AGENT.user_highlights.items():
-        if highlight['id'] == buf['id']:
+        if highlight['id'] == buf_id:
             G.AGENT._on_highlight(highlight)
 
 

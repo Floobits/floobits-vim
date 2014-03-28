@@ -67,7 +67,7 @@ class View(object):
         text = '\n'.join(self.vim_buf[:]) + tail
         return text.decode('utf-8')
 
-    def update(self, data):
+    def update(self, data, message=True):
         self.set_text(data["buf"])
 
     def set_text(self, text):
