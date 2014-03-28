@@ -135,16 +135,6 @@ class VimHandler(floo_handler.FlooHandler):
             return
         return View(vb)
 
-    def save_buf(self, buf):
-        path = utils.get_full_path(buf['path'])
-        utils.mkdir(os.path.split(path)[0])
-        with open(path, 'wb') as fd:
-            if buf['encoding'] == 'utf8':
-                fd.write(buf['buf'].encode('utf-8'))
-            else:
-                fd.write(buf['buf'])
-        return path
-
     def ok_cancel_dialog(self, msg, cb=None):
         res = editor.ok_cancel_dialog(msg)
         return (cb and cb(res) or res)

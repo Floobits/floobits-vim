@@ -47,7 +47,7 @@ from floo import editor
 reactor = reactor.reactor
 
 # Protocol version
-G.__VERSION__ = '0.10'
+G.__VERSION__ = '0.11'
 G.__PLUGIN_VERSION__ = '1.1.0'
 
 utils.reload_settings()
@@ -393,7 +393,7 @@ def floobits_share_dir(dir_to_share, perms=None):
             try:
                 # TODO: blocking. hangs UI if API is super slow
                 api.get_workspace_by_url(workspace_url)
-            except HTTPError:
+            except Exception:
                 workspace_url = None
                 workspace_name = os.path.basename(dir_to_share)
             else:
@@ -404,7 +404,7 @@ def floobits_share_dir(dir_to_share, perms=None):
     if workspace_url:
         try:
             api.get_workspace_by_url(workspace_url)
-        except HTTPError:
+        except Exception:
             pass
         else:
             return floobits_join_workspace(workspace_url, dir_to_share, sync_to_disk=False)
