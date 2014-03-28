@@ -12,11 +12,22 @@ COMMANDS
                                                 *FlooJoinWorkspace*
 :FlooJoinWorkspace [url]    Joins a Floobits workspace. URLs look like
                             https://floobits.com/owner/workspace_name/
-                            workspace urls are the same as what you see in the 
+                            workspace urls are the same as what you see in the
                             web editor.
 
                                                 *FlooLeaveWorkspace*
 :FlooLeaveWorkspace         Leaves a Floobits workspace.
+
+                                                *FlooShareDirPublic*
+:FlooShareDirPublic [path]  Shares a directory with others. This will create a
+                            new workspace if one doesn't already exist. When
+                            done, the workspace's settings will open in your
+                            browser.
+
+                                                *FlooShareDirPrivate*
+:FlooShareDirPrivate [path] Same as FlooShareDirPublic, but with workspace
+                            permissions restricted to the owner. Others cannot
+                            view the workspace.
 
                                                 *FlooToggleFollowMode*
 :FlooToggleFollowMode       Follow mode follows the most recent change in a
@@ -26,12 +37,14 @@ COMMANDS
 :FlooSummon                 Force everyone else in the workspace to jump to your
                             cursor.
 
+
 TROUBLESHOOTING
 
-To increase the logging level, add "let floo_log_level = 'debug'" to your
-vimrc.
+To increase the logging level, add "debug 1" to your ~/.floorc.
 
 Other plugins can interfere with Floobits. For example, YouCompleteMe changes
 updatetime to 2000 milliseconds. This causes increased latency and decreased
 reliability when collaborating. If you experience problems, try disabling
 other plugins before submitting a bug report.
+
+If you need help, please see https://floobits.com/help#support

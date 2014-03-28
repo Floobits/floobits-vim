@@ -46,14 +46,11 @@ from floo import editor
 
 reactor = reactor.reactor
 
-G.__VERSION__ = '0.10'
-G.__PLUGIN_VERSION__ = '1.0.0'
+# Protocol version
+G.__VERSION__ = '0.11'
+G.__PLUGIN_VERSION__ = '2.0.0'
 
 utils.reload_settings()
-
-# enable debug with let floo_log_level = 'debug'
-floo_log_level = vim.eval('floo_log_level')
-msg.LOG_LEVEL = msg.LOG_LEVELS.get(floo_log_level.upper(), msg.LOG_LEVELS['MSG'])
 
 migrations.rename_floobits_dir()
 migrations.migrate_symlinks()
@@ -69,7 +66,7 @@ ticker = None
 ticker_errors = 0
 using_feedkeys = False
 
-ticker_python = """import sys; import subprocess; import time
+ticker_python = '''import sys; import subprocess; import time
 args = ['{binary}', '--servername', '{servername}', '--remote-expr', 'g:floobits_global_tick()']
 while True:
     time.sleep({sleep})
@@ -85,9 +82,9 @@ while True:
         continue
     sys.stderr.write(stderrdata)
     sys.exit(1)
-"""
+'''
 
-FLOOBITS_INFO = """
+FLOOBITS_INFO = '''
 floobits_version: {version}
 # not updated until FlooJoinWorkspace is called
 mode: {mode}
@@ -95,14 +92,24 @@ updatetime: {updatetime}
 clientserver_support: {cs}
 servername: {servername}
 ticker_errors: {ticker_errors}
-"""
+'''
+
+
+def _get_line_endings():
+    formats = vim.eval('&fileformats')
+    if not formats:
+        return '\n'
+    name = formats.split(',')[0]
+    if name == 'dos':
+        return '\r\n'
+    return '\n'
 
 
 def floobits_info():
     kwargs = {
         'cs': bool(int(vim.eval('has("clientserver")'))),
         'mode': (using_feedkeys and 'feedkeys') or 'client-server',
-        'servername': vim.eval("v:servername"),
+        'servername': vim.eval('v:servername'),
         'ticker_errors': ticker_errors,
         'updatetime': vim.eval('&l:updatetime'),
         'version': G.__PLUGIN_VERSION__,
@@ -119,7 +126,7 @@ def floobits_pause():
 
     if using_feedkeys:
         call_feedkeys = False
-        vim.command("set updatetime=4000")
+        vim.command('set updatetime=4000')
     else:
         if ticker is None:
             return
@@ -138,7 +145,7 @@ def floobits_unpause():
 
     if using_feedkeys:
         call_feedkeys = True
-        vim.command("set updatetime=250")
+        vim.command('set updatetime=250')
     else:
         start_event_loop()
 
@@ -146,7 +153,7 @@ def floobits_unpause():
 def fallback_to_feedkeys(warning):
     global using_feedkeys
     using_feedkeys = True
-    warning += " Falling back to f//e hack which will break some key commands. You may need to call FlooPause/FlooUnPause before some commands."
+    warning += ' Falling back to f//e hack which will break some key commands. You may need to call FlooPause/FlooUnPause before some commands.'
     msg.warn(warning)
     floobits_unpause()
 
@@ -174,13 +181,14 @@ def start_event_loop():
         return
 
     if not bool(int(vim.eval('has("clientserver")'))):
-        return fallback_to_feedkeys("This VIM was not compiled with clientserver support. You should consider using a different vim!")
+        return fallback_to_feedkeys('This VIM was not compiled with clientserver support. You should consider using a different vim!')
 
     exe = getattr(G, 'VIM_EXECUTABLE', None)
     if not exe:
-        return fallback_to_feedkeys("Your vim was compiled with clientserver, but I don't know the name of the vim executable.  Please define it in your ~/.floorc using the vim_executable directive. e.g. 'vim_executable mvim'.")
+        return fallback_to_feedkeys('Your vim was compiled with clientserver, but I don\'t know the name of the vim executable.'
+                                    'Please define it in your ~/.floorc using the vim_executable directive. e.g. \'vim_executable mvim\'.')
 
-    servername = vim.eval("v:servername")
+    servername = vim.eval('v:servername')
     if not servername:
         return fallback_to_feedkeys('I can not identify the servername of this vim. You may need to pass --servername to vim at startup.')
 
@@ -274,7 +282,7 @@ def floobits_follow(follow_mode=None):
 @is_connected()
 def floobits_maybe_new_file():
     path = vim.current.buffer.name
-    if path is None or path == "":
+    if path is None or path == '':
         msg.debug('get:buf buffer has no filename')
         return None
 
@@ -323,9 +331,17 @@ def floobits_buf_enter():
     buf = G.AGENT.get_buf_by_path(vim.current.buffer.name)
     if not buf:
         return
+    buf_id = buf['id']
+    d = G.AGENT.on_load.get(buf_id)
+    if d:
+        del G.AGENT.on_load[buf_id]
+        try:
+            d['patch']()
+        except Exception as e:
+            msg.debug('Error running on_load patch handler for buf %s: %s' % (buf_id, str(e)))
     # NOTE: we call highlight twice in follow mode... thats stupid
     for user_id, highlight in G.AGENT.user_highlights.items():
-        if highlight['id'] == buf['id']:
+        if highlight['id'] == buf_id:
             G.AGENT._on_highlight(highlight)
 
 
@@ -355,7 +371,17 @@ def floobits_share_dir_private(dir_to_share):
     return floobits_share_dir(dir_to_share, perms={'AnonymousUser': []})
 
 
-def floobits_share_dir(dir_to_share, perms=None):
+def floobits_share_dir_public(dir_to_share):
+    return floobits_share_dir(dir_to_share, perms={'AnonymousUser': ['view_room']})
+
+
+def floobits_share_dir(dir_to_share, perms):
+    utils.reload_settings()
+    workspace_name = os.path.basename(dir_to_share)
+    G.PROJECT_PATH = os.path.realpath(dir_to_share)
+    msg.debug('%s %s %s' % (G.USERNAME, workspace_name, G.PROJECT_PATH))
+
+    file_to_share = None
     dir_to_share = os.path.expanduser(dir_to_share)
     dir_to_share = utils.unfuck_path(dir_to_share)
     dir_to_share = os.path.abspath(dir_to_share)
@@ -364,7 +390,13 @@ def floobits_share_dir(dir_to_share, perms=None):
     workspace_name = os.path.basename(dir_to_share)
 
     if os.path.isfile(dir_to_share):
-        return msg.error('give me a directory please')
+        file_to_share = dir_to_share
+        dir_to_share = os.path.dirname(dir_to_share)
+
+    try:
+        utils.mkdir(dir_to_share)
+    except Exception:
+        return msg.error("The directory %s doesn't exist and I can't create it." % dir_to_share)
 
     if not os.path.isdir(dir_to_share):
         return msg.error('The directory %s doesn\'t appear to exist' % dir_to_share)
@@ -378,39 +410,30 @@ def floobits_share_dir(dir_to_share, perms=None):
     except (IOError, OSError):
         pass
     except Exception:
-        msg.warn("couldn't read the floo_info file: %s" % floo_file)
+        msg.warn('couldn\'t read the floo_info file: %s' % floo_file)
 
     workspace_url = info.get('url')
     if workspace_url:
-        try:
-            result = utils.parse_url(workspace_url)
-        except Exception as e:
-            msg.error(str(e))
-        else:
-            workspace_name = result['workspace']
-            try:
-                # TODO: blocking. beachballs sublime 2 if API is super slow
-                api.get_workspace_by_url(workspace_url)
-            except HTTPError:
-                workspace_url = None
-                workspace_name = os.path.basename(dir_to_share)
-            else:
-                utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, dir_to_share)
+        parsed_url = api.prejoin_workspace(workspace_url, dir_to_share, {'perms': perms})
+        if parsed_url:
+            return floobits_join_workspace(workspace_url, dir_to_share, upload_path=file_to_share or dir_to_share)
 
-    workspace_url = utils.get_workspace_by_path(dir_to_share) or workspace_url
+    filter_func = lambda workspace_url: api.prejoin_workspace(workspace_url, dir_to_share, {'perms': perms})
+    parsed_url = utils.get_workspace_by_path(dir_to_share, filter_func)
 
-    if workspace_url:
-        try:
-            api.get_workspace_by_url(workspace_url)
-        except HTTPError:
-            pass
-        else:
-            return floobits_join_workspace(workspace_url, dir_to_share, sync_to_disk=False)
+    if parsed_url:
+        return floobits_join_workspace(workspace_url, dir_to_share, upload_path=file_to_share or dir_to_share)
+    try:
+        r = api.get_orgs_can_admin()
+    except IOError as e:
+        return editor.error_message('Error getting org list: %s' % str(e))
+    if r.code >= 400 or len(r.body) == 0:
+        workspace_name = vim_input('Workspace name:', workspace_name, workspace_name)
+        return create_workspace(workspace_name, dir_to_share, G.USERNAME, perms, upload_path=file_to_share or dir_to_share)
 
-    orgs = api.get_orgs_can_admin()
-    orgs = json.loads(orgs.read().decode('utf-8'))
+    orgs = r.body
     if len(orgs) == 0:
-        return create_workspace(workspace_name, dir_to_share, G.USERNAME, perms)
+        return create_workspace(workspace_name, dir_to_share, G.USERNAME, perms, upload_path=file_to_share or dir_to_share)
     choices = []
     choices.append(G.USERNAME)
     for o in orgs:
@@ -418,10 +441,11 @@ def floobits_share_dir(dir_to_share, perms=None):
 
     owner = vim_choice('Create workspace for:', G.USERNAME, choices)
     if owner:
-        create_workspace(workspace_name, dir_to_share, owner, perms)
+        return create_workspace(workspace_name, dir_to_share, owner, perms, upload_path=file_to_share or dir_to_share)
 
 
-def create_workspace(workspace_name, share_path, owner, perms=None):
+def create_workspace(workspace_name, share_path, owner, perms=None, upload_path=None):
+    workspace_url = 'https://%s/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
     try:
         api_args = {
             'name': workspace_name,
@@ -429,29 +453,28 @@ def create_workspace(workspace_name, share_path, owner, perms=None):
         }
         if perms:
             api_args['perms'] = perms
-        api.create_workspace(api_args)
-        workspace_url = 'https://%s/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
-        msg.debug('Created workspace %s' % workspace_url)
-    except HTTPError as e:
-        err_body = e.read()
-        msg.error('Unable to create workspace: %s %s' % (unicode(e), err_body))
-        if e.code not in [400, 402, 409]:
-            return editor.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
-
-        if e.code == 400:
-            workspace_name = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
-            workspace_name = vim_input('Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:' % workspace_name, workspace_name)
-        elif e.code == 402:
-            # TODO: better behavior. ask to create a public workspace instead
-            return editor.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
-        elif e.code == 409:
-            workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + "1")
-        return create_workspace(workspace_name, share_path, perms)
+        r = api.create_workspace(api_args)
     except Exception as e:
-        editor.error_message('Unable to create workspace: %s' % str(e))
-        return
+        return editor.error_message('Unable to create workspace %s: %s' % (workspace_url, unicode(e)))
 
-    floobits_join_workspace(workspace_url, share_path, sync_to_disk=False)
+    if r.code < 400:
+        msg.debug('Created workspace %s' % workspace_url)
+        return floobits_join_workspace(workspace_url, share_path, upload_path=upload_path)
+
+    if r.code == 402:
+        # TODO: Better behavior. Ask to create a public workspace instead?
+        return editor.error_message('Unable to create workspace: %s %s' % (workspace_url, unicode(e)))
+
+    if r.code == 400:
+        workspace_name = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
+        workspace_name = vim_input(
+            'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:' % workspace_name,
+            workspace_name)
+    elif r.code == 409:
+        workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + '1')
+    else:
+        return editor.error_message('Unable to create workspace: %s %s' % (workspace_url, unicode(e)))
+    return create_workspace(workspace_name, share_path, perms, upload_path=upload_path)
 
 
 def floobits_stop_everything():
@@ -460,49 +483,50 @@ def floobits_stop_everything():
         G.AGENT = None
     floobits_pause()
     #TODO: get this value from vim and reset it
-    vim.command("set updatetime=4000")
+    vim.command('set updatetime=4000')
 
 #NOTE: not strictly necessary
 atexit.register(floobits_stop_everything)
 
 
 def floobits_complete_signup():
-    msg.debug("Completing signup.")
+    msg.debug('Completing signup.')
     if not utils.has_browser():
-        msg.log("You need a modern browser to complete the sign up. Go to https://floobits.com to sign up.")
+        msg.log('You need a modern browser to complete the sign up. Go to https://floobits.com to sign up.')
         return
     floorc = utils.load_floorc()
     username = floorc.get('USERNAME')
     secret = floorc.get('SECRET')
-    msg.debug("Completing sign up with %s %s" % (username, secret))
+    msg.debug('Completing sign up with %s %s' % (username, secret))
     if not (username and secret):
         return msg.error('You don\'t seem to have a Floobits account of any sort.')
-    webbrowser.open('https://%s/%s/pinocchio/%s/' % (G.DEFAULT_HOST, username, secret))
+    webbrowser.open('https://%s/%s/pinocchio/%s' % (G.DEFAULT_HOST, username, secret))
 
 
 def floobits_check_credentials():
-    msg.debug("Print checking credentials.")
+    msg.debug('Print checking credentials.')
     if not (G.USERNAME and G.SECRET):
         if not utils.has_browser():
-            msg.log("You need a Floobits account to use the Floobits plugin. Go to https://floobits.com to sign up.")
+            msg.log('You need a Floobits account to use the Floobits plugin. Go to https://floobits.com to sign up.')
             return
         floobits_setup_credentials()
 
 
 def floobits_setup_credentials():
-    prompt = "You need a Floobits account! Do you have one? If no we will create one for you [y/n]. "
-    d = vim_input(prompt, "")
-    if d and (d != "y" and d != "n"):
+    prompt = 'You need a Floobits account! Do you have one? If no we will create one for you [y/n]. '
+    d = vim_input(prompt, '')
+    if d and (d != 'y' and d != 'n'):
         return floobits_setup_credentials()
     agent = None
-    if d == "y":
-        msg.debug("You have an account.")
+    if d == 'y':
+        msg.debug('You have an account.')
         token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
         agent = RequestCredentialsHandler(token)
     elif not utils.get_persistent_data().get('disable_account_creation'):
         agent = CreateAccountHandler()
     if not agent:
-        msg.error("A configuration error occured earlier. Please go to floobits.com and sign up to use this plugin.\n\nWe\'re really sorry. This should never happen.")
+        msg.error('A configuration error occured earlier. Please go to floobits.com and sign up to use this plugin.\n\n'
+                  'We\'re really sorry. This should never happen.')
         return
     try:
         reactor.connect(agent, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
@@ -511,8 +535,20 @@ def floobits_setup_credentials():
         msg.debug(traceback.format_exc())
 
 
-def floobits_join_workspace(workspace_url, d='', sync_to_disk=True):
-    msg.debug("workspace url is %s" % workspace_url)
+def floobits_check_and_join_workspace(workspace_url):
+    try:
+        r = api.get_workspace_by_url(workspace_url)
+    except Exception as e:
+        return editor.error_message('Error joining %s: %s' % (workspace_url, str(e)))
+    if r.code >= 400:
+        return editor.error_message('Error joining %s: %s' % (workspace_url, r.body))
+    msg.debug('Workspace %s exists' % workspace_url)
+    return floobits_join_workspace(workspace_url, share_path, upload_path=upload_path)
+
+
+def floobits_join_workspace(workspace_url, d='', upload_path=None):
+    editor.line_endings = _get_line_endings()
+    msg.debug('workspace url is %s' % workspace_url)
     try:
         result = utils.parse_url(workspace_url)
     except Exception as e:
@@ -526,10 +562,10 @@ def floobits_join_workspace(workspace_url, d='', sync_to_disk=True):
         except Exception:
             d = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
 
-    prompt = "Give me a directory to sync data to: "
+    prompt = 'Save workspace files to: '
     if not os.path.isdir(d):
         while True:
-            d = vim_input(prompt, d, "dir")
+            d = vim_input(prompt, d, 'dir')
             if d == '':
                 continue
             d = os.path.realpath(os.path.expanduser(d))
@@ -540,25 +576,25 @@ def floobits_join_workspace(workspace_url, d='', sync_to_disk=True):
                 try:
                     utils.mkdir(d)
                 except Exception as e:
-                    prompt = "Couldn't make dir: %s because %s " % (d, str(e))
+                    prompt = 'Couldn\'t make dir %s: %s ' % (d, str(e))
                     continue
             break
     d = os.path.realpath(os.path.abspath(d) + os.sep)
     try:
         utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
     except Exception as e:
-        return msg.error("Error adding workspace to persistent.json: %s" % str(e))
+        return msg.error('Error adding workspace to persistent.json: %s' % str(e))
 
     G.PROJECT_PATH = d
     vim.command('cd %s' % G.PROJECT_PATH)
-    msg.debug("Joining workspace %s" % workspace_url)
+    msg.debug('Joining workspace %s' % workspace_url)
 
     floobits_stop_everything()
     try:
         conn = VimHandler(result['owner'], result['workspace'])
+        if upload_path:
+            conn.once('room_info', lambda: G.AGENT.upload(upload_path))
         reactor.connect(conn, result['host'], result['port'], result['secure'])
-        if not sync_to_disk:
-            conn.once('room_info', lambda: G.AGENT.upload(G.PROJECT_PATH))
     except Exception as e:
         msg.error(str(e))
         tb = traceback.format_exc()
@@ -576,7 +612,7 @@ def floobits_part_workspace():
 
 def floobits_users_in_workspace():
     if not G.AGENT:
-        return msg.warn("Not connected to a workspace.")
+        return msg.warn('Not connected to a workspace.')
     vim.command('echom "Users connected to %s"' % (G.AGENT.workspace,))
     for user in G.AGENT.workspace_info['users'].values():
         vim.command('echom "  %s connected with %s on %s"' % (user['username'], user['client'], user['platform']))
@@ -584,7 +620,7 @@ def floobits_users_in_workspace():
 
 def floobits_list_messages():
     if not G.AGENT:
-        return msg.warn("Not connected to a workspace.")
+        return msg.warn('Not connected to a workspace.')
     vim.command('echom "Recent messages for %s"' % (G.AGENT.workspace,))
     for message in G.AGENT.get_messages():
         vim.command('echom "  %s"' % (message,))
@@ -592,7 +628,7 @@ def floobits_list_messages():
 
 def floobits_say_something():
     if not G.AGENT:
-        return msg.warn("Not connected to a workspace.")
+        return msg.warn('Not connected to a workspace.')
     something = vim_input('Say something in %s: ' % (G.AGENT.workspace,), '')
     if something:
         G.AGENT.send_msg(something)

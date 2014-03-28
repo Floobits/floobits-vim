@@ -57,7 +57,7 @@ class VimHandler(floo_handler.FlooHandler):
         reported = set()
         while self.views_changed:
             v, buf = self.views_changed.pop()
-            if not G.JOINED_WORKSPACE:
+            if not G.AGENT or not G.AGENT.joined_workspace:
                 msg.debug('Not connected. Discarding view change.')
                 continue
             if 'patch' not in G.PERMS:
@@ -82,7 +82,7 @@ class VimHandler(floo_handler.FlooHandler):
         while self.selection_changed:
             v, buf, summon = self.selection_changed.pop()
 
-            if not G.JOINED_WORKSPACE:
+            if not G.AGENT or not G.AGENT.joined_workspace:
                 msg.debug('Not connected. Discarding selection change.')
                 continue
             # consume highlight events to avoid leak
@@ -135,16 +135,6 @@ class VimHandler(floo_handler.FlooHandler):
             return
         return View(vb)
 
-    def save_buf(self, buf):
-        path = utils.get_full_path(buf['path'])
-        utils.mkdir(os.path.split(path)[0])
-        with open(path, 'wb') as fd:
-            if buf['encoding'] == 'utf8':
-                fd.write(buf['buf'].encode('utf-8'))
-            else:
-                fd.write(buf['buf'])
-        return path
-
     def ok_cancel_dialog(self, msg, cb=None):
         res = editor.ok_cancel_dialog(msg)
         return (cb and cb(res) or res)
@@ -175,7 +165,6 @@ class VimHandler(floo_handler.FlooHandler):
 
     def reset(self):
         super(self.__class__, self).reset()
-        self.on_load = {}
         self.on_clone = {}
         self.create_buf_cbs = {}
         self.temp_disable_stalk = False

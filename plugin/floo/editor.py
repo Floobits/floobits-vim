@@ -16,6 +16,7 @@ timeouts = defaultdict(list)
 top_timeout_id = 0
 cancelled_timeouts = set()
 calling_timeouts = False
+line_endings = "\n"
 welcome_text = 'Welcome %s!\n\nYou are all set to collaborate. You should check out our docs at https://%s/help/plugins/#sublime-usage. \
 You must run \':FlooCompleteSignup\' before you can login to floobits.com.'
 
@@ -117,3 +118,7 @@ def open_file(filename):
 
 def platform():
     return sys.platform
+
+
+def get_line_endings(path=None):
+    return line_endings

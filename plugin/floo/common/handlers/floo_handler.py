@@ -2,7 +2,13 @@ import os
 import sys
 import hashlib
 import base64
+import collections
 from operator import attrgetter
+
+try:
+    import io
+except ImportError:
+    io = None
 
 try:
     from . import base
@@ -36,8 +42,6 @@ class FlooHandler(base.BaseHandler):
         self.workspace = workspace
         self.should_get_bufs = get_bufs
         self.reset()
-        self.bufs = {}
-        self.paths_to_ids = {}
 
     def _on_highlight(self, data):
         raise NotImplementedError("_on_highlight not implemented")
@@ -47,6 +51,14 @@ class FlooHandler(base.BaseHandler):
 
     def get_view(self, buf_id):
         raise NotImplementedError("get_view not implemented")
+
+    def build_protocol(self, *args):
+        self.proto = super(FlooHandler, self).build_protocol(*args)
+
+        def f():
+            self.joined_workspace = False
+        self.proto.on("cleanup", f)
+        return self.proto
 
     def get_username_by_id(self, user_id):
         try:
@@ -107,6 +119,7 @@ class FlooHandler(base.BaseHandler):
         self.bufs = {}
         self.paths_to_ids = {}
         self.save_on_get_bufs = set()
+        self.on_load = collections.defaultdict(dict)
 
     def _on_patch(self, data):
         buf_id = data['id']
@@ -187,7 +200,13 @@ class FlooHandler(base.BaseHandler):
         buf['md5'] = cur_hash
 
         if not view:
-            utils.save_buf(buf)
+            msg.debug('No view. Not saving buffer %s' % buf_id)
+
+            def _on_load():
+                v = self.get_view(buf_id)
+                if v:
+                    v.update(buf, message=False)
+            self.on_load[buf_id]['patch'] = _on_load
             return
 
         view.apply_patches(buf, t, data['username'])
@@ -213,6 +232,7 @@ class FlooHandler(base.BaseHandler):
 
         view = self.get_view(buf_id)
         if not view:
+            msg.debug('No view for buf %s. Saving to disk.' % buf_id)
             return utils.save_buf(data)
 
         view.update(data)
@@ -242,27 +262,43 @@ class FlooHandler(base.BaseHandler):
         self.bufs[data['id']]['path'] = data['path']
 
     def _on_delete_buf(self, data):
-        path = utils.get_full_path(data['path'])
+        buf_id = data['id']
         try:
-            utils.rm(path)
-        except Exception:
-            pass
+            buf = self.bufs.get(buf_id)
+            if buf:
+                del self.paths_to_ids[buf['path']]
+                del self.bufs[buf_id]
+        except KeyError:
+            msg.debug('KeyError deleting buf id %s' % buf_id)
+        # TODO: if data['unlink'] == True, add to ignore?
+        action = 'removed'
+        path = utils.get_full_path(data['path'])
+        if data.get('unlink', False):
+            action = 'deleted'
+            try:
+                utils.rm(path)
+            except Exception as e:
+                msg.debug('Error deleting %s: %s' % (path, str(e)))
         user_id = data.get('user_id')
         username = self.get_username_by_id(user_id)
-        msg.log('%s deleted %s' % (username, path))
+        msg.log('%s %s %s' % (username, action, path))
 
     @utils.inlined_callbacks
     def _on_room_info(self, data):
         self.reset()
-        G.JOINED_WORKSPACE = True
+        self.joined_workspace = True
         self.workspace_info = data
         G.PERMS = data['perms']
 
         if 'patch' not in data['perms']:
+            no_perms_msg = '''You don't have permission to edit this workspace. All files will be read-only.'''
             msg.log('No patch permission. Setting buffers to read-only')
-            should_send = yield self.ok_cancel_dialog, 'You don\'t have permission to edit this workspace. All files will be read-only.\n\nDo you want to request edit permission?'
-            if should_send:
-                self.send({'name': 'request_perms', 'perms': ['edit_room']})
+            if 'request_perm' in data['perms']:
+                should_send = yield self.ok_cancel_dialog, no_perms_msg + '\nDo you want to request edit permission?'
+                if should_send:
+                    self.send({'name': 'request_perms', 'perms': ['edit_room']})
+            else:
+                editor.error_message(no_perms_msg)
 
         floo_json = {
             'url': utils.to_workspace_url({
@@ -297,18 +333,26 @@ class FlooHandler(base.BaseHandler):
                     changed_bufs.append(buf_id)
             else:
                 try:
-                    buf_fd = open(buf_path, 'rb')
-                    buf_buf = buf_fd.read()
-                    md5 = hashlib.md5(buf_buf).hexdigest()
+                    if buf['encoding'] == "utf8":
+                        if io:
+                            buf_fd = io.open(buf_path, 'Urt', encoding='utf8')
+                            buf_buf = buf_fd.read()
+                        else:
+                            buf_fd = open(buf_path, 'rb')
+                            buf_buf = buf_fd.read().decode('utf-8').replace('\r\n', '\n')
+                        md5 = hashlib.md5(buf_buf.encode('utf-8')).hexdigest()
+                    else:
+                        buf_fd = open(buf_path, 'rb')
+                        buf_buf = buf_fd.read()
+                        md5 = hashlib.md5(buf_buf).hexdigest()
                     if md5 == buf['md5']:
                         msg.debug('md5 sum matches. not getting buffer %s' % buf['path'])
-                        if buf['encoding'] == 'utf8':
-                            buf_buf = buf_buf.decode('utf-8')
                         buf['buf'] = buf_buf
                     elif self.should_get_bufs:
+                        msg.debug('md5 should not getting buffer %s' % buf['path'])
                         changed_bufs.append(buf_id)
                 except Exception as e:
-                    msg.debug('Error calculating md5:', e)
+                    msg.debug('Error calculating md5 for %s, %s' % (buf['path'], e))
                     missing_bufs.append(buf_id)
 
         if changed_bufs and self.should_get_bufs:
@@ -380,12 +424,14 @@ class FlooHandler(base.BaseHandler):
         buf = self.bufs.get(buf_id)
         if not buf:
             return
-        if G.MIRRORED_SAVES:
-            view = self.get_view(data['id'])
-            if view:
-                self.save_view(view)
-            elif 'buf' in buf:
-                utils.save_buf(buf)
+        on_view_load = self.on_load.get(buf_id)
+        if on_view_load:
+            del on_view_load['patch']
+        view = self.get_view(data['id'])
+        if view:
+            self.save_view(view)
+        elif 'buf' in buf:
+            utils.save_buf(buf)
         username = self.get_username_by_id(data['user_id'])
         msg.log('%s saved buffer %s' % (username, buf['path']))
 
@@ -437,6 +483,9 @@ class FlooHandler(base.BaseHandler):
     def _on_msg(self, data):
         self.on_msg(data)
 
+    def _on_ping(self, data):
+        self.send({'name': 'pong'})
+
     @utils.inlined_callbacks
     def upload(self, path, cb=None):
         ig = ignore.Ignore(None, path)
@@ -449,9 +498,12 @@ class FlooHandler(base.BaseHandler):
                 ignored_cds.append(cd)
                 size -= cd.size
             if size > MAX_WORKSPACE_SIZE:
-                editor.error_message("Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload. Consider adding stuff to the .flooignore file." % (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0))
+                editor.error_message(
+                    'Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload. Consider adding stuff to the .flooignore file.' %
+                    (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0))
                 return
-            upload = yield self.ok_cancel_dialog, "Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload.\n\nWould you like to ignore the following and continue?\n\n%s" % \
+            upload = yield self.ok_cancel_dialog, '''Maximum workspace size is %.2fMB.\n
+%s is too big (%.2fMB) to upload.\n\nWould you like to ignore the following and continue?\n\n%s''' % \
                 (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0, "\n".join([x.path for x in ignored_cds]))
             if not upload:
                 return

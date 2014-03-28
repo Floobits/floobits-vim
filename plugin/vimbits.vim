@@ -109,7 +109,7 @@ function! s:SetAutoCmd()
 endfunction
 
 "TODO: populate with a default url of https://floobits.com/
-command! -nargs=1 FlooJoinWorkspace :python floobits_join_workspace(<f-args>)
+command! -nargs=1 FlooJoinWorkspace :python floobits_check_and_join_workspace(<f-args>)
 
 command! FlooLeaveWorkspace :python floobits_part_workspace()
 command! FlooPartworkspace :python floobits_part_workspace()
@@ -131,7 +131,7 @@ command! FlooUsersInWorkspace :python floobits_users_in_workspace()
 command! FlooListMessages :python floobits_list_messages()
 command! FlooSaySomething :python floobits_say_something()
 
-command! -nargs=1 -complete=dir FlooShareDir :python floobits_share_dir(<f-args>)
+command! -nargs=1 -complete=dir FlooShareDirPublic :python floobits_share_dir_public(<f-args>)
 command! -nargs=1 -complete=dir FlooShareDirPrivate :python floobits_share_dir_private(<f-args>)
 command! -nargs=? -complete=file FlooAddBuf :python floobits_add_buf(<f-args>)
 

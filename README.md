@@ -1,6 +1,6 @@
 # [Floobits](https://floobits.com/) Vim Plugin
 
-Real-time collaborative editing. Think Etherpad, but with native editors. This is the plugin for Vim. We also have plugins for [Emacs](https://github.com/Floobits/floobits-emacs) and [Sublime Text](https://github.com/Floobits/floobits-sublime), as well as a web-based editor.
+Real-time collaborative editing. Think Etherpad, but with native editors. This is the plugin for Vim. We also have plugins for [Emacs](https://github.com/Floobits/floobits-emacs), [Sublime Text](https://github.com/Floobits/floobits-sublime), and [IntelliJ](https://github.com/Floobits/floobits-intellij), as well as a web-based editor that supports video chat and screen sharing.
 
 ### Development status: fairly stable, but conflicts with some Vim features such as keymaps and leader key.
 
@@ -30,8 +30,8 @@ This will unfortuantely escape any key sequence, like ctrl-w j, unless you finis
 
 ## Installation
 
-* [Create a Floobits account](https://floobits.com/signup/) or [sign in with GitHub](https://floobits.com/login/github/?next=/dash/).
-* Add your Floobits username and API secret to `~/.floorc`. You can find your API secret on [your settings page](https://floobits.com/dash/settings/). A typical `~/.floorc` looks like this:
+* [Create a Floobits account](https://floobits.com/signup) or [sign in with GitHub](https://floobits.com/login/github?next=/dash).
+* Add your Floobits username and API secret to `~/.floorc`. You can find your API secret on [your settings page](https://floobits.com/dash/settings). A typical `~/.floorc` looks like this:
 
 ```
 username myuser
@@ -45,8 +45,9 @@ vim_executable mvim
 
 ## Usage
 
-* `:FlooShareDir /path/to/files`. Share a directory with others. This will create a new workspace, populate it with the files in that directory, and open the workspace's settings in your browser.
-* `:FlooJoinWorkspace https://floobits.com/r/owner/workspace_name/`. Join a Floobits workspace. Workspace URLs are the same as what you see in the web editor.
+* `:FlooShareDirPublic /path/to/files`. Share a directory with others. This will create a new workspace, populate it with the files in that directory, and open the workspace's settings in your browser.
+* `:FlooShareDirPrivate /path/to/files`. Share a directory with others. This will create a new workspace, populate it with the files in that directory, and open the workspace's settings in your browser.
+* `:FlooJoinWorkspace https://floobits.com/owner/workspace_name`. Join a Floobits workspace. Workspace URLs are the same as what you see in the web editor.
 * `:FlooPartWorkspace`. Leave the workspace.
 * `:FlooToggleFollowMode`. Toggle follow mode. Follow mode will follow the most recent changes to buffers.
 * `:FlooSummon`. Make everyone in the workspace jump to your cursor.
@@ -59,4 +60,4 @@ vim_executable mvim
 
 Other plugins can interfere with Floobits. For example, [YouCompleteMe](https://github.com/Valloric/YouCompleteMe) changes `updatetime` to 2000 milliseconds. This causes increased latency and decreased reliability when collaborating. add `let g:ycm_allow_changing_updatetime = 0` to your `~/.vimrc`.
 
-If you experience problems, try disabling other plugins before [submitting a bug report](https://github.com/Floobits/floobits-vim/issues).
+If you experience problems, try disabling other plugins before [submitting a bug report](https://github.com/Floobits/floobits-vim/issues). You can also [get ahold of us using IRC, Twitter, or e-mail](https://floobits.com/help#support).

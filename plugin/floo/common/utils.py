@@ -90,6 +90,10 @@ def reload_settings():
     G.BASE_DIR = os.path.realpath(os.path.expanduser(G.BASE_DIR))
     G.COLAB_DIR = os.path.join(G.BASE_DIR, 'share')
     G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
+    if G.DEBUG == '1':
+        msg.LOG_LEVEL = msg.LOG_LEVELS['DEBUG']
+    else:
+        msg.LOG_LEVEL = msg.LOG_LEVELS['MSG']
     mkdir(G.COLAB_DIR)
 
 
@@ -153,15 +157,18 @@ def parse_url(workspace_url):
     workspace_name = None
     parsed_url = urlparse(workspace_url)
     port = parsed_url.port
-    if parsed_url.scheme == 'http':
+    if G.DEBUG and parsed_url.scheme == 'http':
+        # Only obey http if we're debugging
         if not port:
             port = 3148
         secure = False
-    else:
-        if not port:
-            port = G.DEFAULT_PORT
+
+    if not port:
+        port = G.DEFAULT_PORT
+
     result = re.match('^/([-\@\+\.\w]+)/([-\.\w]+)/?$', parsed_url.path)
     if not result:
+        # Old style URL
         result = re.match('^/r/([-\@\+\.\w]+)/([-\.\w]+)/?$', parsed_url.path)
 
     if result:
@@ -191,8 +198,12 @@ def to_workspace_url(r):
     if port != '':
         port = ':%s' % port
     host = r.get('host', G.DEFAULT_HOST)
-    workspace_url = '%s://%s%s/%s/%s/' % (proto, host, port, r['owner'], r['workspace'])
+    workspace_url = '%s://%s%s/%s/%s' % (proto, host, port, r['owner'], r['workspace'])
     return workspace_url
+
+
+def normalize_url(workspace_url):
+    return to_workspace_url(parse_url(workspace_url))
 
 
 def get_full_path(p):
@@ -201,7 +212,7 @@ def get_full_path(p):
 
 
 def unfuck_path(p):
-    return os.path.normcase(os.path.normpath(p))
+    return os.path.normpath(p)
 
 
 def to_rel_path(p):
@@ -215,7 +226,7 @@ def to_scheme(secure):
 
 
 def is_shared(p):
-    if not G.JOINED_WORKSPACE:
+    if not G.AGENT or not G.AGENT.joined_workspace:
         return False
     p = unfuck_path(p)
     try:
@@ -266,10 +277,33 @@ def get_persistent_data(per_path=None):
 
 def update_persistent_data(data):
     seen = set()
-    data['recent_workspaces'] = [x for x in data['recent_workspaces'] if x['url'] not in seen and not seen.add(x['url'])]
+    recent_workspaces = []
+    for x in data['recent_workspaces']:
+        try:
+            if x['url'] in seen:
+                continue
+            seen.add(x['url'])
+            recent_workspaces.append(x)
+        except Exception as e:
+            msg.debug(str(e))
+
+    data['recent_workspaces'] = recent_workspaces
     per_path = os.path.join(G.BASE_DIR, 'persistent.json')
     with open(per_path, 'wb') as per:
         per.write(json.dumps(data, indent=2).encode('utf-8'))
+
+
+# Cleans up URLs in persistent.json
+def normalize_persistent_data():
+    persistent_data = get_persistent_data()
+    for rw in persistent_data['recent_workspaces']:
+        rw['url'] = normalize_url(rw['url'])
+
+    for owner, workspaces in persistent_data['workspaces'].items():
+        for name, workspace in workspaces.items():
+            workspace['url'] = normalize_url(workspace['url'])
+            workspace['path'] = unfuck_path(workspace['path'])
+    update_persistent_data(persistent_data)
 
 
 def add_workspace_to_persistent_json(owner, name, url, path):
@@ -281,12 +315,14 @@ def add_workspace_to_persistent_json(owner, name, url, path):
     update_persistent_data(d)
 
 
-def get_workspace_by_path(path):
+def get_workspace_by_path(path, _filter):
+    path = unfuck_path(path)
     for owner, workspaces in get_persistent_data()['workspaces'].items():
         for name, workspace in workspaces.items():
-            if workspace['path'] == path:
-                workspace_url = workspace['url']
-                return workspace_url
+            if unfuck_path(workspace['path']) == path:
+                r = _filter(workspace['url'])
+                if r:
+                    return r
 
 
 def rm(path):
@@ -307,14 +343,38 @@ def mkdir(path):
             raise
 
 
+def get_line_endings(path):
+    try:
+        with open(path, 'rb') as fd:
+            line = fd.readline()
+    except Exception:
+        return
+    if not line:
+        return
+    chunk = line[-2:]
+    if chunk == "\r\n":
+        return "\r\n"
+    if chunk[-1:] == "\n":
+        return "\n"
+
+
 def save_buf(buf):
     path = get_full_path(buf['path'])
     mkdir(os.path.split(path)[0])
-    with open(path, 'wb') as fd:
-        if buf['encoding'] == 'utf8':
-            fd.write(buf['buf'].encode('utf-8'))
-        else:
-            fd.write(buf['buf'])
+    if buf['encoding'] == 'utf8':
+        newline = get_line_endings(path) or editor.get_line_endings(path)
+    try:
+        with open(path, 'wb') as fd:
+            if buf['encoding'] == 'utf8':
+                out = buf['buf']
+                if newline != '\n':
+                    out = out.split('\n')
+                    out = newline.join(out)
+                fd.write(out.encode('utf-8'))
+            else:
+                fd.write(buf['buf'])
+    except Exception as e:
+        msg.error('Error saving buf: %s' % str(e))
 
 
 def _unwind_generator(gen_expr, cb=None, res=None):
