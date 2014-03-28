@@ -117,3 +117,13 @@ def open_file(filename):
 
 def platform():
     return sys.platform
+
+
+def get_line_endings(path=None):
+    formats = vim.eval('&fileformats')
+    if not formats:
+        return '\n'
+    name = formats.split(',')[0]
+    if name == 'dos':
+        return '\r\n'
+    return '\n'
