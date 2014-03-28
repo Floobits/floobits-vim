@@ -367,7 +367,11 @@ def floobits_share_dir_private(dir_to_share):
     return floobits_share_dir(dir_to_share, perms={'AnonymousUser': []})
 
 
-def floobits_share_dir(dir_to_share, perms=None):
+def floobits_share_dir_public(dir_to_share):
+    return floobits_share_dir(dir_to_share, perms={'AnonymousUser': ['view_room']})
+
+
+def floobits_share_dir(dir_to_share, perms):
     utils.reload_settings()
     workspace_name = os.path.basename(dir_to_share)
     G.PROJECT_PATH = os.path.realpath(dir_to_share)
