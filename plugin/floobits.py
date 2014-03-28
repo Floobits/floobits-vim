@@ -99,6 +99,16 @@ ticker_errors: {ticker_errors}
 '''
 
 
+def _get_line_endings():
+    formats = vim.eval('&fileformats')
+    if not formats:
+        return '\n'
+    name = formats.split(',')[0]
+    if name == 'dos':
+        return '\r\n'
+    return '\n'
+
+
 def floobits_info():
     kwargs = {
         'cs': bool(int(vim.eval('has("clientserver")'))),
@@ -358,6 +368,12 @@ def floobits_share_dir_private(dir_to_share):
 
 
 def floobits_share_dir(dir_to_share, perms=None):
+    utils.reload_settings()
+    workspace_name = os.path.basename(dir_to_share)
+    G.PROJECT_PATH = os.path.realpath(dir_to_share)
+    msg.debug('%s %s %s' % (G.USERNAME, workspace_name, G.PROJECT_PATH))
+
+    file_to_share = None
     dir_to_share = os.path.expanduser(dir_to_share)
     dir_to_share = utils.unfuck_path(dir_to_share)
     dir_to_share = os.path.abspath(dir_to_share)
@@ -366,7 +382,13 @@ def floobits_share_dir(dir_to_share, perms=None):
     workspace_name = os.path.basename(dir_to_share)
 
     if os.path.isfile(dir_to_share):
-        return msg.error('give me a directory please')
+        file_to_share = dir_to_share
+        dir_to_share = os.path.dirname(dir_to_share)
+
+    try:
+        utils.mkdir(dir_to_share)
+    except Exception:
+        return msg.error("The directory %s doesn't exist and I can't create it." % dir_to_share)
 
     if not os.path.isdir(dir_to_share):
         return msg.error('The directory %s doesn\'t appear to exist' % dir_to_share)
@@ -384,35 +406,27 @@ def floobits_share_dir(dir_to_share, perms=None):
 
     workspace_url = info.get('url')
     if workspace_url:
-        try:
-            result = utils.parse_url(workspace_url)
-        except Exception as e:
-            msg.error(str(e))
-        else:
-            workspace_name = result['workspace']
-            try:
-                # TODO: blocking. hangs UI if API is super slow
-                api.get_workspace_by_url(workspace_url)
-            except Exception:
-                workspace_url = None
-                workspace_name = os.path.basename(dir_to_share)
-            else:
-                utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, dir_to_share)
+        parsed_url = api.prejoin_workspace(workspace_url, dir_to_share, {'perms': perms})
+        if parsed_url:
+            return floobits_join_workspace(workspace_url, dir_to_share, upload_path=file_to_share or dir_to_share)
 
-    workspace_url = utils.get_workspace_by_path(dir_to_share) or workspace_url
+    filter_func = lambda workspace_url: api.prejoin_workspace(workspace_url, dir_to_share, {'perms': perms})
+    parsed_url = utils.get_workspace_by_path(dir_to_share, filter_func)
 
-    if workspace_url:
-        try:
-            api.get_workspace_by_url(workspace_url)
-        except Exception:
-            pass
-        else:
-            return floobits_join_workspace(workspace_url, dir_to_share, sync_to_disk=False)
+    if parsed_url:
+        return floobits_join_workspace(workspace_url, dir_to_share, upload_path=file_to_share or dir_to_share)
+    try:
+        r = api.get_orgs_can_admin()
+    except IOError as e:
+        return editor.error_message('Error getting org list: %s' % str(e))
+    if r.code >= 400 or len(r.body) == 0:
+        workspace_name = vim_input('Workspace name:', workspace_name, workspace_name)
+        return create_workspace(workspace_name, dir_to_share, G.USERNAME, perms, upload_path=file_to_share or dir_to_share)
 
     orgs = api.get_orgs_can_admin()
     orgs = json.loads(orgs.read().decode('utf-8'))
     if len(orgs) == 0:
-        return create_workspace(workspace_name, dir_to_share, G.USERNAME, perms)
+        return create_workspace(workspace_name, dir_to_share, G.USERNAME, perms, upload_path=file_to_share or dir_to_share)
     choices = []
     choices.append(G.USERNAME)
     for o in orgs:
@@ -420,10 +434,10 @@ def floobits_share_dir(dir_to_share, perms=None):
 
     owner = vim_choice('Create workspace for:', G.USERNAME, choices)
     if owner:
-        create_workspace(workspace_name, dir_to_share, owner, perms)
+        return create_workspace(workspace_name, dir_to_share, owner, perms, upload_path=file_to_share or dir_to_share)
 
 
-def create_workspace(workspace_name, share_path, owner, perms=None):
+def create_workspace(workspace_name, share_path, owner, perms=None, upload_path=None):
     workspace_url = 'https://%s/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
     try:
         api_args = {
@@ -438,7 +452,7 @@ def create_workspace(workspace_name, share_path, owner, perms=None):
 
     if r.code < 400:
         msg.debug('Created workspace %s' % workspace_url)
-        return floobits_join_workspace(workspace_url, share_path, sync_to_disk=False)
+        return floobits_join_workspace(workspace_url, share_path, upload_path=upload_path)
 
     if r.code == 402:
         # TODO: Better behavior. Ask to create a public workspace instead?
@@ -453,7 +467,7 @@ def create_workspace(workspace_name, share_path, owner, perms=None):
         workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + '1')
     else:
         return editor.error_message('Unable to create workspace: %s %s' % (workspace_url, unicode(e)))
-    return create_workspace(workspace_name, share_path, perms)
+    return create_workspace(workspace_name, share_path, perms, upload_path=upload_path)
 
 
 def floobits_stop_everything():
@@ -514,7 +528,8 @@ def floobits_setup_credentials():
         msg.debug(traceback.format_exc())
 
 
-def floobits_join_workspace(workspace_url, d='', sync_to_disk=True):
+def floobits_join_workspace(workspace_url, d='', upload_path=None):
+    editor.line_endings = _get_line_endings()
     msg.debug('workspace url is %s' % workspace_url)
     try:
         result = utils.parse_url(workspace_url)
@@ -529,7 +544,7 @@ def floobits_join_workspace(workspace_url, d='', sync_to_disk=True):
         except Exception:
             d = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
 
-    prompt = 'Give me a directory to sync data to: '
+    prompt = 'Save workspace files to: '
     if not os.path.isdir(d):
         while True:
             d = vim_input(prompt, d, 'dir')
@@ -559,9 +574,9 @@ def floobits_join_workspace(workspace_url, d='', sync_to_disk=True):
     floobits_stop_everything()
     try:
         conn = VimHandler(result['owner'], result['workspace'])
+        if upload_path:
+            conn.once('room_info', lambda: G.AGENT.upload(upload_path))
         reactor.connect(conn, result['host'], result['port'], result['secure'])
-        if not sync_to_disk:
-            conn.once('room_info', lambda: G.AGENT.upload(G.PROJECT_PATH))
     except Exception as e:
         msg.error(str(e))
         tb = traceback.format_exc()

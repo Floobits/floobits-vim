@@ -16,6 +16,7 @@ timeouts = defaultdict(list)
 top_timeout_id = 0
 cancelled_timeouts = set()
 calling_timeouts = False
+line_endings = "\n"
 welcome_text = 'Welcome %s!\n\nYou are all set to collaborate. You should check out our docs at https://%s/help/plugins/#sublime-usage. \
 You must run \':FlooCompleteSignup\' before you can login to floobits.com.'
 
@@ -120,10 +121,4 @@ def platform():
 
 
 def get_line_endings(path=None):
-    formats = vim.eval('&fileformats')
-    if not formats:
-        return '\n'
-    name = formats.split(',')[0]
-    if name == 'dos':
-        return '\r\n'
-    return '\n'
+    return line_endings
