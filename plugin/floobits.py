@@ -52,10 +52,6 @@ G.__PLUGIN_VERSION__ = '1.1.0'
 
 utils.reload_settings()
 
-# enable debug with let floo_log_level = 'debug'
-floo_log_level = vim.eval('floo_log_level')
-msg.LOG_LEVEL = msg.LOG_LEVELS.get(floo_log_level.upper(), msg.LOG_LEVELS['MSG'])
-
 migrations.rename_floobits_dir()
 migrations.migrate_symlinks()
 
@@ -427,8 +423,7 @@ def floobits_share_dir(dir_to_share, perms):
         workspace_name = vim_input('Workspace name:', workspace_name, workspace_name)
         return create_workspace(workspace_name, dir_to_share, G.USERNAME, perms, upload_path=file_to_share or dir_to_share)
 
-    orgs = api.get_orgs_can_admin()
-    orgs = json.loads(orgs.read().decode('utf-8'))
+    orgs = r.body
     if len(orgs) == 0:
         return create_workspace(workspace_name, dir_to_share, G.USERNAME, perms, upload_path=file_to_share or dir_to_share)
     choices = []

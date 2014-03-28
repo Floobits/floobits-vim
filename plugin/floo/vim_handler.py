@@ -57,7 +57,7 @@ class VimHandler(floo_handler.FlooHandler):
         reported = set()
         while self.views_changed:
             v, buf = self.views_changed.pop()
-            if not G.JOINED_WORKSPACE:
+            if not G.AGENT or not G.AGENT.joined_workspace:
                 msg.debug('Not connected. Discarding view change.')
                 continue
             if 'patch' not in G.PERMS:
@@ -82,7 +82,7 @@ class VimHandler(floo_handler.FlooHandler):
         while self.selection_changed:
             v, buf, summon = self.selection_changed.pop()
 
-            if not G.JOINED_WORKSPACE:
+            if not G.AGENT or not G.AGENT.joined_workspace:
                 msg.debug('Not connected. Discarding selection change.')
                 continue
             # consume highlight events to avoid leak
