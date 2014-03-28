@@ -532,6 +532,17 @@ def floobits_setup_credentials():
         msg.debug(traceback.format_exc())
 
 
+def floobits_check_and_join_workspace(workspace_url):
+    try:
+        r = api.get_workspace_by_url(workspace_url)
+    except Exception as e:
+        return editor.error_message('Error joining %s: %s' % (workspace_url, str(e)))
+    if r.code >= 400:
+        return editor.error_message('Error joining %s: %s' % (workspace_url, r.body))
+    msg.debug('Workspace %s exists' % workspace_url)
+    return floobits_join_workspace(workspace_url, share_path, upload_path=upload_path)
+
+
 def floobits_join_workspace(workspace_url, d='', upload_path=None):
     editor.line_endings = _get_line_endings()
     msg.debug('workspace url is %s' % workspace_url)
