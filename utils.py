@@ -226,7 +226,7 @@ def to_scheme(secure):
 
 
 def is_shared(p):
-    if not G.JOINED_WORKSPACE:
+    if not G.AGENT or not G.AGENT.joined_workspace:
         return False
     p = unfuck_path(p)
     try:
@@ -277,7 +277,17 @@ def get_persistent_data(per_path=None):
 
 def update_persistent_data(data):
     seen = set()
-    data['recent_workspaces'] = [x for x in data['recent_workspaces'] if x['url'] not in seen and not seen.add(x['url'])]
+    recent_workspaces = []
+    for x in data['recent_workspaces']:
+        try:
+            if x['url'] in seen:
+                continue
+            seen.add(x['url'])
+            recent_workspaces.append(x)
+        except Exception as e:
+            msg.debug(str(e))
+
+    data['recent_workspaces'] = recent_workspaces
     per_path = os.path.join(G.BASE_DIR, 'persistent.json')
     with open(per_path, 'wb') as per:
         per.write(json.dumps(data, indent=2).encode('utf-8'))
@@ -333,14 +343,38 @@ def mkdir(path):
             raise
 
 
+def get_line_endings(path):
+    try:
+        with open(path, 'rb') as fd:
+            line = fd.readline()
+    except Exception:
+        return
+    if not line:
+        return
+    chunk = line[-2:]
+    if chunk == "\r\n":
+        return "\r\n"
+    if chunk[-1:] == "\n":
+        return "\n"
+
+
 def save_buf(buf):
     path = get_full_path(buf['path'])
     mkdir(os.path.split(path)[0])
-    with open(path, 'wb') as fd:
-        if buf['encoding'] == 'utf8':
-            fd.write(buf['buf'].encode('utf-8'))
-        else:
-            fd.write(buf['buf'])
+    if buf['encoding'] == 'utf8':
+        newline = get_line_endings(path) or editor.get_line_endings(path)
+    try:
+        with open(path, 'wb') as fd:
+            if buf['encoding'] == 'utf8':
+                out = buf['buf']
+                if newline != '\n':
+                    out = out.split('\n')
+                    out = newline.join(out)
+                fd.write(out.encode('utf-8'))
+            else:
+                fd.write(buf['buf'])
+    except Exception as e:
+        msg.error('Error saving buf: %s' % str(e))
 
 
 def _unwind_generator(gen_expr, cb=None, res=None):

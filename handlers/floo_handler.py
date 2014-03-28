@@ -2,6 +2,7 @@ import os
 import sys
 import hashlib
 import base64
+import collections
 from operator import attrgetter
 
 try:
@@ -41,8 +42,6 @@ class FlooHandler(base.BaseHandler):
         self.workspace = workspace
         self.should_get_bufs = get_bufs
         self.reset()
-        self.bufs = {}
-        self.paths_to_ids = {}
 
     def _on_highlight(self, data):
         raise NotImplementedError("_on_highlight not implemented")
@@ -52,6 +51,14 @@ class FlooHandler(base.BaseHandler):
 
     def get_view(self, buf_id):
         raise NotImplementedError("get_view not implemented")
+
+    def build_protocol(self, *args):
+        self.proto = super(FlooHandler, self).build_protocol(*args)
+
+        def f():
+            self.joined_workspace = False
+        self.proto.on("cleanup", f)
+        return self.proto
 
     def get_username_by_id(self, user_id):
         try:
@@ -112,6 +119,7 @@ class FlooHandler(base.BaseHandler):
         self.bufs = {}
         self.paths_to_ids = {}
         self.save_on_get_bufs = set()
+        self.on_load = collections.defaultdict(dict)
 
     def _on_patch(self, data):
         buf_id = data['id']
@@ -192,8 +200,13 @@ class FlooHandler(base.BaseHandler):
         buf['md5'] = cur_hash
 
         if not view:
-            msg.debug('No view. Saving buffer %s' % buf_id)
-            utils.save_buf(buf)
+            msg.debug('No view. Not saving buffer %s' % buf_id)
+
+            def _on_load():
+                v = self.get_view(buf_id)
+                if v:
+                    v.update(buf, message=False)
+            self.on_load[buf_id]['patch'] = _on_load
             return
 
         view.apply_patches(buf, t, data['username'])
@@ -273,7 +286,7 @@ class FlooHandler(base.BaseHandler):
     @utils.inlined_callbacks
     def _on_room_info(self, data):
         self.reset()
-        G.JOINED_WORKSPACE = True
+        self.joined_workspace = True
         self.workspace_info = data
         G.PERMS = data['perms']
 
@@ -411,6 +424,9 @@ class FlooHandler(base.BaseHandler):
         buf = self.bufs.get(buf_id)
         if not buf:
             return
+        on_view_load = self.on_load.get(buf_id)
+        if on_view_load:
+            del on_view_load['patch']
         view = self.get_view(data['id'])
         if view:
             self.save_view(view)
