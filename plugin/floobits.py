@@ -543,7 +543,7 @@ def floobits_check_and_join_workspace(workspace_url):
     if r.code >= 400:
         return editor.error_message('Error joining %s: %s' % (workspace_url, r.body))
     msg.debug('Workspace %s exists' % workspace_url)
-    return floobits_join_workspace(workspace_url, share_path, upload_path=upload_path)
+    return floobits_join_workspace(workspace_url)
 
 
 def floobits_join_workspace(workspace_url, d='', upload_path=None):
