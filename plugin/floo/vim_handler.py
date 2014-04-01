@@ -135,6 +135,20 @@ class VimHandler(floo_handler.FlooHandler):
             return
         return View(vb)
 
+    def stomp_prompt(self, changed_bufs, missing_bufs, cb):
+        choices = ['remote', 'local', 'cancel']
+        prompt = 'The workspace is out of sync. '
+        # TODO: better prompt.
+        prompt += 'Overwrite (r)emote files, (l)ocal files, or (c)ancel and disconnect?'
+        choice = editor.vim_choice(prompt, 'remote', choices)
+        if choice == 'remote':
+            return cb(0)
+        if choice == 'local':
+            return cb(1)
+        if choice == 'cancel':
+            return cb(2)
+        return cb(-1)
+
     def ok_cancel_dialog(self, msg, cb=None):
         res = editor.ok_cancel_dialog(msg)
         return (cb and cb(res) or res)
