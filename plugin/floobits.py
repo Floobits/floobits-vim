@@ -463,13 +463,12 @@ def create_workspace(workspace_name, share_path, owner, perms=None, upload_path=
 
     if r.code == 402:
         # TODO: Better behavior. Ask to create a public workspace instead?
-        return editor.error_message('Unable to create workspace: %s %s' % (workspace_url, unicode(e)))
+        return editor.error_message('Unable to create workspace because you have reached your maximum number of workspaces')
 
     if r.code == 400:
         workspace_name = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
         workspace_name = vim_input(
-            'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:' % workspace_name,
-            workspace_name)
+            '%s is an invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:' % workspace_name, workspace_name)
     elif r.code == 409:
         workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + '1')
     else:
