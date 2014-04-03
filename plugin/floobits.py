@@ -428,7 +428,7 @@ def floobits_share_dir(dir_to_share, perms):
     except IOError as e:
         return editor.error_message('Error getting org list: %s' % str(e))
     if r.code >= 400 or len(r.body) == 0:
-        workspace_name = vim_input('Workspace name:', workspace_name, workspace_name)
+        workspace_name = vim_input('Workspace name:', workspace_name, "file")
         return create_workspace(workspace_name, dir_to_share, G.USERNAME, perms, upload_path=file_to_share or dir_to_share)
 
     orgs = r.body
@@ -470,7 +470,7 @@ def create_workspace(workspace_name, share_path, owner, perms=None, upload_path=
         workspace_name = vim_input(
             '%s is an invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:' % workspace_name, workspace_name)
     elif r.code == 409:
-        workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + '1')
+        workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + '1', 'file')
     else:
         return editor.error_message('Unable to create workspace: %s %s' % (workspace_url, unicode(e)))
     return create_workspace(workspace_name, share_path, perms, upload_path=upload_path)
