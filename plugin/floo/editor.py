@@ -29,6 +29,10 @@ def name():
     return 'Vim-py%s' % py_version
 
 
+def codename():
+    return 'vim'
+
+
 def windows(*args, **kwargs):
     return []
 
