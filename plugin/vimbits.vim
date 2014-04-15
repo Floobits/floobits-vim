@@ -137,6 +137,6 @@ command! -nargs=? -complete=file FlooAddBuf :python floobits_add_buf(<f-args>)
 
 command! FlooInfo :python floobits_info()
 
-python floobits_check_credentials()
 call s:SetAutoCmd()
 let g:floobits_plugin_loaded = 1
+python floobits_check_credentials()
