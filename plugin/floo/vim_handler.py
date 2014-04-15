@@ -327,7 +327,6 @@ class VimHandler(floo_handler.FlooHandler):
 
     def _on_part(self, data):
         super(self.__class__, self)._on_part(data)
-        msg.log('%s left the workspace' % data['username'])
         user_id = data['user_id']
         highlight = self.user_highlights.get(user_id)
         if not highlight:
