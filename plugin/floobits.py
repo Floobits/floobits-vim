@@ -481,10 +481,10 @@ def floobits_stop_everything():
         reactor.stop()
         G.AGENT = None
     floobits_pause()
-    #TODO: get this value from vim and reset it
+    # TODO: get this value from vim and reset it
     vim.command('set updatetime=4000')
 
-#NOTE: not strictly necessary
+# NOTE: not strictly necessary
 atexit.register(floobits_stop_everything)
 
 
