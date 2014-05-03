@@ -7,7 +7,7 @@ if !has('python')
     finish
 endif
 
-if exists("g:floobits_plugin_loaded")
+if exists("g:FloobitsPluginLoaded")
     finish
 endif
 
@@ -25,12 +25,12 @@ if !exists("floo_sparse_mode")
 endif
 
 " p flag expands the absolute path. Sorry for the global
-let g:floobits_plugin_dir = expand("<sfile>:p:h")
+let g:FloobitsPluginDir = expand("<sfile>:p:h")
 
 python << END_PYTHON
 import os, sys
 import vim
-sys.path.append(vim.eval("g:floobits_plugin_dir"))
+sys.path.append(vim.eval("g:FloobitsPluginDir"))
 
 END_PYTHON
 
@@ -38,7 +38,7 @@ if filereadable(expand("<sfile>:p:h")."/floobits_wrapper.py")
     pyfile <sfile>:p:h/floobits_wrapper.py
 else
     echohl WarningMsg |
-    \ echomsg "Floobits plugin error: Can't find floobits.py in ".g:floobits_plugin_dir |
+    \ echomsg "Floobits plugin error: Can't find floobits.py in ".g:FloobitsPluginDir |
     \ echohl None
     finish
 endif
@@ -52,11 +52,11 @@ function! g:FlooSetReadOnly()
     setlocal nomodifiable
 endfunction
 
-function! g:floobits_global_tick()
+function! g:FloobitsGlobalTick()
     python floobits_global_tick()
 endfunction
 
-function! g:floobits_get_selection()
+function! g:FloobitsGetSelection()
     let m = tolower(mode())
     try
         if 'v' == m
@@ -138,5 +138,5 @@ command! -nargs=? -complete=file FlooAddBuf :python floobits_add_buf(<f-args>)
 command! FlooInfo :python floobits_info()
 
 call s:SetAutoCmd()
-let g:floobits_plugin_loaded = 1
+let g:FloobitsPluginLoaded = 1
 python floobits_check_credentials()

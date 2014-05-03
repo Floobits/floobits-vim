@@ -114,7 +114,7 @@ class View(object):
 
     def get_selections(self):
         # Vim likes to return strings for numbers even if you use str2nr:
-        return [[int(pos) for pos in range_] for range_ in vim.eval("g:floobits_get_selection()")]
+        return [[int(pos) for pos in range_] for range_ in vim.eval("g:FloobitsGetSelection()")]
 
     def clear_highlight(self, user_id):
         msg.debug('clearing selections for user %s in view %s' % (user_id, self.vim_buf.name))
