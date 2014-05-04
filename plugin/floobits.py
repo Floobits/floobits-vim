@@ -67,7 +67,7 @@ ticker_errors = 0
 using_feedkeys = False
 
 ticker_python = '''import sys; import subprocess; import time
-args = ['{binary}', '--servername', '{servername}', '--remote-expr', 'g:floobits_global_tick()']
+args = ['{binary}', '--servername', '{servername}', '--remote-expr', 'g:FloobitsGlobalTick()']
 while True:
     time.sleep({sleep})
     # TODO: learn to speak vim or something :(
