@@ -463,7 +463,11 @@ def create_workspace(workspace_name, share_path, owner, perms=None, upload_path=
 
     if r.code == 402:
         # TODO: Better behavior. Ask to create a public workspace instead?
-        return editor.error_message('Unable to create workspace because you have reached your maximum number of workspaces')
+        detail = r.body.get('detail')
+        err_msg = 'Unable to create workspace because you have reached your maximum number of workspaces'
+        if detail:
+            err_msg += detail
+        return editor.error_message(err_msg)
 
     if r.code == 400:
         workspace_name = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
