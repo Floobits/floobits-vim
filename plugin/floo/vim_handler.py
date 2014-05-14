@@ -237,10 +237,11 @@ class VimHandler(floo_handler.FlooHandler):
             'name': 'get_buf',
             'id': buf_id
         }
-        buf = self.bufs[buf_id]
-        msg.warn('Syncing buffer %s for consistency.' % buf['path'])
-        if 'buf' in buf:
-            del buf['buf']
+        buf = self.bufs.get(buf_id)
+        if buf:
+            msg.warn('Syncing buffer %s for consistency.' % buf['path'])
+            if 'buf' in buf:
+                del buf['buf']
         if view:
             view.set_read_only(True)
             view.set_status('Floobits', 'Floobits locked this file until it is synced.')
@@ -345,7 +346,9 @@ class VimHandler(floo_handler.FlooHandler):
         username = data.get('username', 'an unknown user')
         ping = G.STALKER_MODE or data.get('ping', False)
         previous_highlight = self.user_highlights.get(user_id)
-        buf = self.bufs[buf_id]
+        buf = self.bufs.get(buf_id)
+        if not buf:
+            return
         view = self.get_view(buf_id)
         if not view:
             if not ping:
