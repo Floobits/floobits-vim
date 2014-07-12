@@ -112,7 +112,7 @@ def save_floorc_json(s):
     floorc_json = {}
     for k, v in s.items():
         floorc_json[k.lower()] = v
-    msg.log('Writing %s' % floorc_json)
+    msg.log('Writing ', floorc_json)
     with open(G.FLOORC_JSON_PATH, 'w') as fd:
         fd.write(json.dumps(floorc_json, indent=4, sort_keys=True))
 
@@ -123,7 +123,7 @@ def can_auth(host=None):
     auth = G.AUTH.get(host)
     if not auth:
         return False
-    return (auth.get('username') or auth.get('api_key')) and auth.get('secret')
+    return bool((auth.get('username') or auth.get('api_key')) and auth.get('secret'))
 
 
 cancelled_timeouts = set()
@@ -131,6 +131,14 @@ timeout_ids = set()
 
 
 def set_timeout(func, timeout, *args, **kwargs):
+    return _set_timeout(func, timeout, False, *args, **kwargs)
+
+
+def set_interval(func, timeout, *args, **kwargs):
+    return _set_timeout(func, timeout, True, *args, **kwargs)
+
+
+def _set_timeout(func, timeout, repeat, *args, **kwargs):
     timeout_id = set_timeout._top_timeout_id
     if timeout_id > 100000:
         set_timeout._top_timeout_id = 0
@@ -148,7 +156,13 @@ def set_timeout(func, timeout, *args, **kwargs):
         if timeout_id in cancelled_timeouts:
             cancelled_timeouts.remove(timeout_id)
             return
+
         func(*args, **kwargs)
+
+        if repeat:
+            editor.set_timeout(timeout_func, timeout)
+            timeout_ids.add(timeout_id)
+
     editor.set_timeout(timeout_func, timeout)
     timeout_ids.add(timeout_id)
     return timeout_id
@@ -272,7 +286,7 @@ def read_floo_file(path):
     except (IOError, OSError):
         pass
     except Exception as e:
-        msg.warn("Couldn't read .floo file: %s: %s" % (floo_file, str_e(e)))
+        msg.warn('Couldn\'t read .floo file: ', floo_file, ': ', str_e(e))
     return info
 
 
@@ -282,13 +296,13 @@ def get_persistent_data(per_path=None):
     try:
         per = open(per_path, 'rb')
     except (IOError, OSError):
-        msg.debug('Failed to open %s. Recent workspace list will be empty.' % per_path)
+        msg.debug('Failed to open ', per_path, '. Recent workspace list will be empty.')
         return per_data
     try:
         data = per.read().decode('utf-8')
         persistent_data = json.loads(data)
     except Exception as e:
-        msg.debug('Failed to parse %s. Recent workspace list will be empty.' % per_path)
+        msg.debug('Failed to parse ', per_path, '. Recent workspace list will be empty.')
         msg.debug(str_e(e))
         msg.debug(data)
         return per_data
@@ -414,7 +428,7 @@ def save_buf(buf):
             else:
                 fd.write(buf['buf'])
     except Exception as e:
-        msg.error('Error saving buf: %s' % str_e(e))
+        msg.error('Error saving buf: ', str_e(e))
 
 
 def _unwind_generator(gen_expr, cb=None, res=None):

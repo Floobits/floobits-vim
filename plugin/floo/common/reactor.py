@@ -4,11 +4,11 @@ import select
 try:
     from . import api, msg
     from .. import editor
-    from ..common.exc_fmt import str_e
+    from ..common.exc_fmt import str_e, pp_e
     from ..common.handlers import tcp_server
     assert msg and tcp_server
 except (ImportError, ValueError):
-    from floo.common.exc_fmt import str_e
+    from floo.common.exc_fmt import str_e, pp_e
     from floo.common.handlers import tcp_server
     from floo.common import api, msg
     from floo import editor
@@ -31,7 +31,6 @@ class _Reactor(object):
     def listen(self, factory, host='127.0.0.1', port=0):
         listener_factory = tcp_server.TCPServerHandler(factory, self)
         proto = listener_factory.build_protocol(host, port)
-        factory.listener_factory = listener_factory
         self._protos.append(proto)
         self._handlers.append(listener_factory)
         return proto.sockname()
@@ -40,7 +39,7 @@ class _Reactor(object):
         try:
             handler.proto.stop()
         except Exception as e:
-            msg.warn('Error stopping connection: %s' % str_e(e))
+            msg.warn('Error stopping connection: ', str_e(e))
         try:
             self._handlers.remove(handler)
         except Exception:
@@ -88,7 +87,7 @@ class _Reactor(object):
         editor.call_timeouts()
 
     def block(self):
-        while self._protos or self._handlers:
+        while True:
             self.tick(.05)
 
     def select(self, timeout=0):
@@ -114,10 +113,13 @@ class _Reactor(object):
             _in, _out, _except = select.select(readable, writeable, errorable, timeout)
         except (select.error, socket.error, Exception) as e:
             # TODO: with multiple FDs, must call select with just one until we find the error :(
-            if len(readable) == 1:
-                readable[0].reconnect()
-                return msg.error('Error in select(): %s' % str_e(e))
-            raise Exception("can't handle more than one fd exception in reactor")
+            for fileno in readable:
+                try:
+                    select.select([fileno], [], [], 0)
+                except (select.error, socket.error, Exception) as e:
+                    fd_map[fileno].reconnect()
+                    msg.error('Error in select(): ', fileno, str_e(e))
+            return
 
         for fileno in _except:
             fd = fd_map[fileno]
@@ -128,7 +130,8 @@ class _Reactor(object):
             try:
                 fd.write()
             except Exception as e:
-                msg.error('Couldn\'t write to socket: %s' % str_e(e))
+                msg.error('Couldn\'t write to socket: ', str_e(e))
+                msg.debug('Couldn\'t write to socket: ', pp_e(e))
                 return self._reconnect(fd, _in)
 
         for fileno in _in:
@@ -136,7 +139,8 @@ class _Reactor(object):
             try:
                 fd.read()
             except Exception as e:
-                msg.error('Couldn\'t read from socket: %s' % str_e(e))
+                msg.error('Couldn\'t read from socket: ', str_e(e))
+                msg.debug('Couldn\'t read from socket: ', pp_e(e))
                 fd.reconnect()
 
 reactor = _Reactor()
