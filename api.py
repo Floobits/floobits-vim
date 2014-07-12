@@ -31,13 +31,11 @@ except (AttributeError, ImportError, ValueError):
 try:
     from .. import editor
     from . import msg, shared as G, utils
-    from .exc_fmt import str_e
 except ImportError:
     import editor
     import msg
     import shared as G
     import utils
-    from exc_fmt import str_e
 
 
 def get_basic_auth(host):
@@ -52,15 +50,18 @@ def get_basic_auth(host):
 
 class APIResponse():
     def __init__(self, r):
+        self.body = None
         if isinstance(r, bytes):
             r = r.decode('utf-8')
         if isinstance(r, str_instances):
             lines = r.split('\n')
             self.code = int(lines[0])
-            self.body = json.loads('\n'.join(lines[1:]))
+            if self.code != 204:
+                self.body = json.loads('\n'.join(lines[1:]))
         else:
             self.code = r.code
-            self.body = json.loads(r.read().decode("utf-8"))
+            if self.code != 204:
+                self.body = json.loads(r.read().decode("utf-8"))
 
 
 def proxy_api_request(host, url, data, method):
@@ -69,7 +70,7 @@ def proxy_api_request(host, url, data, method):
         args += ["--data", json.dumps(data)]
     if method:
         args += ["--method", method]
-    msg.log('Running %s (%s)' % (' '.join(args), G.PLUGIN_PATH))
+    msg.log('Running ', ' '.join(args), ' (', G.PLUGIN_PATH, ')')
     proc = subprocess.Popen(args, cwd=G.PLUGIN_PATH, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     (stdout, stderr) = proc.communicate()
     if stderr:
@@ -125,6 +126,11 @@ def create_workspace(host, post_data):
     return api_request(host, api_url, post_data)
 
 
+def delete_workspace(host, owner, workspace):
+    api_url = 'https://%s/api/workspace/%s/%s' % (host, owner, workspace)
+    return api_request(host, api_url, method='DELETE')
+
+
 def update_workspace(workspace_url, data):
     result = utils.parse_url(workspace_url)
     api_url = 'https://%s/api/workspace/%s/%s' % (result['host'], result['owner'], result['workspace'])
@@ -143,7 +149,7 @@ def get_workspace(host, owner, workspace):
 
 
 def get_workspaces(host):
-    api_url = 'https://%s/api/workspace/can/view' % (host)
+    api_url = 'https://%s/api/workspaces/can/view' % (host)
     return api_request(host, api_url)
 
 
@@ -160,7 +166,7 @@ def get_orgs_can_admin(host):
 def send_error(description=None, exception=None):
     G.ERROR_COUNT += 1
     if G.ERRORS_SENT >= G.MAX_ERROR_REPORTS:
-        msg.warn('Already sent %s errors this session. Not sending any more.\n%s %s' % (G.ERRORS_SENT, description, exception))
+        msg.warn('Already sent ', G.ERRORS_SENT, ' errors this session. Not sending any more.\n', description, exception)
         return
     data = {
         'jsondump': {
@@ -178,7 +184,7 @@ def send_error(description=None, exception=None):
             'description': str(exception),
             'stack': traceback.format_exc(exception)
         }
-    msg.log('Floobits plugin error! Sending exception report: %s' % data['message'])
+    msg.log('Floobits plugin error! Sending exception report: ', data['message'])
     if description:
         data['message']['description'] = description
     try:
@@ -200,50 +206,3 @@ def send_errors(f):
             send_error(None, e)
             raise
     return wrapped
-
-
-def prejoin_workspace(workspace_url, dir_to_share, api_args):
-    try:
-        result = utils.parse_url(workspace_url)
-    except Exception as e:
-        msg.error(str_e(e))
-        return False
-
-    host = result.get('host')
-    if not get_basic_auth(host):
-        raise ValueError('No auth credentials for %s. Please add a username and secret for %s in your ~/.floorc.json' % (host, host))
-
-    try:
-        w = get_workspace_by_url(workspace_url)
-    except Exception as e:
-        editor.error_message('Error opening url %s: %s' % (workspace_url, str_e(e)))
-        return False
-
-    if w.code >= 400:
-        try:
-            d = utils.get_persistent_data()
-            try:
-                del d['workspaces'][result['owner']][result['name']]
-            except Exception:
-                pass
-            try:
-                del d['recent_workspaces'][workspace_url]
-            except Exception:
-                pass
-            utils.update_persistent_data(d)
-        except Exception as e:
-            msg.debug(str_e(e))
-        return False
-
-    msg.debug('workspace: %s', json.dumps(w.body))
-    anon_perms = w.body.get('perms', {}).get('AnonymousUser', [])
-    msg.debug('api args: %s' % api_args)
-    new_anon_perms = api_args.get('perms', {}).get('AnonymousUser', [])
-    # TODO: prompt/alert user if going from private to public
-    if set(anon_perms) != set(new_anon_perms):
-        msg.debug(str(anon_perms), str(new_anon_perms))
-        w.body['perms']['AnonymousUser'] = new_anon_perms
-        response = update_workspace(workspace_url, w.body)
-        msg.debug(str(response.body))
-    utils.add_workspace_to_persistent_json(w.body['owner'], w.body['name'], workspace_url, dir_to_share)
-    return result
