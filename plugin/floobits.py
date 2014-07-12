@@ -508,15 +508,16 @@ def floobits_complete_signup():
 
 def floobits_check_credentials():
     msg.debug('Print checking credentials.')
-    if not (G.USERNAME and G.SECRET):
-        if not utils.has_browser():
-            msg.log('You need a Floobits account to use the Floobits plugin. Go to https://floobits.com to sign up.')
-            return
-        floobits_setup_credentials()
+    if utils.can_auth():
+        return
+    if not utils.has_browser():
+        msg.log('You need a Floobits account to use the Floobits plugin. Go to https://floobits.com to sign up.')
+        return
+    floobits_setup_credentials()
 
 
 def floobits_setup_credentials():
-    prompt = 'You need a Floobits account! Do you have one? If no we will create one for you [y/n]. '
+    prompt = 'You need a Floobits account! Do you have one? If not, we will create one for you [y/n]. '
     d = vim_input(prompt, '')
     if d and (d != 'y' and d != 'n'):
         return floobits_setup_credentials()
