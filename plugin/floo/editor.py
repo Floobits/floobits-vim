@@ -20,6 +20,13 @@ line_endings = "\n"
 welcome_text = 'Welcome %s!\n\nYou are all set to collaborate. You should check out our docs at https://%s/help/plugins/#sublime-usage. \
 You must run \':FlooCompleteSignup\' before you can login to floobits.com.'
 
+NEW_ACCOUNT_TXT = 'Welcome {username}!\n\nYou\'re all set to collaborate. You should check out our docs at https://{host}/help/plugins/vim#usage. \
+You must run \'Floobits - Complete Sign Up\' so you can log in to the website.'
+
+LINKED_ACCOUNT_TXT = """Welcome {username}!\n\nYou are all set to collaborate.
+
+You may want to check out our docs at https://{host}/help/plugins/vim#usage"""
+
 
 def name():
     if sys.version_info < (3, 0):

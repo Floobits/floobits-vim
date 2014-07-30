@@ -4,8 +4,6 @@ import os.path
 import json
 import re
 import traceback
-import atexit
-import subprocess
 import webbrowser
 import uuid
 import binascii
@@ -40,9 +38,9 @@ import vim
 from floo.common import api, ignore, migrations, msg, reactor, utils, shared as G
 from floo.common.handlers.account import CreateAccountHandler
 from floo.common.handlers.credentials import RequestCredentialsHandler
-from floo.vim_handler import VimHandler
-from floo import editor
+from floo import editor, vui
 
+VUI = vui.VUI()
 
 reactor = reactor.reactor
 
@@ -66,34 +64,6 @@ ticker = None
 ticker_errors = 0
 using_feedkeys = False
 
-ticker_python = '''import sys; import subprocess; import time
-args = ['{binary}', '--servername', '{servername}', '--remote-expr', 'g:FloobitsGlobalTick()']
-while True:
-    time.sleep({sleep})
-    # TODO: learn to speak vim or something :(
-    proc = subprocess.Popen(args,
-        stderr=subprocess.PIPE,
-        stdout=subprocess.PIPE)
-    (stdoutdata, stderrdata) = proc.communicate()
-    # # yes, this is stupid...
-    if stdoutdata.strip() == '0':
-        continue
-    if len(stderrdata) == 0:
-        continue
-    sys.stderr.write(stderrdata)
-    sys.exit(1)
-'''
-
-FLOOBITS_INFO = '''
-floobits_version: {version}
-# not updated until FlooJoinWorkspace is called
-mode: {mode}
-updatetime: {updatetime}
-clientserver_support: {cs}
-servername: {servername}
-ticker_errors: {ticker_errors}
-'''
-
 
 def _get_line_endings():
     formats = vim.eval('&fileformats')
@@ -106,98 +76,7 @@ def _get_line_endings():
 
 
 def floobits_info():
-    kwargs = {
-        'cs': bool(int(vim.eval('has("clientserver")'))),
-        'mode': (using_feedkeys and 'feedkeys') or 'client-server',
-        'servername': vim.eval('v:servername'),
-        'ticker_errors': ticker_errors,
-        'updatetime': vim.eval('&l:updatetime'),
-        'version': G.__PLUGIN_VERSION__,
-    }
-
-    msg.log(FLOOBITS_INFO.format(**kwargs))
-
-
-def floobits_pause():
-    global call_feedkeys, ticker
-
-    if G.TIMERS:
-        return
-
-    if using_feedkeys:
-        call_feedkeys = False
-        vim.command('set updatetime=4000')
-    else:
-        if ticker is None:
-            return
-        try:
-            ticker.kill()
-        except Exception as e:
-            print(e)
-        ticker = None
-
-
-def floobits_unpause():
-    global call_feedkeys
-
-    if G.TIMERS:
-        return
-
-    if using_feedkeys:
-        call_feedkeys = True
-        vim.command('set updatetime=250')
-    else:
-        start_event_loop()
-
-
-def fallback_to_feedkeys(warning):
-    global using_feedkeys
-    using_feedkeys = True
-    warning += ' Falling back to f//e hack which will break some key commands. You may need to call FlooPause/FlooUnPause before some commands.'
-    msg.warn(warning)
-    floobits_unpause()
-
-
-def ticker_watcher(ticker):
-    global ticker_errors
-    if not G.AGENT:
-        return
-    ticker.poll()
-    if ticker.returncode is None:
-        return
-    msg.warn('respawning new ticker')
-    ticker_errors += 1
-    if ticker_errors > 10:
-        return fallback_to_feedkeys('Too much trouble with the floobits external ticker.')
-    start_event_loop()
-    utils.set_timeout(ticker_watcher, 2000, ticker)
-
-
-def start_event_loop():
-    global ticker
-
-    if G.TIMERS:
-        msg.debug('Your Vim was compiled with +timer support. Awesome!')
-        return
-
-    if not bool(int(vim.eval('has("clientserver")'))):
-        return fallback_to_feedkeys('This VIM was not compiled with clientserver support. You should consider using a different vim!')
-
-    exe = getattr(G, 'VIM_EXECUTABLE', None)
-    if not exe:
-        return fallback_to_feedkeys('Your vim was compiled with clientserver, but I don\'t know the name of the vim executable.'
-                                    'Please define it in your ~/.floorc using the vim_executable directive. e.g. \'vim_executable mvim\'.')
-
-    servername = vim.eval('v:servername')
-    if not servername:
-        return fallback_to_feedkeys('I can not identify the servername of this vim. You may need to pass --servername to vim at startup.')
-
-    evaler = ticker_python.format(binary=exe, servername=servername, sleep='1.0')
-    ticker = subprocess.Popen(['python', '-c', evaler],
-                              stderr=subprocess.PIPE,
-                              stdout=subprocess.PIPE)
-    ticker.poll()
-    utils.set_timeout(ticker_watcher, 500, ticker)
+    VUI.floobits_info()
 
 
 def vim_choice(prompt, default, choices):
@@ -480,18 +359,6 @@ def create_workspace(workspace_name, share_path, owner, perms=None, upload_path=
     return create_workspace(workspace_name, share_path, perms, upload_path=upload_path)
 
 
-def floobits_stop_everything():
-    if G.AGENT:
-        reactor.stop()
-        G.AGENT = None
-    floobits_pause()
-    # TODO: get this value from vim and reset it
-    vim.command('set updatetime=4000')
-
-# NOTE: not strictly necessary
-atexit.register(floobits_stop_everything)
-
-
 def floobits_complete_signup():
     msg.debug('Completing signup.')
     if not utils.has_browser():
@@ -552,66 +419,16 @@ def floobits_check_and_join_workspace(workspace_url):
 
 def floobits_join_workspace(workspace_url, d='', upload_path=None):
     editor.line_endings = _get_line_endings()
-    msg.debug('workspace url is %s' % workspace_url)
-    try:
-        result = utils.parse_url(workspace_url)
-    except Exception as e:
-        return msg.error(str(e))
-
-    if d:
-        utils.mkdir(d)
+    cwd = vim.eval('getcwd()')
+    if cwd:
+        cwd = [cwd]
     else:
-        try:
-            d = utils.get_persistent_data()['workspaces'][result['owner']][result['workspace']]['path']
-        except Exception:
-            d = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
-
-    prompt = 'Save workspace files to: '
-    if not os.path.isdir(d):
-        while True:
-            d = vim_input(prompt, d, 'dir')
-            if d == '':
-                continue
-            d = os.path.realpath(os.path.expanduser(d))
-            if os.path.isfile(d):
-                prompt = '%s is not a directory. Enter an existing path or a path I can create: ' % d
-                continue
-            if not os.path.isdir(d):
-                try:
-                    utils.mkdir(d)
-                except Exception as e:
-                    prompt = 'Couldn\'t make dir %s: %s ' % (d, str(e))
-                    continue
-            break
-    d = os.path.realpath(os.path.abspath(d) + os.sep)
-    try:
-        utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
-    except Exception as e:
-        return msg.error('Error adding workspace to persistent.json: %s' % str(e))
-
-    G.PROJECT_PATH = d
-    vim.command('cd %s' % G.PROJECT_PATH)
-    msg.debug('Joining workspace %s' % workspace_url)
-
-    floobits_stop_everything()
-    try:
-        conn = VimHandler(result['owner'], result['workspace'])
-        if upload_path:
-            conn.once('room_info', lambda: G.AGENT.upload(upload_path))
-        reactor.connect(conn, result['host'], result['port'], result['secure'])
-    except Exception as e:
-        msg.error(str(e))
-        tb = traceback.format_exc()
-        msg.debug(tb)
-    if not G.TIMERS:
-        start_event_loop()
+        cwd = []
+    VUI.join_workspace_by_url(None, workspace_url, cwd)
 
 
 def floobits_part_workspace():
-    if not G.AGENT:
-        return msg.warn('Unable to leave workspace: You are not joined to a workspace.')
-    floobits_stop_everything()
-    msg.log('You left the workspace.')
+    VUI.floobits_part_workspace()
 
 
 def floobits_users_in_workspace():

@@ -3,11 +3,11 @@ import vim
 import atexit
 
 try:
-    from . import msg, utils, reactor, shared as G, flooui, editor
-    from ..common import vim_handler
+    from . import msg, utils, reactor, shared as G, flooui
+    from ..common import vim_handler, editor
 except (ImportError, ValueError):
-    from floo.common import msg, utils, reactor, shared as G, flooui, editor
-    from floo import vim_handler
+    from floo.common import msg, utils, reactor, shared as G, flooui
+    from floo import vim_handler, editor
 
 
 call_feedkeys = False
@@ -162,16 +162,18 @@ class VUI(flooui.FlooUI):
         vim.command('call inputrestore()')
         return vim.eval('user_input')
 
-    def _make_agent(self, context, owner, workspace, auth, created_workspace, d):
+    def _make_agent(self, context, owner, workspace, auth, created_workspace):
         """@returns new Agent()"""
         floobits_stop_everything()
-        return vim_handler.VimHandler(owner, workspace, auth, created_workspace and d)
+        if not G.TIMERS:
+            start_event_loop()
+        return vim_handler.VimHandler(owner, workspace, auth, created_workspace)
 
     def user_y_or_n(self, context, prompt, affirmation_txt, cb):
         """@returns True/False"""
         return cb(editor.ok_cancel_dialog(prompt))
 
-    def user_dir_picker(self, context, prompt, default, cb):
+    def user_dir(self, context, prompt, default, cb):
         return cb(self.vim_input(prompt, default, "dir"))
 
     def user_select(self, context, prompt, choices_big, choices_small, cb):
