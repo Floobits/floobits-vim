@@ -59,12 +59,6 @@ G.SPARSE_MODE = bool(int(vim.eval('floo_sparse_mode')))
 G.TIMERS = bool(int(vim.eval('has("timers")')))
 
 
-call_feedkeys = False
-ticker = None
-ticker_errors = 0
-using_feedkeys = False
-
-
 def _get_line_endings():
     formats = vim.eval('&fileformats')
     if not formats:
@@ -108,14 +102,14 @@ def floobits_global_tick():
 
 def floobits_cursor_hold():
     floobits_global_tick()
-    if not call_feedkeys:
+    if not vui.call_feedkeys:
         return
     return vim.command("call feedkeys(\"f\\e\", 'n')")
 
 
 def floobits_cursor_holdi():
     floobits_global_tick()
-    if not call_feedkeys:
+    if not vui.call_feedkeys:
         return
     linelen = int(vim.eval("col('$')-1"))
     if linelen > 0:
