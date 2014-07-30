@@ -344,7 +344,7 @@ class VimHandler(floo_handler.FlooHandler):
         buf_id = data['id']
         user_id = data['user_id']
         username = data.get('username', 'an unknown user')
-        ping = G.STALKER_MODE or data.get('ping', False)
+        ping = G.FOLLOW_MODE or data.get('ping', False)
         previous_highlight = self.user_highlights.get(user_id)
         buf = self.bufs.get(buf_id)
         if not buf:

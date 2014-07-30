@@ -154,8 +154,8 @@ def floobits_maybe_buffer_changed():
 @is_connected()
 def floobits_follow(follow_mode=None):
     if follow_mode is None:
-        follow_mode = not G.STALKER_MODE
-    G.STALKER_MODE = follow_mode
+        follow_mode = not G.FOLLOW_MODE
+    G.FOLLOW_MODE = follow_mode
 
 
 @is_connected()
