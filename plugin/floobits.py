@@ -1,8 +1,6 @@
 # coding: utf-8
 import os
 import os.path
-import json
-import re
 import traceback
 import webbrowser
 import uuid
@@ -241,116 +239,11 @@ def floobits_toggle_highlights():
 
 
 def floobits_share_dir_private(dir_to_share):
-    return floobits_share_dir(dir_to_share, perms={'AnonymousUser': []})
+    return VUI.share_dir(None, dir_to_share, {'AnonymousUser': []})
 
 
 def floobits_share_dir_public(dir_to_share):
-    return floobits_share_dir(dir_to_share, perms={'AnonymousUser': ['view_room']})
-
-
-def floobits_share_dir(dir_to_share, perms):
-    utils.reload_settings()
-    workspace_name = os.path.basename(dir_to_share)
-    G.PROJECT_PATH = os.path.realpath(dir_to_share)
-    msg.debug('%s %s %s' % (G.USERNAME, workspace_name, G.PROJECT_PATH))
-
-    file_to_share = None
-    dir_to_share = os.path.expanduser(dir_to_share)
-    dir_to_share = utils.unfuck_path(dir_to_share)
-    dir_to_share = os.path.abspath(dir_to_share)
-    dir_to_share = os.path.realpath(dir_to_share)
-
-    workspace_name = os.path.basename(dir_to_share)
-
-    if os.path.isfile(dir_to_share):
-        file_to_share = dir_to_share
-        dir_to_share = os.path.dirname(dir_to_share)
-
-    try:
-        utils.mkdir(dir_to_share)
-    except Exception:
-        return msg.error("The directory %s doesn't exist and I can't create it." % dir_to_share)
-
-    if not os.path.isdir(dir_to_share):
-        return msg.error('The directory %s doesn\'t appear to exist' % dir_to_share)
-
-    floo_file = os.path.join(dir_to_share, '.floo')
-    # look for the .floo file for hints about previous behavior
-    info = {}
-    try:
-        floo_info = open(floo_file, 'rb').read().decode('utf-8')
-        info = json.loads(floo_info)
-    except (IOError, OSError):
-        pass
-    except Exception:
-        msg.warn('couldn\'t read the floo_info file: %s' % floo_file)
-
-    workspace_url = info.get('url')
-    if workspace_url:
-        parsed_url = api.prejoin_workspace(workspace_url, dir_to_share, {'perms': perms})
-        if parsed_url:
-            return floobits_join_workspace(workspace_url, dir_to_share, upload_path=file_to_share or dir_to_share)
-
-    filter_func = lambda workspace_url: api.prejoin_workspace(workspace_url, dir_to_share, {'perms': perms})
-    parsed_url = utils.get_workspace_by_path(dir_to_share, filter_func)
-
-    if parsed_url:
-        return floobits_join_workspace(workspace_url, dir_to_share, upload_path=file_to_share or dir_to_share)
-    try:
-        r = api.get_orgs_can_admin()
-    except IOError as e:
-        return editor.error_message('Error getting org list: %s' % str(e))
-    if r.code >= 400 or len(r.body) == 0:
-        workspace_name = vim_input('Workspace name:', workspace_name, "file")
-        return create_workspace(workspace_name, dir_to_share, G.USERNAME, perms, upload_path=file_to_share or dir_to_share)
-
-    orgs = r.body
-    if len(orgs) == 0:
-        return create_workspace(workspace_name, dir_to_share, G.USERNAME, perms, upload_path=file_to_share or dir_to_share)
-    choices = []
-    choices.append(G.USERNAME)
-    for o in orgs:
-        choices.append(o['name'])
-
-    owner = vim_choice('Create workspace for:', G.USERNAME, choices)
-    if owner:
-        return create_workspace(workspace_name, dir_to_share, owner, perms, upload_path=file_to_share or dir_to_share)
-
-
-def create_workspace(workspace_name, share_path, owner, perms=None, upload_path=None):
-    workspace_url = 'https://%s/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
-    try:
-        api_args = {
-            'name': workspace_name,
-            'owner': owner,
-        }
-        if perms:
-            api_args['perms'] = perms
-        r = api.create_workspace(api_args)
-    except Exception as e:
-        return editor.error_message('Unable to create workspace %s: %s' % (workspace_url, unicode(e)))
-
-    if r.code < 400:
-        msg.debug('Created workspace %s' % workspace_url)
-        return floobits_join_workspace(workspace_url, share_path, upload_path=upload_path)
-
-    if r.code == 402:
-        # TODO: Better behavior. Ask to create a public workspace instead?
-        detail = r.body.get('detail')
-        err_msg = 'Unable to create workspace because you have reached your maximum number of workspaces'
-        if detail:
-            err_msg += detail
-        return editor.error_message(err_msg)
-
-    if r.code == 400:
-        workspace_name = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
-        workspace_name = vim_input(
-            '%s is an invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:' % workspace_name, workspace_name)
-    elif r.code == 409:
-        workspace_name = vim_input('Workspace %s already exists. Choose another name: ' % workspace_name, workspace_name + '1', 'file')
-    else:
-        return editor.error_message('Unable to create workspace: %s %s' % (workspace_url, unicode(e)))
-    return create_workspace(workspace_name, share_path, perms, upload_path=upload_path)
+    return VUI.share_dir(None, dir_to_share, {'AnonymousUser': ['view_room']})
 
 
 def floobits_complete_signup():
