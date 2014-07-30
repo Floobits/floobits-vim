@@ -135,23 +135,72 @@ class VimHandler(floo_handler.FlooHandler):
             return
         return View(vb)
 
-    def stomp_prompt(self, changed_bufs, missing_bufs, cb):
+    def stomp_prompt(self, changed_bufs, missing_bufs, new_files, ignored, cb):
+
+        def pluralize(arg):
+            return arg != 1 and 's' or ''
+
+        overwrite_local = ''
+        overwrite_remote = ''
+        missing = [buf['path'] for buf in missing_bufs]
+        changed = [buf['path'] for buf in changed_bufs]
+
+        to_upload = set(new_files + changed).difference(set(ignored))
+        to_remove = missing + ignored
+        to_fetch = changed + missing
+        to_upload_len = len(to_upload)
+        to_remove_len = len(to_remove)
+        remote_len = to_remove_len + to_upload_len
+        to_fetch_len = len(to_fetch)
+
+        if not to_fetch:
+            overwrite_local = 'Fetch nothing'
+        elif to_fetch_len < 5:
+            overwrite_local = 'Fetch %s' % ', '.join(to_fetch)
+        else:
+            overwrite_local = 'Fetch %s file%s' % (to_fetch_len, pluralize(to_fetch_len))
+
+        if to_upload_len < 5:
+            to_upload_str = 'upload %s' % ', '.join(to_upload)
+        else:
+            to_upload_str = 'upload %s' % to_upload_len
+
+        if to_remove_len < 5:
+            to_remove_str = 'remove %s' % ', '.join(to_remove)
+        else:
+            to_remove_str = 'remove %s' % to_remove_len
+
+        if to_upload:
+            overwrite_remote += to_upload_str
+            if to_remove:
+                overwrite_remote += ' and '
+        if to_remove:
+            overwrite_remote += to_remove_str
+
+        if remote_len >= 5 and overwrite_remote:
+            overwrite_remote += ' files'
+
+        overwrite_remote = overwrite_remote.capitalize()
+
+        action = 'Overwrite'
         choices = ['remote', 'local', 'cancel']
-        prompt = 'The workspace is out of sync. '
-        # TODO: better prompt.
-        prompt += 'Overwrite (r)emote files, (l)ocal files, or (c)ancel and disconnect?'
-        choice = editor.vim_choice(prompt, 'remote', choices)
-        if choice == 'remote':
-            return cb(0)
-        if choice == 'local':
-            return cb(1)
-        if choice == 'cancel':
-            return cb(2)
-        return cb(-1)
+        prompt = 'The workspace is out of sync. You may:\n'
+        prompt += '\t%s %s (r)emote file%s (%s)\n' % (action, remote_len, pluralize(remote_len), overwrite_remote)
+        prompt += '\t%s %s (l)ocal file%s (%s)\n' % (action, to_fetch_len, pluralize(to_fetch_len), overwrite_local)
+        prompt += "\t(c)ancel\n"
+        choice = editor.vim_choice(prompt, choices[0], choices)
+        try:
+            return cb(choices.index(choice))
+        except ValueError:
+            return cb(-1)
 
     def ok_cancel_dialog(self, msg, cb=None):
         res = editor.ok_cancel_dialog(msg)
         return (cb and cb(res) or res)
+
+    def get_view_text_by_path(self, rel_path):
+        vb = self.get_vim_buf_by_path(rel_path)
+        return vb and vb[:]
 
     def get_vim_buf_by_path(self, p):
         for vim_buf in vim.buffers:
@@ -344,7 +393,7 @@ class VimHandler(floo_handler.FlooHandler):
         buf_id = data['id']
         user_id = data['user_id']
         username = data.get('username', 'an unknown user')
-        ping = G.STALKER_MODE or data.get('ping', False)
+        ping = G.FOLLOW_MODE or data.get('ping', False)
         previous_highlight = self.user_highlights.get(user_id)
         buf = self.bufs.get(buf_id)
         if not buf:

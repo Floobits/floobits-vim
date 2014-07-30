@@ -4,9 +4,11 @@ import select
 try:
     from . import api, msg
     from .. import editor
+    from ..common.exc_fmt import str_e, pp_e
     from ..common.handlers import tcp_server
     assert msg and tcp_server
 except (ImportError, ValueError):
+    from floo.common.exc_fmt import str_e, pp_e
     from floo.common.handlers import tcp_server
     from floo.common import api, msg
     from floo import editor
@@ -37,10 +39,19 @@ class _Reactor(object):
         try:
             handler.proto.stop()
         except Exception as e:
-            msg.warn('Error stopping connection: %s' % str(e))
-        self._handlers.remove(handler)
-        self._protos.remove(handler.proto)
+            msg.warn('Error stopping connection: ', str_e(e))
+        try:
+            self._handlers.remove(handler)
+        except Exception:
+            pass
+        try:
+            self._protos.remove(handler.proto)
+        except Exception:
+            pass
+        if hasattr(handler, 'listener_factory'):
+            return handler.listener_factory.stop()
         if not self._handlers and not self._protos:
+            msg.log('All handlers stopped. Stopping reactor.')
             self.stop()
 
     def stop(self):
@@ -102,10 +113,13 @@ class _Reactor(object):
             _in, _out, _except = select.select(readable, writeable, errorable, timeout)
         except (select.error, socket.error, Exception) as e:
             # TODO: with multiple FDs, must call select with just one until we find the error :(
-            if len(readable) == 1:
-                readable[0].reconnect()
-                return msg.error('Error in select(): %s' % str(e))
-            raise Exception("can't handle more than one fd exception in reactor")
+            for fileno in readable:
+                try:
+                    select.select([fileno], [], [], 0)
+                except (select.error, socket.error, Exception) as e:
+                    fd_map[fileno].reconnect()
+                    msg.error('Error in select(): ', fileno, str_e(e))
+            return
 
         for fileno in _except:
             fd = fd_map[fileno]
@@ -116,7 +130,8 @@ class _Reactor(object):
             try:
                 fd.write()
             except Exception as e:
-                msg.error('Couldn\'t write to socket: %s' % str(e))
+                msg.error('Couldn\'t write to socket: ', str_e(e))
+                msg.debug('Couldn\'t write to socket: ', pp_e(e))
                 return self._reconnect(fd, _in)
 
         for fileno in _in:
@@ -124,7 +139,8 @@ class _Reactor(object):
             try:
                 fd.read()
             except Exception as e:
-                msg.error('Couldn\'t read from socket: %s' % str(e))
+                msg.error('Couldn\'t read from socket: ', str_e(e))
+                msg.debug('Couldn\'t read from socket: ', pp_e(e))
                 fd.reconnect()
 
 reactor = _Reactor()

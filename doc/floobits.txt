@@ -40,7 +40,7 @@ COMMANDS
 
 TROUBLESHOOTING
 
-To increase the logging level, add "debug 1" to your ~/.floorc.
+To increase the logging level, add '"debug": true' to your ~/.floorc.json
 
 Other plugins can interfere with Floobits. For example, YouCompleteMe changes
 updatetime to 2000 milliseconds. This causes increased latency and decreased
