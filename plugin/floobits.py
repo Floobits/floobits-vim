@@ -44,7 +44,7 @@ reactor = reactor.reactor
 
 # Protocol version
 G.__VERSION__ = '0.11'
-G.__PLUGIN_VERSION__ = '2.1.1'
+G.__PLUGIN_VERSION__ = '3.0.0'
 
 utils.reload_settings()
 
