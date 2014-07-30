@@ -135,7 +135,7 @@ class VimHandler(floo_handler.FlooHandler):
             return
         return View(vb)
 
-    def stomp_prompt(self, changed_bufs, missing_bufs, cb):
+    def stomp_prompt(self, changed_bufs, missing_bufs, new_files, ignored, cb):
         choices = ['remote', 'local', 'cancel']
         prompt = 'The workspace is out of sync. '
         # TODO: better prompt.

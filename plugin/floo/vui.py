@@ -10,6 +10,7 @@ except (ImportError, ValueError):
     from floo import vim_handler, editor
 
 
+reactor = reactor.reactor
 call_feedkeys = False
 ticker = None
 ticker_errors = 0
