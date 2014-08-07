@@ -257,9 +257,10 @@ def floobits_complete_signup():
     if not utils.has_browser():
         msg.log('You need a modern browser to complete the sign up. Go to https://floobits.com to sign up.')
         return
-    vui.pinocchio()
+    VUI.pinocchio()
 
 
+@utils.inlined_callbacks
 def floobits_check_credentials():
     msg.debug('Print checking credentials.')
     if utils.can_auth():
@@ -267,29 +268,7 @@ def floobits_check_credentials():
     if not utils.has_browser():
         msg.log('You need a Floobits account to use the Floobits plugin. Go to https://floobits.com to sign up.')
         return
-    floobits_setup_credentials()
-
-
-def floobits_setup_credentials():
-    prompt = 'You need a Floobits account! Do you have one? If not, we will create one for you [y/n]. '
-    d = vim_input(prompt, '')
-    if d and (d != 'y' and d != 'n'):
-        return floobits_setup_credentials()
-    agent = None
-    if d == 'y':
-        msg.debug('You have an account.')
-        agent = RequestCredentialsHandler()
-    elif not utils.get_persistent_data().get('disable_account_creation'):
-        agent = CreateAccountHandler()
-    if not agent:
-        msg.error('A configuration error occured earlier. Please go to floobits.com and sign up to use this plugin.\n\n'
-                  'We\'re really sorry. This should never happen.')
-        return
-    try:
-        reactor.connect(agent, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
-    except Exception as e:
-        msg.error(str(e))
-        msg.debug(traceback.format_exc())
+    yield VUI.create_or_link_account, None, G.DEFAULT_HOST, False
 
 
 def floobits_check_and_join_workspace(workspace_url):
