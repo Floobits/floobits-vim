@@ -3,8 +3,6 @@ import os
 import os.path
 import traceback
 import webbrowser
-import uuid
-import binascii
 import imp
 from functools import wraps
 
@@ -278,8 +276,7 @@ def floobits_setup_credentials():
     agent = None
     if d == 'y':
         msg.debug('You have an account.')
-        token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
-        agent = RequestCredentialsHandler(token)
+        agent = RequestCredentialsHandler()
     elif not utils.get_persistent_data().get('disable_account_creation'):
         agent = CreateAccountHandler()
     if not agent:
