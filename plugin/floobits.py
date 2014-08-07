@@ -92,6 +92,14 @@ def vim_input(prompt, default, completion=None):
     return vim.eval('user_input')
 
 
+def floobits_pause():
+    return vui.floobits_pause()
+
+
+def floobits_unpause():
+    return vui.floobits_unpause()
+
+
 def floobits_global_tick():
     reactor.tick()
 
