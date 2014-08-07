@@ -1,7 +1,6 @@
 # coding: utf-8
 import os
 import os.path
-import traceback
 import webbrowser
 import imp
 from functools import wraps
@@ -32,8 +31,6 @@ except ImportError:
 import vim
 
 from floo.common import api, ignore, migrations, msg, reactor, utils, shared as G
-from floo.common.handlers.account import CreateAccountHandler
-from floo.common.handlers.credentials import RequestCredentialsHandler
 from floo import editor, vui
 
 VUI = vui.VUI()
@@ -42,7 +39,7 @@ reactor = reactor.reactor
 
 # Protocol version
 G.__VERSION__ = '0.11'
-G.__PLUGIN_VERSION__ = '3.0.0'
+G.__PLUGIN_VERSION__ = '3.0.1'
 
 utils.reload_settings()
 
