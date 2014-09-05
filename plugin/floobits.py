@@ -30,7 +30,7 @@ except ImportError:
 
 import vim
 
-from floo.common import api, ignore, migrations, msg, reactor, utils, shared as G
+from floo.common import api, migrations, msg, reactor, utils, shared as G
 from floo import editor, vui
 
 VUI = vui.VUI()
@@ -168,7 +168,11 @@ def floobits_maybe_new_file():
 
     buf = G.AGENT.get_buf_by_path(path)
     if not buf:
-        if not ignore.is_ignored(path):
+        is_dir = os.path.isdir(path)
+        if not G.IGNORE:
+            msg.warn('G.IGNORE is not set. Uploading anyway.')
+            G.AGENT.upload(path)
+        if G.IGNORE and G.IGNORE.is_ignored(path, is_dir, True):
             G.AGENT.upload(path)
 
 
