@@ -31,13 +31,18 @@ This will unfortuantely escape any key sequence, like ctrl-w j, unless you finis
 ## Installation
 
 * [Create a Floobits account](https://floobits.com/signup) or [sign in with GitHub](https://floobits.com/login/github?next=/dash).
-* Add your Floobits username and API secret to `~/.floorc`. You can find your API secret on [your settings page](https://floobits.com/dash/settings). A typical `~/.floorc` looks like this:
+* Add your Floobits username and API secret to `~/.floorc.json`. You can find your API secret on [your settings page](https://floobits.com/dash/settings). A typical `~/.floorc.json` looks like this:
 
 ```
-username myuser
-secret gii9Ka8aZei3ej1eighu2vi8D
-vim_executable mvim
-```
+{
+  "auth": {
+    "floobits.com": {
+      "username": "your_username",
+      "api_key": "your_api_key",
+      "secret": "your_api_secret_not_your_password"
+    }
+  }
+}```
 
 * [Vundle](https://github.com/gmarik/vundle) users: Add `Bundle 'Floobits/floobits-vim'` to your `~/.vimrc`.
 * [Pathogen](https://github.com/tpope/vim-pathogen) users: `cd ~/.vim/bundle` and `git clone https://github.com/Floobits/floobits-vim Floobits`
