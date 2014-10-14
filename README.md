@@ -42,7 +42,8 @@ This will unfortuantely escape any key sequence, like ctrl-w j, unless you finis
       "secret": "your_api_secret_not_your_password"
     }
   }
-}```
+}
+```
 
 * [Vundle](https://github.com/gmarik/vundle) users: Add `Bundle 'Floobits/floobits-vim'` to your `~/.vimrc`.
 * [Pathogen](https://github.com/tpope/vim-pathogen) users: `cd ~/.vim/bundle` and `git clone https://github.com/Floobits/floobits-vim Floobits`
