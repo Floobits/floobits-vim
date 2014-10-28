@@ -19,11 +19,12 @@ class NvimFloobits(object):
         self.vim = vim
         #self.eventLoop = EventLoop(vim)
         #self.eventLoop.start()
-        vim.command('command! FlooTest call rpcrequest(%d, "floo_test")' %
+        #command! -nargs=1 FlooJoinWorkspace :python floobits_check_and_join_workspace(<f-args>)
+        vim.command('command! -nargs=1 FlooTest call rpcrequest(%d, "floo_test", <f-args>)' %
             self.vim.channel_id)
 
-    def floo_test(self):
-        self.vim.command('echom "floo_test"')
+    def floo_test(self, test):
+        self.vim.command('echom "floo_test" %s' % test)
 
     def on_tick(self):
         pass
