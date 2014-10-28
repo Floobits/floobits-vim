@@ -88,8 +88,6 @@ function! s:SetAutoCmd()
             exec 'autocmd '. cmd .' * call s:MaybeChanged()'
         endfor
 
-        autocmd CursorHold * python floobits_cursor_hold()
-        autocmd CursorHoldI * python floobits_cursor_holdi()
         autocmd CursorMoved * python floobits_maybe_selection_changed()
         autocmd CursorMovedI * python floobits_maybe_selection_changed()
         for cmd in s:new_buf_events
@@ -121,8 +119,6 @@ command! FlooPing :python floobits_maybe_selection_changed(True)
 
 command! FlooDeleteBuf :python floobits_delete_buf()
 
-command! FlooPause :python floobits_pause()
-command! FlooUnPause :python floobits_unpause()
 command! FlooOpenInBrowser :python floobits_open_in_browser()
 command! FlooClearHighlights :python floobits_clear()
 command! FlooToggleHighlights :python floobits_toggle_highlights()

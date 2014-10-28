@@ -89,37 +89,8 @@ def vim_input(prompt, default, completion=None):
     return vim.eval('user_input')
 
 
-def floobits_pause():
-    return vui.floobits_pause()
-
-
-def floobits_unpause():
-    return vui.floobits_unpause()
-
-
 def floobits_global_tick():
     reactor.tick()
-
-
-def floobits_cursor_hold():
-    floobits_global_tick()
-    if not vui.call_feedkeys:
-        return
-    return vim.command("call feedkeys(\"f\\e\", 'n')")
-
-
-def floobits_cursor_holdi():
-    floobits_global_tick()
-    if not vui.call_feedkeys:
-        return
-    linelen = int(vim.eval("col('$')-1"))
-    if linelen > 0:
-        if int(vim.eval("col('.')")) == 1:
-            vim.command("call feedkeys(\"\<Right>\<Left>\",'n')")
-        else:
-            vim.command("call feedkeys(\"\<Left>\<Right>\",'n')")
-    else:
-        vim.command("call feedkeys(\"\ei\",'n')")
 
 
 def is_connected(warn=False):

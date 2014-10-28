@@ -11,10 +11,6 @@ except (ImportError, ValueError):
 
 
 reactor = reactor.reactor
-call_feedkeys = False
-ticker = None
-ticker_errors = 0
-using_feedkeys = False
 
 
 ticker_python = '''import sys; import subprocess; import time
@@ -38,115 +34,26 @@ while True:
 FLOOBITS_INFO = '''
 floobits_version: {version}
 # not updated until FlooJoinWorkspace is called
-mode: {mode}
 updatetime: {updatetime}
 clientserver_support: {cs}
 servername: {servername}
-ticker_errors: {ticker_errors}
 '''
 
 
-def floobits_pause():
-    global call_feedkeys, ticker
-
-    if G.TIMERS:
-        return
-
-    if using_feedkeys:
-        call_feedkeys = False
-        vim.command('set updatetime=4000')
-    else:
-        if ticker is None:
-            return
-        try:
-            ticker.kill()
-        except Exception as e:
-            print(e)
-        ticker = None
-
-
-def floobits_unpause():
-    global call_feedkeys
-
-    if G.TIMERS:
-        return
-
-    if using_feedkeys:
-        call_feedkeys = True
-        vim.command('set updatetime=250')
-    else:
-        start_event_loop()
-
-
-def fallback_to_feedkeys(warning):
-    global using_feedkeys
-    using_feedkeys = True
-    warning += ' Falling back to f//e hack which will break some key commands. You may need to call FlooPause/FlooUnPause before some commands.'
-    msg.warn(warning)
-    floobits_unpause()
-
-
-def ticker_watcher(ticker):
-    global ticker_errors
-    if not G.AGENT:
-        return
-    ticker.poll()
-    if ticker.returncode is None:
-        return
-    msg.warn('respawning new ticker')
-    ticker_errors += 1
-    if ticker_errors > 10:
-        return fallback_to_feedkeys('Too much trouble with the floobits external ticker.')
-    start_event_loop()
-    utils.set_timeout(ticker_watcher, 2000, ticker)
-
-
-def start_event_loop():
-    global ticker
-
-    if G.TIMERS:
-        msg.debug('Your Vim was compiled with +timer support. Awesome!')
-        return
-
-    if not bool(int(vim.eval('has("clientserver")'))):
-        return fallback_to_feedkeys('This VIM was not compiled with clientserver support. You should consider using a different vim!')
-
-    exe = getattr(G, 'VIM_EXECUTABLE', None)
-    if not exe:
-        return fallback_to_feedkeys('Your vim was compiled with clientserver, but I don\'t know the name of the vim executable.'
-                                    'Please define it in your ~/.floorc using the vim_executable directive. e.g. \'vim_executable mvim\'.')
-
-    servername = vim.eval('v:servername')
-    if not servername:
-        return fallback_to_feedkeys('I can not identify the servername of this vim. You may need to pass --servername to vim at startup.')
-
-    evaler = ticker_python.format(binary=exe, servername=servername, sleep='1.0')
-    ticker = subprocess.Popen(['python', '-c', evaler],
-                              stderr=subprocess.PIPE,
-                              stdout=subprocess.PIPE)
-    ticker.poll()
-    utils.set_timeout(ticker_watcher, 500, ticker)
 
 
 def floobits_stop_everything():
     if G.AGENT:
         reactor.stop()
         G.AGENT = None
-    floobits_pause()
     # TODO: get this value from vim and reset it
-    vim.command('set updatetime=4000')
-
-# NOTE: not strictly necessary
-atexit.register(floobits_stop_everything)
 
 
 class VUI(flooui.FlooUI):
     def floobits_info(self):
         kwargs = {
             'cs': bool(int(vim.eval('has("clientserver")'))),
-            'mode': (using_feedkeys and 'feedkeys') or 'client-server',
             'servername': vim.eval('v:servername'),
-            'ticker_errors': ticker_errors,
             'updatetime': vim.eval('&l:updatetime'),
             'version': G.__PLUGIN_VERSION__,
         }
