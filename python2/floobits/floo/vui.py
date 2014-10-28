@@ -13,24 +13,6 @@ except (ImportError, ValueError):
 reactor = reactor.reactor
 
 
-ticker_python = '''import sys; import subprocess; import time
-args = ['{binary}', '--servername', '{servername}', '--remote-expr', 'g:FloobitsGlobalTick()']
-while True:
-    time.sleep({sleep})
-    # TODO: learn to speak vim or something :(
-    proc = subprocess.Popen(args,
-        stderr=subprocess.PIPE,
-        stdout=subprocess.PIPE)
-    (stdoutdata, stderrdata) = proc.communicate()
-    # # yes, this is stupid...
-    if stdoutdata.strip() == '0':
-        continue
-    if len(stderrdata) == 0:
-        continue
-    sys.stderr.write(stderrdata)
-    sys.exit(1)
-'''
-
 FLOOBITS_INFO = '''
 floobits_version: {version}
 # not updated until FlooJoinWorkspace is called
