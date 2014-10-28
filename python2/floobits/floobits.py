@@ -62,8 +62,8 @@ def _get_line_endings():
     return '\n'
 
 
-def floobits_info():
-    VUI.floobits_info()
+def info():
+    VUI.info()
 
 
 def vim_choice(prompt, default, choices):
@@ -89,7 +89,7 @@ def vim_input(prompt, default, completion=None):
     return vim.eval('user_input')
 
 
-def floobits_global_tick():
+def global_tick():
     reactor.tick()
 
 
@@ -108,24 +108,24 @@ def is_connected(warn=False):
 
 
 @is_connected()
-def floobits_maybe_selection_changed(ping=False):
+def maybe_selection_changed(ping=False):
     G.AGENT.maybe_selection_changed(vim.current.buffer, ping)
 
 
 @is_connected()
-def floobits_maybe_buffer_changed():
+def maybe_buffer_changed():
     G.AGENT.maybe_buffer_changed(vim.current.buffer)
 
 
 @is_connected()
-def floobits_follow(follow_mode=None):
+def follow(follow_mode=None):
     if follow_mode is None:
         follow_mode = not G.FOLLOW_MODE
     G.FOLLOW_MODE = follow_mode
 
 
 @is_connected()
-def floobits_maybe_new_file():
+def maybe_new_file():
     path = vim.current.buffer.name
     if path is None or path == '':
         msg.debug('get:buf buffer has no filename')
@@ -148,7 +148,7 @@ def floobits_maybe_new_file():
 
 
 @is_connected()
-def floobits_on_save():
+def on_save():
     buf = G.AGENT.get_buf_by_path(vim.current.buffer.name)
     if buf:
         G.AGENT.send({
@@ -158,25 +158,25 @@ def floobits_on_save():
 
 
 @is_connected(True)
-def floobits_open_in_browser():
+def open_in_browser():
     url = G.AGENT.workspace_url
     webbrowser.open(url)
 
 
 @is_connected(True)
-def floobits_add_buf(path=None):
+def add_buf(path=None):
     path = path or vim.current.buffer.name
     G.AGENT._upload(path)
 
 
 @is_connected(True)
-def floobits_delete_buf():
+def delete_buf():
     name = vim.current.buffer.name
     G.AGENT.delete_buf(name)
 
 
 @is_connected()
-def floobits_buf_enter():
+def buf_enter():
     buf = G.AGENT.get_buf_by_path(vim.current.buffer.name)
     if not buf:
         return
@@ -195,7 +195,7 @@ def floobits_buf_enter():
 
 
 @is_connected()
-def floobits_clear():
+def clear():
     buf = G.AGENT.get_buf_by_path(vim.current.buffer.name)
     if not buf:
         return
@@ -206,25 +206,25 @@ def floobits_clear():
 
 
 @is_connected()
-def floobits_toggle_highlights():
+def toggle_highlights():
     G.SHOW_HIGHLIGHTS = not G.SHOW_HIGHLIGHTS
     if G.SHOW_HIGHLIGHTS:
-        floobits_buf_enter()
+        buf_enter()
         msg.log('Highlights enabled')
         return
-    floobits_clear()
+    clear()
     msg.log('Highlights disabled')
 
 
-def floobits_share_dir_private(dir_to_share):
+def share_dir_private(dir_to_share):
     return VUI.share_dir(None, dir_to_share, {'AnonymousUser': []})
 
 
-def floobits_share_dir_public(dir_to_share):
+def share_dir_public(dir_to_share):
     return VUI.share_dir(None, dir_to_share, {'AnonymousUser': ['view_room']})
 
 
-def floobits_complete_signup():
+def complete_signup():
     msg.debug('Completing signup.')
     if not utils.has_browser():
         msg.log('You need a modern browser to complete the sign up. Go to https://floobits.com to sign up.')
@@ -233,7 +233,7 @@ def floobits_complete_signup():
 
 
 @utils.inlined_callbacks
-def floobits_check_credentials():
+def check_credentials():
     msg.debug('Print checking credentials.')
     if utils.can_auth():
         return
@@ -243,7 +243,7 @@ def floobits_check_credentials():
     yield VUI.create_or_link_account, None, G.DEFAULT_HOST, False
 
 
-def floobits_check_and_join_workspace(workspace_url):
+def check_and_join_workspace(workspace_url):
     try:
         r = api.get_workspace_by_url(workspace_url)
     except Exception as e:
@@ -251,10 +251,10 @@ def floobits_check_and_join_workspace(workspace_url):
     if r.code >= 400:
         return editor.error_message('Error joining %s: %s' % (workspace_url, r.body))
     msg.debug('Workspace %s exists' % workspace_url)
-    return floobits_join_workspace(workspace_url)
+    return join_workspace(workspace_url)
 
 
-def floobits_join_workspace(workspace_url, d='', upload_path=None):
+def join_workspace(workspace_url, d='', upload_path=None):
     editor.line_endings = _get_line_endings()
     cwd = vim.eval('getcwd()')
     if cwd:
@@ -264,11 +264,11 @@ def floobits_join_workspace(workspace_url, d='', upload_path=None):
     VUI.join_workspace_by_url(None, workspace_url, cwd)
 
 
-def floobits_part_workspace():
-    VUI.floobits_part_workspace()
+def part_workspace():
+    VUI.part_workspace()
 
 
-def floobits_users_in_workspace():
+def users_in_workspace():
     if not G.AGENT:
         return msg.warn('Not connected to a workspace.')
     vim.command('echom "Users connected to %s"' % (G.AGENT.workspace,))
@@ -276,7 +276,7 @@ def floobits_users_in_workspace():
         vim.command('echom "  %s connected with %s on %s"' % (user['username'], user['client'], user['platform']))
 
 
-def floobits_list_messages():
+def list_messages():
     if not G.AGENT:
         return msg.warn('Not connected to a workspace.')
     vim.command('echom "Recent messages for %s"' % (G.AGENT.workspace,))
@@ -284,7 +284,7 @@ def floobits_list_messages():
         vim.command('echom "  %s"' % (message,))
 
 
-def floobits_say_something():
+def say_something():
     if not G.AGENT:
         return msg.warn('Not connected to a workspace.')
     something = vim_input('Say something in %s: ' % (G.AGENT.workspace,), '')

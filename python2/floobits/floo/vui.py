@@ -42,7 +42,7 @@ servername: {servername}
 
 
 
-def floobits_stop_everything():
+def stop_everything():
     if G.AGENT:
         reactor.stop()
         G.AGENT = None
@@ -50,7 +50,7 @@ def floobits_stop_everything():
 
 
 class VUI(flooui.FlooUI):
-    def floobits_info(self):
+    def info(self):
         kwargs = {
             'cs': bool(int(vim.eval('has("clientserver")'))),
             'servername': vim.eval('v:servername'),
@@ -72,7 +72,7 @@ class VUI(flooui.FlooUI):
 
     def _make_agent(self, context, owner, workspace, auth, created_workspace):
         """@returns new Agent()"""
-        floobits_stop_everything()
+        stop_everything()
         if not G.TIMERS:
             start_event_loop()
         return vim_handler.VimHandler(owner, workspace, auth, created_workspace)
@@ -104,27 +104,27 @@ class VUI(flooui.FlooUI):
         """opens a project in a window or something"""
         return cb()
 
-    def floobits_part_workspace(self):
+    def part_workspace(self):
         if not G.AGENT:
             return msg.warn('Unable to leave workspace: You are not joined to a workspace.')
-        floobits_stop_everything()
+        stop_everything()
         msg.log('You left the workspace.')
 
-    def floobits_users_in_workspace(self):
+    def users_in_workspace(self):
         if not G.AGENT:
             return msg.warn('Not connected to a workspace.')
         vim.command('echom "Users connected to %s"' % (G.AGENT.workspace,))
         for user in G.AGENT.workspace_info['users'].values():
             vim.command('echom "  %s connected with %s on %s"' % (user['username'], user['client'], user['platform']))
 
-    def floobits_list_messages(self):
+    def list_messages(self):
         if not G.AGENT:
             return msg.warn('Not connected to a workspace.')
         vim.command('echom "Recent messages for %s"' % (G.AGENT.workspace,))
         for message in G.AGENT.get_messages():
             vim.command('echom "  %s"' % (message,))
 
-    def floobits_say_something(self):
+    def say_something(self):
         if not G.AGENT:
             return msg.warn('Not connected to a workspace.')
         something = self.vim_input('Say something in %s: ' % (G.AGENT.workspace,), '')
