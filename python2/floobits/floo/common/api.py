@@ -203,7 +203,7 @@ def send_error(description=None, exception=None):
     try:
         # TODO: use G.AGENT.proto.host?
         api_url = 'https://%s/api/log' % (G.DEFAULT_HOST)
-        r = api_request(G.DEFAULT_HOST, api_url, data)
+        #r = api_request(G.DEFAULT_HOST, api_url, data)
         G.ERRORS_SENT += 1
         return r
     except Exception as e:
