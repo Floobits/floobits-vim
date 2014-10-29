@@ -1,7 +1,7 @@
 from threading import Thread
 from time import sleep, strftime
 from floobits import floobits
-from floobits.floo import vui, editor
+from floobits.floo import vui, editor, vim_handler, view
 
 
 class EventLoop(Thread):
@@ -59,6 +59,8 @@ class NvimFloobits(object):
         floobits.vim = vim
         vui.vim = vim
         editor.vim = vim
+        vim_handler.vim = vim
+        view.vim = vim
         for command in commands:
             self.add_command(command['name'], command['func'], command.get('arg', None),
                          command.get('complete', None))
