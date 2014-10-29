@@ -1,5 +1,4 @@
 import subprocess
-import vim
 import atexit
 
 try:
@@ -21,14 +20,13 @@ clientserver_support: {cs}
 servername: {servername}
 '''
 
-
+vim = None
 
 
 def stop_everything():
     if G.AGENT:
         reactor.stop()
         G.AGENT = None
-    # TODO: get this value from vim and reset it
 
 
 class VUI(flooui.FlooUI):
@@ -55,8 +53,6 @@ class VUI(flooui.FlooUI):
     def _make_agent(self, context, owner, workspace, auth, created_workspace):
         """@returns new Agent()"""
         stop_everything()
-        if not G.TIMERS:
-            start_event_loop()
         return vim_handler.VimHandler(owner, workspace, auth, created_workspace)
 
     def user_y_or_n(self, context, prompt, affirmation_txt, cb):

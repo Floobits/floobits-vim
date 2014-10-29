@@ -2,7 +2,7 @@ import sys
 from collections import defaultdict
 import time
 
-import vim
+vim = None
 
 try:
     from .common import shared as G

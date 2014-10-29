@@ -1,5 +1,7 @@
 from threading import Thread
 from time import sleep, strftime
+from floobits import floobits
+from floobits.floo import vui, editor
 
 
 class EventLoop(Thread):
@@ -32,7 +34,7 @@ commands = [
     {'name': 'FlooSaySomething','func': 'say_something',},
     {'name': 'FlooInfo','func': 'info',},
 ]
-eventHandlers = [
+event_handlers = [
     'maybe_selection_changed',
     'maybe_buffer_changed',
     'maybe_new_file',
@@ -57,6 +59,9 @@ file_events = ['BufWritePost', 'BufReadPost', 'BufWinEnter',]
 class NvimFloobits(object):
     def __init__(self, vim):
         self.vim = vim
+        floobits.vim = vim
+        vui.vim = vim
+        editor.vim = vim
         # kill autocommands on reload
         vim.command('!autocmd')
         for command in commands:
@@ -82,7 +87,7 @@ class NvimFloobits(object):
 
 
     def on_tick(self):
-        pass
+        floobits.global_tick()
 
     def command(self, commandName, commandHandler, numArgs=None, complete=None):
         if not numArgs
@@ -110,3 +115,9 @@ def add_command(funcName, hasArg=None):
 
 for command in commands:
     add_command(command['func'], command.get('arg', None))
+
+for handler in event_handlers:
+    add_command(handler)
+
+for handler in buffer_events:
+    add_command(handler)

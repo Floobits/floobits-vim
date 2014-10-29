@@ -28,7 +28,7 @@ except ImportError:
     HTTPError = urllib2.HTTPError
     URLError = urllib2.URLError
 
-import vim
+vim = None
 
 from floo.common import api, migrations, msg, reactor, utils, shared as G
 from floo import editor, vui
@@ -49,7 +49,6 @@ migrations.migrate_symlinks()
 G.DELETE_LOCAL_FILES = bool(int(vim.eval('floo_delete_local_files')))
 G.SHOW_HIGHLIGHTS = bool(int(vim.eval('floo_show_highlights')))
 G.SPARSE_MODE = bool(int(vim.eval('floo_sparse_mode')))
-G.TIMERS = bool(int(vim.eval('has("timers")')))
 
 
 def _get_line_endings():
