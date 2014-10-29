@@ -5,8 +5,8 @@ try:
     from . import msg, utils, reactor, shared as G, flooui
     from ..common import vim_handler, editor
 except (ImportError, ValueError):
-    from floo.common import msg, utils, reactor, shared as G, flooui
-    from floo import vim_handler, editor
+    from common import msg, utils, reactor, shared as G, flooui
+    import vim_handler, editor
 
 
 reactor = reactor.reactor

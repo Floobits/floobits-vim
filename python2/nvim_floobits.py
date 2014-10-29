@@ -15,7 +15,6 @@ class EventLoop(Thread):
             sleep(0.1)
             self.vim.session.post('tick')
 
-
 commands = [
     {'name': 'FlooJoinWorkspace', 'func': 'check_and_join_workspace', 'arg': '1'},
     {'name': 'FlooShareDirPublic', 'func': 'share_dir_public', 'arg': '1', 'complete': 'dir'},
@@ -60,11 +59,9 @@ class NvimFloobits(object):
         floobits.vim = vim
         vui.vim = vim
         editor.vim = vim
-        # kill autocommands on reload
-        vim.command('!autocmd')
         for command in commands:
             self.add_command(command['name'], command['func'], command.get('arg', None),
-                         command.get('complete', None)
+                         command.get('complete', None))
         for event in buffer_events:
             self.add_autocmd(event, "maybe_buffer_changed")
         self.add_autocmd("CursorMoved", "maybe_selection_changed")
@@ -81,7 +78,7 @@ class NvimFloobits(object):
         floobits.global_tick()
 
     def add_autocmd(self, event, handler):
-        vim.command('autocmd  %s * rpcrequest(%d, "%s")' % (event, self.vim.channel_id, handler))
+        self.vim.command('autocmd  %s * call rpcrequest(%d, "%s")' % (event, self.vim.channel_id, handler))
 
     def add_command(self, commandName, commandHandler, numArgs=None, complete=None):
         args = ""
@@ -92,15 +89,14 @@ class NvimFloobits(object):
         if complete is not None:
             args += "-complete=%s " % complete
 
-        vim.command('command! %s %s rpcrequest(%d, "%s"%s)' % (
-                    args, commandName, self.vim.channel_id, commandHandler, fargs)
+        self.vim.command('command! %s %s rpcrequest(%d, "%s"%s)' % (
+                    args, commandName, self.vim.channel_id, commandHandler, fargs))
 
 
 def add_command(funcName, hasArg=None):
     if not hasArg:
         def func(self):
-           vim.command('echom "called %s"' % funcName)
-           #getattr(floobits, funcName)()
+           getattr(floobits, funcName)()
     else:
         def func(self, arg):
            getattr(floobits, funcName)(arg)

@@ -46,9 +46,10 @@ utils.reload_settings()
 migrations.rename_floobits_dir()
 migrations.migrate_symlinks()
 
-G.DELETE_LOCAL_FILES = bool(int(vim.eval('floo_delete_local_files')))
-G.SHOW_HIGHLIGHTS = bool(int(vim.eval('floo_show_highlights')))
-G.SPARSE_MODE = bool(int(vim.eval('floo_sparse_mode')))
+def set_globals():
+    G.DELETE_LOCAL_FILES = bool(int(vim.eval('floo_delete_local_files')))
+    G.SHOW_HIGHLIGHTS = bool(int(vim.eval('floo_show_highlights')))
+    G.SPARSE_MODE = bool(int(vim.eval('floo_sparse_mode')))
 
 
 def _get_line_endings():

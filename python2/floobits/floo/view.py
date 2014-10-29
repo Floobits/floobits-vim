@@ -1,8 +1,9 @@
-import vim
 import editor
 
 from common import msg, utils
 from collections import defaultdict
+
+vim = None
 
 # Foreground: background
 COLORS = (
