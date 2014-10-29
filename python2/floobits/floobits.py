@@ -92,7 +92,6 @@ def vim_input(prompt, default, completion=None):
 def global_tick():
     reactor.tick()
 
-
 def is_connected(warn=False):
     def outer(func):
         @wraps(func)
