@@ -64,47 +64,44 @@ class NvimFloobits(object):
         # kill autocommands on reload
         vim.command('!autocmd')
         for command in commands:
-            self.command(command['name'], command['func'], command.get('arg', None),
+            self.add_command(command['name'], command['func'], command.get('arg', None),
                          command.get('complete', None)
         for event in buffer_events:
-            vim.command('autocmd  %s * rpcrequest(%d, "maybe_buffer_changed")' % (
-                event, self.vim.channel_id))
-        vim.command('autocmd  CursorMoved * rpcrequest(%d, "maybe_selection_changed")' % (
-            self.vim.channel_id))
-        vim.command('autocmd  CursorMovedI * rpcrequest(%d, "maybe_selection_changed")' % (
-            self.vim.channel_id))
+            self.add_autocmd(event, "maybe_buffer_changed")
+        self.add_autocmd("CursorMoved", "maybe_selection_changed")
+        self.add_autocmd("CursorMovedI", "maybe_selection_changed")
         for event in file_events:
-            vim.command('autocmd  %s * rpcrequest(%d, "maybe_new_file")' % (
-                event, self.vim.channel_id))
-        vim.command('autocmd  BufEnter * rpcrequest(%d, "buf_enter")' % (
-            self.vim.channel_id))
-        vim.command('autocmd  BufWritePost * rpcrequest(%d, "on_save")' % (
-            self.vim.channel_id))
+            self.add_autocmd(event, "maybe_new_file")
+        self.add_autocmd("BufEnter", "buf_enter")
+        self.add_autocmd("BufWritePost", "on_save")
         #self.eventLoop = EventLoop(vim)
         #self.eventLoop.start()
         floobits.check_credentials()
 
-
     def on_tick(self):
         floobits.global_tick()
 
-    def command(self, commandName, commandHandler, numArgs=None, complete=None):
-        if not numArgs
-            vim.command('command! %s rpcrequest(%d, "%s")' % (
-                commandName, self.vim.channel_id, commandHandler)
-        else:
-            if complete:
-                vim.command('command! -nargs=%s -complete=%s %s rpcrequest(%d, "%s", <f-args>)' % (
-                    numArgs, complete, commandName, self.vim.channel_id, commandHandler)
-            else:
-                vim.command('command! -nargs=%s %s rpcrequest(%d, "%s", <f-args>)' % (
-                    numArgs, commandName, self.vim.channel_id, commandHandler)
+    def add_autocmd(self, event, handler):
+        vim.command('autocmd  %s * rpcrequest(%d, "%s")' % (event, self.vim.channel_id, handler))
+
+    def add_command(self, commandName, commandHandler, numArgs=None, complete=None):
+        args = ""
+        fargs = ""
+        if numArgs is not None:
+            args += "-nargs=%s " % numArgs
+            fargs = ", <f-args>"
+        if complete is not None:
+            args += "-complete=%s " % complete
+
+        vim.command('command! %s %s rpcrequest(%d, "%s"%s)' % (
+                    args, commandName, self.vim.channel_id, commandHandler, fargs)
 
 
 def add_command(funcName, hasArg=None):
     if not hasArg:
         def func(self):
-           getattr(floobits, funcName)()
+           vim.command('echom "called %s"' % funcName)
+           #getattr(floobits, funcName)()
     else:
         def func(self, arg):
            getattr(floobits, funcName)(arg)
