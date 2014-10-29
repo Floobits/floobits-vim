@@ -41,7 +41,6 @@ event_handlers = [
     'buf_enter',
     'on_save',
 ]
-
 buffer_events = [
     'InsertEnter',
     'InsertChange',
@@ -117,7 +116,4 @@ for command in commands:
     add_command(command['func'], command.get('arg', None))
 
 for handler in event_handlers:
-    add_command(handler)
-
-for handler in buffer_events:
     add_command(handler)
