@@ -51,7 +51,7 @@ class NvimFloobits(object):
             vim.command('command! %s rpcrequest(%d, %s)' % (commandName, commandHandler)
         else:
             if complete:
-                vim.command('command! -nargs=%s -complate=%s %s rpcrequest(%d, %s, <f-args>)' % (
+                vim.command('command! -nargs=%s -complete=%s %s rpcrequest(%d, %s, <f-args>)' % (
                     numArgs, complete, commandName, commandHandler)
             else:
                 vim.command('command! -nargs=%s %s rpcrequest(%d, %s, <f-args>)' % (
