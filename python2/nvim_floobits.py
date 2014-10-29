@@ -70,8 +70,8 @@ class NvimFloobits(object):
             self.add_autocmd(event, "maybe_new_file")
         self.add_autocmd("BufEnter", "buf_enter")
         self.add_autocmd("BufWritePost", "on_save")
-        #self.eventLoop = EventLoop(vim)
-        #self.eventLoop.start()
+        self.eventLoop = EventLoop(vim)
+        self.eventLoop.start()
         floobits.check_credentials()
 
     def on_tick(self):
@@ -89,7 +89,7 @@ class NvimFloobits(object):
         if complete is not None:
             args += "-complete=%s " % complete
 
-        self.vim.command('command! %s %s rpcrequest(%d, "%s"%s)' % (
+        self.vim.command('command! %s %s call rpcrequest(%d, "%s"%s)' % (
                     args, commandName, self.vim.channel_id, commandHandler, fargs))
 
 
