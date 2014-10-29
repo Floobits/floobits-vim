@@ -53,7 +53,6 @@ buffer_events = [
 
 file_events = ['BufWritePost', 'BufReadPost', 'BufWinEnter']
 
-#floobits_maybe_buffer_changed
 
 class NvimFloobits(object):
     def __init__(self, vim):
