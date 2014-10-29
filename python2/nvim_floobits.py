@@ -18,21 +18,21 @@ class EventLoop(Thread):
 
 commands = [
     {'name': 'FlooJoinWorkspace', 'func': 'check_and_join_workspace', 'arg': '1'},
-    {'name': 'FlooShareDirPublic', 'func': 'share_dir_public', 'arg': '1', 'complete': 'dir'}
-    {'name': 'FlooShareDirPrivate', 'func': 'share_dir_private', 'arg': '1', 'complete': 'dir'}
-    {'name': 'FlooAddBuf', 'func': 'add_buf', 'arg': '1', 'complete': 'file'}
-    {'name': 'FlooLeaveWorkspace', 'func': 'part_workspace',},
-    {'name': 'FlooToggleFollowMode', 'func': 'follow',},
-    {'name': 'FlooSummon', 'func': 'maybe_selection_changed',},
-    {'name': 'FlooDeleteBuf','func': 'delete_buf',},
-    {'name': 'FlooOpenInBrowser','func': 'open_in_browser',},
-    {'name': 'FlooClearHighlights','func': 'clear',},
-    {'name': 'FlooToggleHighlights','func': 'toggle_highlights',},
-    {'name': 'FlooCompleteSignup','func': 'complete_signup',},
-    {'name': 'FlooUsersInWorkspace','func': 'users_in_workspace',},
-    {'name': 'FlooListMessages','func': 'list_messages',},
-    {'name': 'FlooSaySomething','func': 'say_something',},
-    {'name': 'FlooInfo','func': 'info',},
+    {'name': 'FlooShareDirPublic', 'func': 'share_dir_public', 'arg': '1', 'complete': 'dir'},
+    {'name': 'FlooShareDirPrivate', 'func': 'share_dir_private', 'arg': '1', 'complete': 'dir'},
+    {'name': 'FlooAddBuf', 'func': 'add_buf', 'arg': '1', 'complete': 'file'},
+    {'name': 'FlooLeaveWorkspace', 'func': 'part_workspace'},
+    {'name': 'FlooToggleFollowMode', 'func': 'follow'},
+    {'name': 'FlooSummon', 'func': 'maybe_selection_changed'},
+    {'name': 'FlooDeleteBuf','func': 'delete_buf'},
+    {'name': 'FlooOpenInBrowser','func': 'open_in_browser'},
+    {'name': 'FlooClearHighlights','func': 'clear'},
+    {'name': 'FlooToggleHighlights','func': 'toggle_highlights'},
+    {'name': 'FlooCompleteSignup','func': 'complete_signup'},
+    {'name': 'FlooUsersInWorkspace','func': 'users_in_workspace'},
+    {'name': 'FlooListMessages','func': 'list_messages'},
+    {'name': 'FlooSaySomething','func': 'say_something'},
+    {'name': 'FlooInfo','func': 'info'},
 ]
 event_handlers = [
     'maybe_selection_changed',
@@ -52,7 +52,7 @@ buffer_events = [
     'CursorMovedI',
 ]
 
-file_events = ['BufWritePost', 'BufReadPost', 'BufWinEnter',]
+file_events = ['BufWritePost', 'BufReadPost', 'BufWinEnter']
 
 #floobits_maybe_buffer_changed
 
