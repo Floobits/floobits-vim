@@ -243,6 +243,7 @@ def check_credentials():
 
 
 def check_and_join_workspace(workspace_url):
+    set_globals()
     try:
         r = api.get_workspace_by_url(workspace_url)
     except Exception as e:
