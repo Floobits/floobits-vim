@@ -200,8 +200,7 @@ def clear():
         return
     view = G.AGENT.get_view(buf['id'])
     if view:
-        for user_id, username in G.AGENT.workspace_info['users'].items():
-            view.clear_highlight(int(user_id))
+        view.clear_all_highlights()
 
 
 @is_connected()
