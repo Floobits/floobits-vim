@@ -239,11 +239,12 @@ class VimHandler(floo_handler.FlooHandler):
         self.chat_deck = collections.deque(maxlen=50)
 
     def send_msg(self, text):
-        self.send({'name': 'msg', 'data': text})
-        timestamp = time.time()
-        msgText = self.format_msg(text, self.username, timestamp)
-        msg.log(msgText)
-        self.chat_deck.appendleft(msgText)
+        data = {
+            'name': 'msg',
+            'data': text,
+        }
+        self.send(data)
+        self.on_msg(data)
 
     def chat(self, username, timestamp, message, self_msg=False):
         raise NotImplementedError("reconnect not implemented.")
@@ -263,14 +264,11 @@ class VimHandler(floo_handler.FlooHandler):
         if choice == 'yes':
             webbrowser.open(hangout_url, new=2, autoraise=True)
 
-    def format_msg(self, msg, username, timestamp):
-        return '[%s] <%s> %s' % (time.ctime(timestamp), username, msg)
-
     def on_msg(self, data):
         timestamp = data.get('time') or time.time()
-        msgText = self.format_msg(data.get('data', ''), data.get('username', ''), timestamp)
-        msg.log(msgText)
-        self.chat_deck.appendleft(msgText)
+        message = msg.MSG(data.get('data', ''), timestamp, data.get('username', ''))
+        message.display()
+        self.chat_deck.appendleft(message)
 
     def get_messages(self):
         return list(self.chat_deck)
