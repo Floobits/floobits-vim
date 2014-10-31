@@ -261,10 +261,12 @@ def join_workspace(workspace_url, d='', upload_path=None):
     else:
         cwd = []
     VUI.join_workspace_by_url(None, workspace_url, cwd)
+    vim.command(":cd %s" % G.PROJECT_PATH)
 
 
 def part_workspace():
     VUI.part_workspace()
+    clear()
 
 
 def users_in_workspace():

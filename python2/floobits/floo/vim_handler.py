@@ -127,7 +127,6 @@ class VimHandler(floo_handler.FlooHandler):
         vb = self.get_vim_buf_by_path(path)
         if vb:
             return View(vb)
-
         vim.command(':edit! %s' % path)
         vb = self.get_vim_buf_by_path(path)
         if vb is None:
