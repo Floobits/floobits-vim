@@ -246,11 +246,11 @@ def floobits_toggle_highlights():
 
 
 def floobits_share_dir_private(dir_to_share):
-    return VUI.share_dir(None, dir_to_share, {'AnonymousUser': []})
+    return VUI.share_dir(None, dir_to_share, {'perms': {'AnonymousUser': []}})
 
 
 def floobits_share_dir_public(dir_to_share):
-    return VUI.share_dir(None, dir_to_share, {'AnonymousUser': ['view_room']})
+    return VUI.share_dir(None, dir_to_share, {'perms': {'AnonymousUser': ['view_room']}})
 
 
 def floobits_complete_signup():
