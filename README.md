@@ -13,7 +13,7 @@ To take advantage of this method, you should launch Vim as a server.  Some versi
 
 `vim --servername superawesomename`
 
-You will also need to define `vim_executable exectable_name` in your ~/.floorc file. If you use MacVim, your floorc should contain the line:
+You will also need to define `vim_executable executable_name` in your ~/.floorc file. If you use MacVim, your floorc should contain the line:
 
 `vim_executable mvim`
 
