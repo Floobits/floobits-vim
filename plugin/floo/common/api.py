@@ -120,6 +120,7 @@ def api_request(host, url, data=None, method=None):
     else:
         method = method or 'GET'
     if ssl is False:
+        msg.warn('Error importing ssl. Using system python...')
         return proxy_api_request(host, url, data, method)
     try:
         r = hit_url(host, url, data, method)
