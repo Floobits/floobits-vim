@@ -11,7 +11,7 @@ except ImportError:
     import msg
     from exc_fmt import str_e
 
-IGNORE_FILES = ['.gitignore', '.hgignore', '.flignore', '.flooignore']
+IGNORE_FILES = ['.gitignore', '.hgignore', '.flooignore']
 HIDDEN_WHITELIST = ['.floo'] + IGNORE_FILES
 BLACKLIST = [
     '.DS_Store',
@@ -51,6 +51,7 @@ def create_flooignore(path):
 
 
 def create_ignore_tree(path):
+    create_flooignore(path)
     ig = Ignore(path)
     ig.ignores['/DEFAULT/'] = BLACKLIST
     ig.recurse(ig)
@@ -100,6 +101,11 @@ class Ignore(object):
                 msg.error('Error stat()ing path ', p_path, ': ', str_e(e))
                 continue
 
+            if stat.S_ISREG(s.st_mode) and p in HIDDEN_WHITELIST:
+                # Don't count these whitelisted files in size
+                self.files.append(p_path)
+                continue
+
             is_dir = stat.S_ISDIR(s.st_mode)
             if root.is_ignored(p_path, is_dir, True):
                 continue
@@ -129,6 +135,8 @@ class Ignore(object):
             if len(ignore) == 0:
                 continue
             if ignore[0] == '#':
+                continue
+            if ignore == '!':
                 continue
             msg.debug('Adding ', ignore, ' to ignore patterns')
             rules.insert(0, ignore)
@@ -170,6 +178,9 @@ class Ignore(object):
     def _is_ignored(self, rel_path, is_dir, log):
         base_path, file_name = os.path.split(rel_path)
 
+        if not is_dir and file_name in HIDDEN_WHITELIST:
+            return False
+
         for ignore_file, patterns in self.ignores.items():
             for pattern in patterns:
                 orig_pattern = pattern
@@ -178,6 +189,9 @@ class Ignore(object):
                 if pattern[0] == "!":
                     exclude = True
                     pattern = pattern[1:]
+
+                if not pattern:
+                    continue
 
                 if pattern[0] == '/':
                     match = fnmatch.fnmatch(rel_path, pattern[1:])
