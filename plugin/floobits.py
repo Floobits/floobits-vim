@@ -30,7 +30,7 @@ except ImportError:
 
 import vim
 
-from floo.common import api, migrations, msg, reactor, utils, shared as G
+from floo.common import api, msg, reactor, utils, shared as G
 from floo import editor, vui
 
 VUI = vui.VUI()
@@ -42,9 +42,6 @@ G.__VERSION__ = '0.11'
 G.__PLUGIN_VERSION__ = '3.0.8'
 
 utils.reload_settings()
-
-migrations.rename_floobits_dir()
-migrations.migrate_symlinks()
 
 G.DELETE_LOCAL_FILES = bool(int(vim.eval('floo_delete_local_files')))
 G.SHOW_HIGHLIGHTS = bool(int(vim.eval('floo_show_highlights')))
