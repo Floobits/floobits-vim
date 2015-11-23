@@ -53,7 +53,7 @@ class FlooUI(event_emitter.EventEmitter):
 
         agent = credentials.RequestCredentialsHandler()
         if not agent:
-            self.error_message('''A configuration error occured earlier. Please go to %s and sign up to use this plugin.\n
+            self.error_message('''A configuration error occured earlier. Please go to %s and sign up to use this plugin.
     We're really sorry. This should never happen.''' % host)
             return
 
@@ -79,7 +79,7 @@ class FlooUI(event_emitter.EventEmitter):
 
         choices = [
             'Sign in to Floobits',
-            'Create a Floobits account',
+            'Automatically create a Floobits account',
             'Cancel (see https://floobits.com/help/floorc)'
         ]
 
@@ -91,7 +91,7 @@ class FlooUI(event_emitter.EventEmitter):
                 d['disable_account_creation'] = True
                 utils.update_persistent_data(d)
                 # TODO: this instruction is only useful for Sublime Text
-                editor.message_dialog('''You can set up a Floobits account at any time under\n\nTools -> Floobits -> Set up''')
+                editor.message_dialog('''You can set up a Floobits account at any time under:\n\nTools -> Floobits -> Set up''')
             cb(None)
             return
 
@@ -268,7 +268,13 @@ class FlooUI(event_emitter.EventEmitter):
                 prompt = 'Workspace names may only contain [A-Za-z0-9_\-\.]. Choose another name: '
                 continue
 
-            prompt = 'Workspace %s/%s already exists. Choose another name: ' % (owner, name)
+            yes = yield self.user_y_or_n, context, 'Workspace %s/%s already exists. Overwrite?' % (owner, name), 'Yes'
+            if yes:
+                # TODO: this doesn't set permissions on the workspace correctly
+                self.remote_connect(context, host, owner, name, dir_to_share, utils.JOIN_ACTION.PROMPT)
+                return
+
+            prompt = 'Workspace %s/%s already exists. Choose new name: ' % (owner, name)
 
     def join_workspace_by_url(self, context, workspace_url, possible_dirs=None):
         try:
@@ -279,7 +285,7 @@ class FlooUI(event_emitter.EventEmitter):
         return self.join_workspace(context, d['host'], d['workspace'], d['owner'], possible_dirs)
 
     @utils.inlined_callbacks
-    def follow_user(self, context):
+    def follow_user(self, context, cb=None):
         users = self.agent.workspace_info.get('users')
         userNames = set()
         me = self.agent.get_username_by_id(self.agent.workspace_info['user_id'])
@@ -287,14 +293,15 @@ class FlooUI(event_emitter.EventEmitter):
             username = user['username']
             if username == me:
                 continue
-            if user['client'] == 'flooty':
+            if user['client'] == 'flootty':
                 continue
             if 'highlight' not in user['perms']:
                 continue
             userNames.add(username)
         if not userNames:
-            editor.error_message("There are no other users that can be followed at this time." +
+            editor.error_message("There are no other users that can be followed at this time. " +
                                  "NOTE: you can only follow users who have highlight permission.")
+            cb and cb()
             return
         userNames = list(userNames)
         userNames.sort()
@@ -302,14 +309,18 @@ class FlooUI(event_emitter.EventEmitter):
         selected_user, index = yield self.user_select, context, "select a user to follow", list(userNames), small
 
         if not selected_user:
+            cb and cb()
             return
 
         if selected_user in G.FOLLOW_USERS:
             G.FOLLOW_USERS.remove(selected_user)
+            cb and cb()
             return
 
         G.FOLLOW_USERS.add(selected_user)
         G.AGENT.highlight(user=selected_user)
+        cb and cb()
+        return
 
     @utils.inlined_callbacks
     def join_workspace(self, context, host, name, owner, possible_dirs=None):

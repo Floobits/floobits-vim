@@ -8,8 +8,10 @@ AUTH = {}
 
 DEBUG = False
 SOCK_DEBUG = False
+SOCK_SINGLE_READ = False
 
 EXPERT_MODE = False
+FLOOTTY_SAFE = True
 
 ALERT_ON_MSG = True
 LOG_TO_CONSOLE = False
@@ -54,5 +56,4 @@ IGNORE = None
 
 VIEW_TO_HASH = {}
 
-FLOORC_PATH = os.path.expanduser(os.path.join('~', '.floorc'))
 FLOORC_JSON_PATH = os.path.expanduser(os.path.join('~', '.floorc.json'))

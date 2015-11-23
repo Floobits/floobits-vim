@@ -137,6 +137,7 @@ class FlooProtocol(base.BaseProtocol):
             if e.errno == iscon_errno:
                 pass
             elif e.errno in connect_errno:
+                msg.debug('connect_errno: ', str_e(e))
                 return utils.set_timeout(self._connect, 20, host, port, attempts + 1)
             else:
                 msg.error('Error connecting: ', str_e(e))
@@ -179,6 +180,9 @@ class FlooProtocol(base.BaseProtocol):
 
         self._empty_selects = 0
 
+        # Only use proxy.floobits.com if we're trying to connect to floobits.com
+        G.OUTBOUND_FILTERING = G.OUTBOUND_FILTERING and self.host == 'floobits.com'
+
         # TODO: Horrible code here
         if self.proxy:
             if G.OUTBOUND_FILTERING:
@@ -194,7 +198,7 @@ class FlooProtocol(base.BaseProtocol):
         if self._secure:
             with open(self._cert_path, 'wb') as cert_fd:
                 cert_fd.write(cert.CA_CERT.encode('utf-8'))
-        conn_msg = 'Connecting to %s:%s' % (self.host, self.port)
+        conn_msg = '%s:%s: Connecting...' % (self.host, self.port)
         if self.port != self._port or self.host != self._host:
             conn_msg += ' (proxying through %s:%s)' % (self._host, self._port)
         if host != self._host:
@@ -233,12 +237,15 @@ class FlooProtocol(base.BaseProtocol):
             sock_debug('Floobits: ssl.SSLError. This is expected sometimes.')
             if e.args[0] in [ssl.SSL_ERROR_WANT_READ, ssl.SSL_ERROR_WANT_WRITE]:
                 return False
+            self.stop()
+            editor.error_message('SSL handshake error: %s' % str(e))
+            sock_debug('SSLError args: %s' % ''.join([str(a) for a in e.args]))
         except Exception as e:
             msg.error('Error in SSL handshake: ', str_e(e))
         else:
             sock_debug('Successful handshake')
             self._needs_handshake = False
-            editor.status_message('SSL handshake completed to %s:%s' % (self.host, self.port))
+            editor.status_message('%s:%s: SSL handshake completed' % (self.host, self.port))
             return True
 
         self.reconnect()
@@ -284,9 +291,15 @@ class FlooProtocol(base.BaseProtocol):
                 if not d:
                     break
                 buf += d
-            except (AttributeError):
+                # ST2 on Windows with Package Control 3 support!
+                # (socket.recv blocks for some damn reason)
+                if G.SOCK_SINGLE_READ:
+                    break
+            except AttributeError:
+                sock_debug('_sock is None')
                 return self.reconnect()
-            except (socket.error, TypeError):
+            except (socket.error, TypeError) as e:
+                sock_debug('Socket error:', e)
                 break
 
         if buf:
